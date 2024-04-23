@@ -1,0 +1,27 @@
+# STM32H723ZG Nucleo board configuration
+
+# Copyright (c) 2020 Alexander Kozhinov <AlexanderKozhinov@yandex.com>
+# SPDX-License-Identifier: Apache-2.0
+
+if BOARD_LAUNCHPAD_CONTROLLER
+
+config BOARD
+	default "launchpad_controller"
+
+if NETWORKING
+
+config NET_L2_ETHERNET
+	default y
+
+endif # NETWORKING
+
+config USB_DC_HAS_HS_SUPPORT
+	default y
+	depends on USB_DC_STM32
+
+config SYS_CLOCK_HW_CYCLES_PER_SEC
+	int
+	default 500000000
+	depends on RTOS_TIMER && BOARD_MEC1501MODULAR_ASSY6885
+
+endif # BOARD_LAUNCHPAD_CONTROLLER

@@ -1,0 +1,8 @@
+# TODO: rename??
+
+# Copyright (c) 2020 Alexander Kozhinov <AlexanderKozhinov@yandex.com>
+# SPDX-License-Identifier: Apache-2.0
+
+config BOARD_LAUNCHPAD_CONTROLLER
+	bool "Launchpad Controller"
+	depends on SOC_STM32H723XX

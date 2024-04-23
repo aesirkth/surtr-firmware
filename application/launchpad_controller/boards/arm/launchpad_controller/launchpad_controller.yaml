@@ -1,0 +1,21 @@
+identifier: launchpad_controller
+name: Launchpad Controller
+type: mcu
+arch: arm
+toolchain:
+  - zephyr
+  - gnuarmemb
+  - xtools
+ram: 372
+flash: 1024
+supported:
+  - uart
+  - gpio
+  - counter
+  - i2c
+  - pwm
+  - spi
+  - netif:eth
+  - backup_sram
+  - usb_device
+vendor: st
