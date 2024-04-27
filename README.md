@@ -12,7 +12,7 @@ Building the software is most easily done with the Zephyr SDK. This is separate 
 #### Python
 It is recommended to set up a Python virtual environment for the repository. A virtual environment is basically a sandbox isolate each project and prevent collisions between library versions. The project can be built without this but there will most likely be unexpected issues a few months down the line.
 
-Configuring one can be as simple as running `python -m venv venv`. Every time you want to build something run `source venv/bin/activate` to activate and enter the virtual environment.
+Configuring one can be as simple as running `python -m venv venv`. Every time you want to build something run `source .venv/bin/activate` to activate and enter the virtual environment.
 
 #### West & Zephyr
 The project is built and managed using [West](https://docs.zephyrproject.org/latest/develop/west/index.html). West will automatically fetch everything Zephyr related (other than the SDK).
