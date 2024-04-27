@@ -19,6 +19,8 @@ The project is built and managed using [West](https://docs.zephyrproject.org/lat
 
 West can be installed through pip `pip install west`. (enable your virtual environment first if you have one). Then run `west update` in the root of this repository to make West fetch Zephyr RTOS and all required dependencies.
 
+Note, if west already was installed prior to entering the virtual environment, you must first write 'west init' when in the virtual environment before you can proceed with 'west update'.  
+
 
 ### Building and Flashing
 #### Flight controller
