@@ -49,120 +49,118 @@
 		compatible = "gpio-leds"; /* why is this driver called LEDs lol */
 		/* TODO: rewrite to have switches numbered by physical placement */
 		switch0: switch_0 {
-			gpios <&gpiod 8 GPIO_ACTIVE_HIGH>;
+			gpios = <&gpiod 8 GPIO_ACTIVE_HIGH>;
 			label = "High Power Switch 0/1";
 		};
 		switch1: switch_1 {
-			gpios <&gpiod 9 GPIO_ACTIVE_HIGH>;
+			gpios = <&gpiod 9 GPIO_ACTIVE_HIGH>;
 			label = "High Power Switch 1/2";
 		};
 		switch2: switch_2 {
-			gpios <&gpiod 10 GPIO_ACTIVE_HIGH>;
+			gpios = <&gpiod 10 GPIO_ACTIVE_HIGH>;
 			label = "High Power Switch 2/3";
 		};
 		switch3: switch_3 {
-			gpios <&gpiod 11 GPIO_ACTIVE_HIGH>;
+			gpios = <&gpiod 11 GPIO_ACTIVE_HIGH>;
 			label = "High Power Switch 3/4";
 		};
 		switch4: switch_4 {
-			gpios <&gpiod 12 GPIO_ACTIVE_HIGH>;
+			gpios = <&gpiod 12 GPIO_ACTIVE_HIGH>;
 			label = "High Power Switch 4/5";
 		};
 		switch5: switch_5 {
-			gpios <&gpiod 13 GPIO_ACTIVE_HIGH>;
+			gpios = <&gpiod 13 GPIO_ACTIVE_HIGH>;
 			label = "High Power Switch 5/6";
 		};
 		switch6: switch_6 {
-			gpios <&gpiod 14 GPIO_ACTIVE_HIGH>;
+			gpios = <&gpiod 14 GPIO_ACTIVE_HIGH>;
 			label = "High Power Switch 6/7";
 		};
 		switch7: switch_7 {
-			gpios <&gpiod 15 GPIO_ACTIVE_HIGH>;
+			gpios = <&gpiod 15 GPIO_ACTIVE_HIGH>;
 			label = "High Power Switch 7/8";
 		};
 	};
 
-	/*
-	pwmleds {
-		compatible = "pwm-leds";
+	// pwmleds {
+	// 	compatible = "pwm-leds";
 
-		red_pwm_led: red_pwm_led {
-			pwms = <&pwm12 1 PWM_MSEC(20) PWM_POLARITY_NORMAL>;
-			label = "User LD3 - PWM12";
-		};
-	};
-	*/
+	// 	red_pwm_led: red_pwm_led {
+	// 		pwms = <&pwm12 1 PWM_MSEC(20) PWM_POLARITY_NORMAL>;
+	// 		label = "User LD3 - PWM12";
+	// 	};
+	// };
 
-	stepctrls : stepper_controls {
+	stepctrls: stepper_controls {
 		compatible = "gpio-leds";
-		step1_dir : stepper1_direction {
-			gpios <&gpiod 2 GPIO_ACTIVE_HIGH>;
+		step1_dir: stepper1_direction {
+			gpios = <&gpiod 2 GPIO_ACTIVE_HIGH>;
 			label = "Stepper Motor 1 Direction Pin";			
 		};
 
-		step2_dir : stepper2_direction {
-			gpios <&gpiod 4 GPIO_ACTIVE_HIGH>;
+		step2_dir: stepper2_direction {
+			gpios = <&gpiod 4 GPIO_ACTIVE_HIGH>;
 			label = "Stepper Motor 2 Direction Pin";			
 		};
 
-		step3_dir : stepper3_direction {
-			gpios <&gpiod 6 GPIO_ACTIVE_HIGH>;
+		step3_dir: stepper3_direction {
+			gpios = <&gpiod 6 GPIO_ACTIVE_HIGH>;
 			label = "Stepper Motor 3 Direction Pin";			
 		};
 
-		step1_ctrl : stepper1_control {
-			gpios <&gpiod 1 GPIO_ACTIVE_HIGH>;
+		step1_ctrl: stepper1_control {
+			gpios = <&gpiod 1 GPIO_ACTIVE_HIGH>;
 			label = "Stepper Motor 1 Control Pin";			
 		};
 
-		step2_ctrl : stepper2_control {
-			gpios <&gpiod 3 GPIO_ACTIVE_HIGH>;
+		step2_ctrl: stepper2_control {
+			gpios = <&gpiod 3 GPIO_ACTIVE_HIGH>;
 			label = "Stepper Motor 2 Control Pin";			
 		};
 
-		step3_ctrl : stepper3_control {
-			gpios <&gpiod 5 GPIO_ACTIVE_HIGH>;
+		step3_ctrl: stepper3_control {
+			gpios = <&gpiod 5 GPIO_ACTIVE_HIGH>;
 			label = "Stepper Motor 3 Control Pin";			
 		};
 	};
 
-	// gpio_keys {
-	// 	compatible = "gpio-keys";
-	// 	user_button: button_0 {
-	// 		label = "User";
-	// 		gpios = <&gpioc 13 GPIO_ACTIVE_HIGH>;
-	// 		zephyr,code = <INPUT_KEY_0>;
-	// 	};
-	// };
+	gpio_keys {
+		compatible = "gpio-keys";
+		user_button: button_0 {
+			label = "User";
+			gpios = <&gpioc 13 GPIO_ACTIVE_HIGH>;
+			zephyr,code = <INPUT_KEY_0>;
+		};
+	};
 
-	step_states : stepper_state_pins {
+	step_states: stepper_state_pins {
 		compatible = "gpio-keys"; // TODO: change to a more generic GPIO input driver? 
-		step1_nFault : stepper1_state1 {
+		step1_nFault: stepper1_state1 {
 			label = "Stepper 1 Fault";
 			gpios = <&gpiog 0 GPIO_ACTIVE_HIGH>;
 		};
-		step2_nFault : stepper2_state1 {
+		step2_nFault: stepper2_state1 {
 			label = "Stepper 2 Fault";
 			gpios = <&gpiog 2 GPIO_ACTIVE_HIGH>;
 		};
-		step3_nFault : stepper3_state1 {
+		step3_nFault: stepper3_state1 {
 			label = "Stepper 3 Fault";
 			gpios = <&gpiog 4 GPIO_ACTIVE_HIGH>;
 		};
 
-		step1_nFault : stepper1_state2 {
+		step1_nFault: stepper1_state2 {
 			label = "Stepper 1 Stall";
 			gpios = <&gpiog 1 GPIO_ACTIVE_HIGH>;
 		};
-		step2_nFault : stepper2_state2 {
+		step2_nFault: stepper2_state2 {
 			label = "Stepper 2 Stall";
 			gpios = <&gpiog 3 GPIO_ACTIVE_HIGH>;
 		};
-		step3_nFault : stepper3_state2 {
+		step3_nFault: stepper3_state2 {
 			label = "Stepper 3 Stall";
 			gpios = <&gpiog 5 GPIO_ACTIVE_HIGH>;
 		};
-	}
+	};
 
 	aliases {
 		led0 = &green_led;
@@ -276,19 +274,19 @@
 	 <&gpioe 9 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>,
 	 <&gpioe 10 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
 	
-	motor1 : motor36v4_1@0 {
+	motor1: motor36v4_1@0 {
 		compatible="ti,drv8711";
 		reg = <0>;
 		spi-max-frequency=<1000000>;
 	};
 
-	motor2 : motor36v4_2@1 {
+	motor2: motor36v4_2@1 {
 		compatible="ti,drv8711";
 		reg = <1>;
 		spi-max-frequency=<1000000>;
 	};
 
-	motor3 : motor36v4_3@2 {
+	motor3: motor36v4_3@2 {
 		compatible="ti,drv8711";
 		reg = <2>;
 		spi-max-frequency=<1000000>;
@@ -436,7 +434,7 @@
 /* TODO: review clocks, pins checked*/
 &fdcan2 {
 	clocks = <&rcc STM32_CLOCK_BUS_APB1_2 0x00000200>,
-		 <&rcc STM32_SRC_PLL1_Q FDCAN1_SEL(1)>;
+		 <&rcc STM32_SRC_PLL1_Q FDCAN2_SEL(1)>;
 	pinctrl-0 = <&fdcan2_rx_pb12 &fdcan2_tx_pb13>;
 	pinctrl-names = "default";
 	bus-speed = <125000>;
