@@ -1,3 +1,13 @@
 menu "Zephyr"
 source "Kconfig.zephyr"
 endmenu
+
+config APP_LOG_LEVEL
+    int "Application log level"
+    default 0 if APP_LOG_LEVEL_OFF
+    default 1 if APP_LOG_LEVEL_ERR
+    default 2 if APP_LOG_LEVEL_WRN
+    default 3 if APP_LOG_LEVEL_INF
+    default 4 if APP_LOG_LEVEL_DBG
+    default 4
+    depends on LOG
