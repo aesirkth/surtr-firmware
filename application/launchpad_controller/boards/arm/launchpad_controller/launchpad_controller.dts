@@ -251,7 +251,7 @@
 	pinctrl-0 = <&spi1_sck_pg11 &spi1_miso_pg9 &spi1_mosi_pd7>;
 	pinctrl-names = "default";
 	cs-gpios = <&gpioe 11 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>,
-	 <&gpioe 12 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+			   <&gpioe 12 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
 
 	ext_adc1: ad4111_1@0 {
 		compatible="analog,ad4111";
