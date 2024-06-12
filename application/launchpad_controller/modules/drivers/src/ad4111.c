@@ -30,9 +30,8 @@ LOG_MODULE_REGISTER(ad4111, CONFIG_SENSOR_LOG_LEVEL);
 
 // Define device tree nodes
 #define CS_FLAGS (GPIO_OUTPUT | GPIO_ACTIVE_LOW)
-#define ADC1 DT_NODELABEL(ext_adc1)
-#define ADC2 DT_NODELABEL(ext_adc2)
-
+#define EXT_ADC1 DT_NODELABEL(ext_adc1)
+#define EXT_ADC2 DT_NODELABEL(ext_adc2)
 
 // Define ADC threads
 /* ------ THREADS PARAMETERS START ------ */
@@ -60,7 +59,7 @@ LOG_MODULE_REGISTER(ad4111, CONFIG_SENSOR_LOG_LEVEL);
 /* ------- THREADS INITIALIZATION END ------- */
 
 // Get address for SPI Chip Select
-// FIX THIS ????
+/*
 #if DT_NODE_HAS_STATUS(ADC1_NODE, okay)
 static const struct gpio_dt_spec adc1_cs = GPIO_DT_SPEC_GET(ADC1_NODE, cs_gpios);
 #else
@@ -72,15 +71,17 @@ static const struct gpio_dt_spec adc2_cs = GPIO_DT_SPEC_GET(ADC2_NODE, cs_gpios)
 #else
 #error "ADC2 node not available or incorrect in device tree"
 #endif
+*/
 
-/*
-static const struct gpio_dt_spec adc1_cs = GPIO_DT_SPEC_GET(ADC1, cs_gpios);
-static const struct gpio_dt_spec adc2_cs = GPIO_DT_SPEC_GET(ADC2, cs_gpios);
+static const struct gpio_dt_spec adc1_cs = GPIO_DT_SPEC_GET(EXT_ADC1, cs_gpios);
+static const struct gpio_dt_spec adc2_cs = GPIO_DT_SPEC_GET(EXT_ADC2, cs_gpios);
 
 // Function for resetting the ADCs
 // Returning CS' high sets the digital interface to the default state and halts any serial interface operation.
+
 static int reset_adc(const struct gpio_dt_spec *cs_addr) {
-    
+    uint8_t ret = 1;
+/*
     // Configurate GPIO pin based on address noted in device tree
     int ret = gpio_pin_configure_dt(cs_addr, CS_FLAGS); // Double check CS_FLAGS in this line
     if (ret) {
@@ -104,39 +105,42 @@ static int reset_adc(const struct gpio_dt_spec *cs_addr) {
         LOG_ERR("Error, Failed to set CS low, code: %d", ret);
         return ret;        
     }
-
+*/
     return ret;
 }
 
 
+
 // Initialize the ADCs
-void init_adc(){
-    const struct device *adc1 = DEVICE_DT_GET(ADC1);
-    const struct device *adc2 = DEVICE_DT_GET(ADC2);
+void init_adc(){ 
+
+    
+    const struct device *adc1 = DEVICE_DT_GET(EXT_ADC1);
+    const struct device *adc2 = DEVICE_DT_GET(EXT_ADC2);
 
     // Check if devices are ready
     if (!device_is_ready(adc1)) {
-        LOG_ERR("Error: ADC1 is not ready, code: %d", ret);
+        LOG_ERR("Error: ADC1 is not ready");
         return;
     }
-
+    
     if (!device_is_ready(adc2)) {
-        LOG_ERR("Error: ADC2 is not ready, code: %d", ret);
+        LOG_ERR("Error: ADC2 is not ready");
         return;
     }
 
     // If the devices are ready, proceed with resetting both ADCs
     if (reset_adc(&adc1_cs)) {
-        LOG_ERR("Error: Failed to reset ADC1, code: %d", ret);
+        LOG_ERR("Error: Failed to reset ADC1");
         return;        
     }
     k_sleep(K_MSEC(10));    // Wait for reset of ADC1 to complete
     
     
     if (reset_adc(&adc2_cs)) {
-        LOG_ERR("Error: Failed to reset ADC2, code: %d", ret);
+        LOG_ERR("Error: Failed to reset ADC2");
         return;
     }
     k_sleep(K_MSEC(10));    // Wait for reset of ADC2 to complete
+
 }
-*/
