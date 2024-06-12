@@ -20,6 +20,9 @@ CONFIG_UART_CONSOLE=y
 # Enable GPIO
 CONFIG_GPIO=y
 
+# Enable SPI
+CONFIG_SPI=y
+
 # Enable Clock
 CONFIG_CLOCK_CONTROL=y
 
