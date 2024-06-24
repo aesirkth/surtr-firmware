@@ -30,67 +30,35 @@
 LOG_MODULE_REGISTER(ad4111, CONFIG_SENSOR_LOG_LEVEL);
 
 /* REMEMBER: DRIVER FUNCTIONS SHOULD BE DESIGNED TO OPERATE INDEPENDENTLY OF THE NUMBER OF DEVICES USING THEM. */
+/* Typedef declarations functioning as aliases to their specific function pointer */
+typedef int (*adc_init_t) (const struct device *dev);
+typedef int (*adc_reset_t) (const struct device *dev);
+typedef int (*adc_config_channel_t) (const struct device *dev);
+typedef int (*adc_write_register_t) (const struct device *dev);
+typedef int (*adc_read_register_t) (const struct device *dev);
+typedef int (*adc_read_data_t) (const struct device *dev);
+typedef void (*adc_config_irq_t) (const struct device *dev);
+typedef void (*adc_isr_t) (const struct device *dev);
 
-// Structs that ...
-struct ad4111_config{};
-struct ad4111_data{};
-struct ad4111_api{
-    ad4111_init             // Initialize ADC
-    ad4111_reset            // Reset ADC
-    ad4111_write_register   // Write to ADC register
-    ad4111_read_register    // Read from ADC register
-    ad4111_read_data        // Read from ADC data register
-    ad4111_set_channel      // Enable/Disable ADC channels
+/* A structure that functions as a device independent subsystem API, applications will be able to program to this generic API */
+struct adc_api{
+    adc_init_t do_a;            // Initialize ADC
+    adc_reset_t do_b;           // Reset ADC
+    adc_config_channel_t do_f;  // Enable/Disable ADC channels
+    adc_write_register_t do_c;  // Write to ADC register
+    adc_read_register_t do_d;   // Read from ADC register
+    adc_read_data_t do_e;       // Read from ADC data register
+    adc_isr_t do_isr;           // Handle ADC interrupt service routine
 };
 
+struct adc_config{
+    DEVICE_MMIO_ROM;
+    adc_config_irq_t config_func;
+};
+
+void adc_isr(const struct device *dev) {}
+
+int adc_init(const struct device *dev) {}
 
 // Function for resetting the ADCs
 // Returning CS' high sets the digital interface to the default state and halts any serial interface operation.
-static int reset_adc(const struct gpio_dt_spec *cs_addr) {
-    uint8_t ret = 1;
-
-    // Configurate GPIO pin based on address noted in device tree
-    ret = gpio_pin_configure_dt(cs_addr, CS_FLAGS); // Double check CS_FLAGS in this line
-    if (ret) {
-        LOG_ERR("Error: Failed to configure GPIO for CS, code: %d", ret);
-        return ret;
-    }
-
-    // Set CS high to reset ADC
-    ret = gpio_pin_set_dt(cs_addr, 1);
-    if (ret) {
-        LOG_ERR("Error: Failed to set CS high, code: %d", ret);
-        return ret;
-    }
-
-    // Small delay to ensure cs is registered
-    k_busy_wait(10);
-
-    // Set CS low
-    ret = gpio_pin_set_dt(cs_addr, 0);
-    if (ret) {
-        LOG_ERR("Error, Failed to set CS low, code: %d", ret);
-        return ret;        
-    }
-
-    return ret;
-}
-
-
-
-// Initialize the ADCs
-void init_adc(const struct device *ad4111){ 
-
-    // Check if devices are ready
-    if (!device_is_ready(ad4111)) {
-        LOG_ERR("Error: ADC/*ADR POINTER*/ is not ready");
-        return;
-    }
-
-    // If the devices are ready, proceed with resetting both ADCs
-    if (reset_adc(&adc1_cs)) {
-        LOG_ERR("Error: Failed to reset ADC/*ADR POINTER*/");
-        return;        
-    }
-    k_sleep(K_MSEC(10));    // Wait for reset of ADC1 to complete
-}
