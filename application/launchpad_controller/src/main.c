@@ -10,7 +10,10 @@ LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL);
 int main() {
     LOG_INF("Hello world!");
     LOG_INF("Starting ADC initializaiton...");
-		init_adc();
+
+    //const struct device *adc1 = DEVICE_DT_GET(DT_NODELABEL(ext_adc1));
+		//init_adc(adc1);
+
     LOG_INF("ADC initialization complete");
 		return 0;
 }
