@@ -42,23 +42,49 @@ typedef void (*adc_isr_t) (const struct device *dev);
 
 /* A structure that functions as a device independent subsystem API, applications will be able to program to this generic API */
 struct adc_api{
-    adc_init_t do_a;            // Initialize ADC
-    adc_reset_t do_b;           // Reset ADC
-    adc_config_channel_t do_f;  // Enable/Disable ADC channels
-    adc_write_register_t do_c;  // Write to ADC register
-    adc_read_register_t do_d;   // Read from ADC register
-    adc_read_data_t do_e;       // Read from ADC data register
-    adc_isr_t do_isr;           // Handle ADC interrupt service routine
+    adc_init_t init;            // Initialize ADC
+    adc_reset_t reset;           // Reset ADC
+    adc_config_channel_t config_channel;  // Enable/Disable ADC channel
+    adc_write_register_t write_register;  // Write to ADC register
+    adc_read_register_t read_register;   // Read from ADC register
+    adc_read_data_t read_data;       // Read from ADC data register
+    adc_isr_t handle_isr;           // Handle ADC interrupt service routine
 };
 
 struct adc_config{
     DEVICE_MMIO_ROM;
-    adc_config_irq_t config_func;
+    adc_config_irq_t config_irq;
 };
 
-void adc_isr(const struct device *dev) {}
+void adc_isr(const struct device *dev) {
+    /* Handle interrupt */
+}
 
-int adc_init(const struct device *dev) {}
+int adc_init(const struct device *dev) {
+    const struct adc_config *config = dev->config;
+    /* Do other initialization stuff */
+    config->config_irq(dev);
+    
+    return 0;
+}
 
 // Function for resetting the ADCs
 // Returning CS' high sets the digital interface to the default state and halts any serial interface operation.
+
+// A macro to easily define and initialize an instance of the ADC driver.
+#define ADC_DEVICE(inst)                                                   \
+    static struct adc_data adc_data_##inst;                                \
+    static const struct adc_config adc_config_##inst = {                   \
+        .spi = SPI_DT_SPEC_INST_GET(inst),                                 \
+        .config_irq = adc_config_irq_##inst,                               \
+    };                                                                     \
+    DEVICE_DT_INST_DEFINE(inst,                                            \
+                          adc_init,                                        \
+                          NULL,                                            \
+                          &adc_data_##inst,                                \
+                          &adc_config_##inst,                              \
+                          POST_KERNEL,                                     \
+                          CONFIG_KERNEL_INIT_PRIORITY_DEVICE,              \
+                          &adc_api);
+
+DT_INST_FOREACH_STATUS_OKAY(ADC_DEVICE);
