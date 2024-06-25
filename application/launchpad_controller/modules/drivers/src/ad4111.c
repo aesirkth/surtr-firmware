@@ -31,12 +31,7 @@ LOG_MODULE_REGISTER(ad4111, CONFIG_SENSOR_LOG_LEVEL);
 
 /* REMEMBER: DRIVER FUNCTIONS SHOULD BE DESIGNED TO OPERATE INDEPENDENTLY OF THE NUMBER OF DEVICES USING THEM. */
 
-struct adc_config{
-    DEVICE_MMIO_ROM;
-    adc_config_irq_t config_irq;
-};
-
-void ad4111_isr(const struct device *dev) {
+void ad4111_handle_isr(const struct device *dev) {
     /* Handle interrupt */
 }
 
@@ -52,59 +47,18 @@ int ad4111_init(const struct device *dev) {
 // Returning CS' high sets the digital interface to the default state and halts any serial interface operation.
 
 // Struct utilizing the adc subsystem api 
-static struct adc_api ad4111_api_functions {
+static struct adc_api ad4111_api_functions = {
     .init = ad4111_init,                     // Initialize ADC
-    .reset = ad4111_reset,                   // Reset ADC
-    .config_channel = ad4111_config_channel, // Enable/Disable ADC channel
-    .write_register = ad4111_write_register, // Write to ADC register
-    .read_register = ad4111_read_register,   // Read from ADC register
-    .read_data = ad4111_read_data,           // Read from ADC data register
+    .reset = NULL, //ad4111_reset,                   // Reset ADC
+    .config_channel = NULL, //ad4111_config_channel, // Enable/Disable ADC channel
+    .write_register = NULL, //ad4111_write_register, // Write to ADC register
+    .read_register = NULL, //ad4111_read_register,   // Read from ADC register
+    .read_data = NULL, //ad4111_read_data,           // Read from ADC data register NOTE: CONSIDER CHANGING NAME FOR THIS
     .handle_isr = ad4111_handle_isr          // Handle ADC interrupt service routine
 };
 
-// Define the configuration functions and structures for each instance
-#if CONFIG_AD4111_0
-DEVICE_DECLARE(ad4111_0);
-
-static void ad4111_config_irq_0(const struct device *dev) {
-    IRQ_CONNECT(DT_IRQN(DT_INST(0, ad4111)), DT_IRQ(DT_INST(0, ad4111), priority), ad4111_isr, DEVICE_GET(ad4111_0), 0);
-}
-
-static void ad4111_config_irq_0(const struct device *dev)
-{
-      IRQ_CONNECT(AD4111_0_IRQ, AD4111_0_PRI, ad4111_isr,
-                  DEVICE_GET(ad4111_0), 0);
-}
-
-const static struct adc_config ad4111_config_0 = {
-    DEVICE_MMIO_ROM_INIT(DT_DRV_INST(0)),
-    .config_irq = ad4111_config_irq_0
-};
-
-static struct ad4111_data ad4111_data_0;
-
-DEVICE_DEFINE(ad4111_0, DT_LABEL(DT_INST(0, ad4111)), ad4111_init, NULL, &ad4111_data_0, &ad4111_config_0, POST_KERNEL, CONFIG_KERNEL_INIT_PRIORITY_DEVICE, &ad4111_api_functions);
-#endif
-
-#if CONFIG_AD4111_1
-DEVICE_DECLARE(ad4111_1);
-
-static void ad4111_config_irq_1(const struct device *dev) {
-    IRQ_CONNECT(DT_IRQN(DT_INST(1, ad4111)), DT_IRQ(DT_INST(1, ad4111), priority), ad4111_isr, DEVICE_GET(ad4111_1), 0);
-}
-
-const static struct adc_config ad4111_config_1 = {
-    DEVICE_MMIO_ROM_INIT(DT_DRV_INST(1)),
-    .config_irq = ad4111_config_irq_1
-};
-
-static struct ad4111_data ad4111_data_1;
-
-DEVICE_DEFINE(ad4111_1, DT_LABEL(DT_INST(1, ad4111)), ad4111_init, NULL, &ad4111_data_1, &ad4111_config_1, POST_KERNEL, CONFIG_KERNEL_INIT_PRIORITY_DEVICE, &ad4111_api_functions);
-#endif
-
 // A macro to easily define and initialize an instance of the ADC driver.
-#define ADC_DEVICE(inst)                                                   \
+#define AD4111_DEVICE_DEFINE(inst)                                         \
     static struct adc_data adc_data_##inst;                                \
     static const struct adc_config adc_config_##inst = {                   \
         .spi = SPI_DT_SPEC_INST_GET(inst),                                 \
@@ -116,7 +70,7 @@ DEVICE_DEFINE(ad4111_1, DT_LABEL(DT_INST(1, ad4111)), ad4111_init, NULL, &ad4111
                           &ad4111_data_##inst,                             \
                           &ad4111_config_##inst,                           \
                           POST_KERNEL,                                     \
-                          CONFIG_KERNEL_INIT_PRIORITY_DEVICE,              \
+                          CONFIG_DRIVER_INIT_PRIORITY,                     \
                           &adc_api);
 
-DT_INST_FOREACH_STATUS_OKAY(ADC_DEVICE);
+DT_INST_FOREACH_STATUS_OKAY(AD4111_DEVICE_DEFINE);
