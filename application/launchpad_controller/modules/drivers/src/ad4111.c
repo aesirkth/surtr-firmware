@@ -30,26 +30,6 @@
 LOG_MODULE_REGISTER(ad4111, CONFIG_SENSOR_LOG_LEVEL);
 
 /* REMEMBER: DRIVER FUNCTIONS SHOULD BE DESIGNED TO OPERATE INDEPENDENTLY OF THE NUMBER OF DEVICES USING THEM. */
-/* Typedef declarations functioning as aliases to their specific function pointer */
-typedef int (*adc_init_t) (const struct device *dev);
-typedef int (*adc_reset_t) (const struct device *dev);
-typedef int (*adc_config_channel_t) (const struct device *dev);
-typedef int (*adc_write_register_t) (const struct device *dev);
-typedef int (*adc_read_register_t) (const struct device *dev);
-typedef int (*adc_read_data_t) (const struct device *dev);
-typedef void (*adc_config_irq_t) (const struct device *dev);
-typedef void (*adc_isr_t) (const struct device *dev);
-
-/* A structure that functions as a device independent subsystem API, applications will be able to program to this generic API */
-struct adc_api{
-    adc_init_t init;            // Initialize ADC
-    adc_reset_t reset;           // Reset ADC
-    adc_config_channel_t config_channel;  // Enable/Disable ADC channel
-    adc_write_register_t write_register;  // Write to ADC register
-    adc_read_register_t read_register;   // Read from ADC register
-    adc_read_data_t read_data;       // Read from ADC data register
-    adc_isr_t handle_isr;           // Handle ADC interrupt service routine
-};
 
 struct adc_config{
     DEVICE_MMIO_ROM;
@@ -71,18 +51,30 @@ int adc_init(const struct device *dev) {
 // Function for resetting the ADCs
 // Returning CS' high sets the digital interface to the default state and halts any serial interface operation.
 
+// 
+static struct adc_api ad4111_api_functions {
+    .init = ad4111_init;                     // Initialize ADC
+    .reset = ad4111_reset;                   // Reset ADC
+    .config_channel = ad4111_config_channel; // Enable/Disable ADC channel
+    .write_register = ad4111_write_register; // Write to ADC register
+    .read_register = ad4111_read_register;   // Read from ADC register
+    .read_data = ad4111_read_data;           // Read from ADC data register
+    .config_irq = ad4111_config_irq;         // Configurate IRQ
+    .handle_isr = ad4111_handle_isr;         // Handle ADC interrupt service routine
+}
+
 // A macro to easily define and initialize an instance of the ADC driver.
 #define ADC_DEVICE(inst)                                                   \
     static struct adc_data adc_data_##inst;                                \
     static const struct adc_config adc_config_##inst = {                   \
         .spi = SPI_DT_SPEC_INST_GET(inst),                                 \
-        .config_irq = adc_config_irq_##inst,                               \
+        .config_irq = ad4111_config_irq_##inst,                            \
     };                                                                     \
     DEVICE_DT_INST_DEFINE(inst,                                            \
                           adc_init,                                        \
                           NULL,                                            \
-                          &adc_data_##inst,                                \
-                          &adc_config_##inst,                              \
+                          &ad4111_data_##inst,                             \
+                          &ad4111_config_##inst,                           \
                           POST_KERNEL,                                     \
                           CONFIG_KERNEL_INIT_PRIORITY_DEVICE,              \
                           &adc_api);
