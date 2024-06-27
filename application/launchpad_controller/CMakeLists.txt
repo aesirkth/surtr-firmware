@@ -17,6 +17,11 @@ target_sources(app PRIVATE
     src/main.c
 )
 
+zephyr_include_directories(.)
+
+target_sources(app PRIVATE src/main.c src/stepper_motor.c)
+
+
 # # main
 # target_sources(app PRIVATE
 #     src/flight_state.c
