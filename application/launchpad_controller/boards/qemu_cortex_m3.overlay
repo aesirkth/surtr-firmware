@@ -9,12 +9,15 @@
     current-speed = <115200>;
 };
 
+/* Define the SPI1 node if it doesn't exist in the base device tree */
 &spi1 {
+    compatible = "nxp,kinetis-spi"; /* You might need to change this to match your target */
     status = "okay";
+    reg = <0x40013000 0x400>;
+    interrupts = <35 1>;
     pinctrl-names = "default";
     pinctrl-0 = <&spi1_sck_pa5 &spi1_miso_pa6 &spi1_mosi_pa7>;
-    cs-gpios = <&gpioa 4 GPIO_ACTIVE_LOW>,
-               <&gpioa 4 GPIO_ACTIVE_LOW>;
+    cs-gpios = <&gpioa 4 GPIO_ACTIVE_LOW>;
 
     ext_adc1: ad4111_1@0 {
         compatible = "analog,ad4111";
