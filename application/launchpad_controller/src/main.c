@@ -1,33 +1,59 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
-#include "ad4111.h"
+#include "../modules/drivers/inc/ad4111.h"
 #include "networking.h"
-LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL);
 
+LOG_MODULE_REGISTER(main);
 
-// K_THREAD_DEFINE(networking_t, 2048, networking_thread, NULL, NULL, NULL, 5, 0, 0);
+int main(void) {
+    LOG_INF("++ Initiliazing... ++");
 
-int main() {
-    LOG_INF("Hello world!");
-    
     // Let's go..!
-    LOG_INF("Starting ADC initializaiton...");
+    LOG_INF("++ Starting ADC initialization ++");
 
     // Create adc driver instances
-    //const struct device *adc_dev_0 = device_get_binding(DT_LABEL(DT_INST(0, ad4111)));
-    //const struct device *adc_dev_1 = device_get_binding(DT_LABEL(DT_INST(1, ad4111)));
+    const struct device *adc1;
+    const struct device *adc2;
 
-    //if (!adc_dev_0 || !adc_dev_1) {
-    //    LOG_ERR("Failed to get ADC device bindings");
-    //    return;
-    //}
+    /* Retrieve the device binding for the first ADC */
+    adc1 = device_get_binding("ad4111_1");
+    if (!adc1) {
+        LOG_INF("ad4111_1 failed to get binding");
+        return -1;  // Indicate error
+    } else {
+      LOG_INF("ad4111_1 successfully retrieved")
+    }
 
-    // Use the ADC devices
-    //adc_init(adc_dev_0);
-    //adc_init(adc_dev_1);
+    /* Retrieve the device binding for the second ADC */
+    adc2 = device_get_binding("ad4111_2");
+    if (!adc2) {
+        LOG_ERR("ad4111_2 failed to get binding");
+        return -1;  // Indicate error
+    } else {
+        LOG_INF("ad4111_2 successfully retrieved")
+    }
+
+    /* Initialize the first ADC */
+    if (adc_init(adc1) != 0) {
+        LOG_ERR("ad4111_1 failed to initialize");
+        return -1;  // Indicate error
+    } else {
+        LOG_INF("ad4111_1 successfully initialized");
+    }
+
+    /* Initialize the second ADC */
+    if (adc_init(adc2) != 0) {
+        LOG_ERR("ad4111_2 failed to initialize");
+        return -1;  // Indicate error
+    } else {
+        LOG_INF("ad4111_2 successfully initialized");
+    }
 
     // Fail or success! 
-    LOG_INF("ADC initialization complete");
+    LOG_INF("++ Finished ADC initialization ++");
+
     // Application logic
-		return 0;
+    // ...
+
+    return 0;  // Indicate success
 }

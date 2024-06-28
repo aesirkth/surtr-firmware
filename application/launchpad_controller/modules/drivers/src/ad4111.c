@@ -58,10 +58,10 @@ void ad4111_handle_isr(const struct device *dev) {
 static int ad4111_reset(const struct device *dev) {
     const struct ad4111_config *config = dev->config;
 
-    /* Toggle CS to reset the device */
-    gpio_pin_set_dt(&config->cs_gpio, 0); // Toggle CS-bar high for reset
+    /* Toggle CS-complement to reset the device */
+    gpio_pin_set_dt(&config->cs_gpio, 0); // Toggle CS-complement high for reset
     k_sleep(K_MSEC(1)); // wait a bit
-    gpio_pin_set_dt(&config->cs_gpio, 1); // Toggle CS-bar low to allow data flow
+    gpio_pin_set_dt(&config->cs_gpio, 1); // Toggle CS-complement low to allow data flow
     k_sleep(K_MSEC(1)); // wait a bit
 
     return 0;
@@ -69,7 +69,9 @@ static int ad4111_reset(const struct device *dev) {
 
 static int ad4111_init(const struct device *dev) {
     const struct adc_config *config = dev->config;
+    
     /* Do other initialization stuff */
+    ad4111_reset(dev);
     config->config_irq(dev);
     
     return 0;
@@ -81,7 +83,7 @@ static int ad4111_init(const struct device *dev) {
 // Struct utilizing the adc subsystem api 
 static struct adc_api ad4111_api_functions = {
     .init = ad4111_init,                     // Initialize ADC
-    .reset = NULL, //ad4111_reset,                   // Reset ADC
+    .reset = ad4111_reset,                   // Reset ADC
     .config_channel = NULL, //ad4111_config_channel, // Enable/Disable ADC channel
     .write_register = NULL, //ad4111_write_register, // Write to ADC register
     .read_register = NULL, //ad4111_read_register,   // Read from ADC register
