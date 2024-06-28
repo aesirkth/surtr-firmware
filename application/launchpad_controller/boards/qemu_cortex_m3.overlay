@@ -9,29 +9,14 @@
     current-speed = <115200>;
 };
 
-/* Define the SPI1 node if it doesn't exist in the base device tree */
 &spi1 {
-    compatible = "nxp,kinetis-spi"; /* You might need to change this to match your target */
+    compatible = "zephyr,spi-emul";
     status = "okay";
-    reg = <0x40013000 0x400>;
-    interrupts = <35 1>;
-    pinctrl-names = "default";
-    pinctrl-0 = <&spi1_sck_pa5 &spi1_miso_pa6 &spi1_mosi_pa7>;
     cs-gpios = <&gpioa 4 GPIO_ACTIVE_LOW>;
+};
 
-    ext_adc1: ad4111_1@0 {
-        compatible = "analog,ad4111";
-        reg = <0>; // Refers to the CS line
-        spi-max-frequency = <1000000>; // Verify with datasheet
-        cs-gpios = <&gpioa 4 GPIO_ACTIVE_LOW>;
-        status = "okay";
-    };
-
-    ext_adc2: ad4111_2@1 {
-        compatible = "analog,ad4111";
-        reg = <1>; // Refers to the CS line
-        spi-max-frequency = <1000000>; // Verify with datasheet
-        cs-gpios = <&gpioa 4 GPIO_ACTIVE_LOW>;
-        status = "okay";
-    };
+&mock_spi {
+    compatible = "zephyr,spi-emul";
+    status = "okay";
+    label = "mock_spi";
 };
