@@ -21,7 +21,7 @@ int main(void) {
         LOG_INF("ad4111_1 failed to get binding");
         return -1;  // Indicate error
     } else {
-      LOG_INF("ad4111_1 successfully retrieved")
+      LOG_INF("ad4111_1 successfully retrieved");
     }
 
     /* Retrieve the device binding for the second ADC */
@@ -30,7 +30,7 @@ int main(void) {
         LOG_ERR("ad4111_2 failed to get binding");
         return -1;  // Indicate error
     } else {
-        LOG_INF("ad4111_2 successfully retrieved")
+        LOG_INF("ad4111_2 successfully retrieved");
     }
 
     /* Initialize the first ADC */
