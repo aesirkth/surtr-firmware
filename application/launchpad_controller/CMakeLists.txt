@@ -11,7 +11,6 @@ target_sources(app PRIVATE
     src/main.c
     src/networking.c
     modules/drivers/src/ad4111.c
-    src/mock_spi.c
 )
 
 # Add additional directories
