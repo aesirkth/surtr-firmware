@@ -18,15 +18,6 @@ target_include_directories(app PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/modules/drivers/inc
 )
 
-# Add this to your CMakeLists.txt
-include(ZephyrCodeBase)
-
-zephyr_get_include_directories_for_lang_as_string(HEADER_DIRECTORIES C)
-
-zephyr_include_directories(
-  ${HEADER_DIRECTORIES}
-)
-
 # Custom target to run QEMU without the slip.sock serial
 add_custom_target(run_qemu_custom
   COMMAND ${QEMU_EXECUTABLE}
