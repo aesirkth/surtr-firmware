@@ -16,7 +16,7 @@ int main(void) {
     const struct device *adc2;
 
     /* Retrieve the device binding for the first ADC */
-    adc1 = device_get_binding("ad4111@1"); // For debugging
+    adc1 = device_get_binding("ad4111@0"); // For debugging
     // adc1 = device_get_binding("ad4111_1");
     if (!adc1) {
         LOG_INF("ad4111_1 failed to get binding");
@@ -26,7 +26,7 @@ int main(void) {
     }
 
     /* Retrieve the device binding for the second ADC */
-    adc2 = device_get_binding("ad4111@2"); // For debugging
+    adc2 = device_get_binding("ad4111@1"); // For debugging
     // adc2 = device_get_binding("ad4111_2");
     if (!adc2) {
         LOG_ERR("ad4111_2 failed to get binding");
