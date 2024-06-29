@@ -1,10 +1,10 @@
-&spi0 {
+&spi1 {
     compatible = "zephyr,spi-emul-controller";
     status = "okay";
     cs-gpios = <&gpio0 11 GPIO_ACTIVE_LOW>,
                <&gpio0 12 GPIO_ACTIVE_LOW>;
 
-    ad4111_1: ad4111@0 {
+    ext_adc1: ad4111_1@0 {
         compatible = "analog,ad4111";
         reg = <0>;
         spi-max-frequency = <1000000>;
@@ -13,7 +13,7 @@
         label = "AD4111_1"; // Optional, but helpful for debugging
     };
 
-    ad4111_2: ad4111@1 {
+    ext_adc2: ad4111_2@1 {
         compatible = "analog,ad4111";
         reg = <1>;
         spi-max-frequency = <1000000>;
