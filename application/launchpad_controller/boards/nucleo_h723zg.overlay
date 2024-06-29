@@ -9,7 +9,7 @@
 };
 */
 
-&spi1 {
+&spi0 {
     status = "okay";
     pinctrl-names = "default";
     pinctrl-0 = <&spi1_sck_pg11 &spi1_miso_pg9 &spi1_mosi_pd7>;

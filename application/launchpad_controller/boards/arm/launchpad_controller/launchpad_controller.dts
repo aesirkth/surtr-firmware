@@ -244,7 +244,14 @@
 	status = "okay";
 };
 
-// spi1 is for the ADCs
+// spi1 is for the ADCs, spi0 for emulation
+// Add spi0 for native simulation
+&spi0 {
+	compatible = "zephyr,spi-emul-controller";
+	status = "okay";
+	cs-gpios = <&gpio0 11 GPIO_ACTIVE_LOW>,
+	           <&gpio0 12 GPIO_ACTIVE_LOW>;
+};
 // ADC1_CS on PE11, ADC2_CS on PE12
 &spi1 {
 	status = "okay";
