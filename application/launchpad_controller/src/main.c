@@ -16,9 +16,11 @@ int main(void) {
     const struct device *adc2;
 
     /* Retrieve the device binding for the first ADC */
-    adc1 = device_get_binding("AD4111_1"); // For debugging
+    //adc1 = device_get_binding("AD4111_1"); // For debugging
+    adc1 = DEVICE_DT_GET(DT_NODELABEL(ad4111_1));
+
     // adc1 = device_get_binding("ad4111_1");
-    if (!adc1) {
+    if (!device_is_ready(adc1)) {
         LOG_INF("ad4111_1 failed to get binding");
         return -1;  // Indicate error
     } else {

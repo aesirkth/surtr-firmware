@@ -10,7 +10,7 @@
         spi-max-frequency = <1000000>;
         cs-gpios = <&gpio0 11 GPIO_ACTIVE_LOW>;
         status = "okay";
-        label = "AD4111_1";
+        label = "AD4111_1"; // Optional, but helpful for debugging
     };
 
     ad4111_2: ad4111@1 {
@@ -19,6 +19,6 @@
         spi-max-frequency = <1000000>;
         cs-gpios = <&gpio0 12 GPIO_ACTIVE_LOW>;
         status = "okay";
-        label = "AD4111_2";
+        label = "AD4111_2"; // Optional, but helpful for debugging
     };
 };
