@@ -8,3 +8,19 @@ description: Analog to Digital Converter (ADC) driver
 compatible: "analog,ad4111"
 
 include: spi-device.yaml
+
+properties:
+  reg:
+    required: true
+    description: SPI chip select
+  spi-max-frequency:
+    required: true
+    description: Maximum SPI clocking speed in Hz
+  cs-gpios:
+    type: phandle-array
+    required: true
+    description: Chip select GPIO
+  label:
+    type: string
+    required: false
+    description: User label for the device
