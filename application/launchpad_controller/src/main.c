@@ -2,6 +2,7 @@
 #include <zephyr/logging/log.h>
 #include "../modules/drivers/inc/ad4111.h"
 #include "networking.h"
+#include <zephyr/device.h>
 
 #define ADC1_NODE DT_NODELABEL(ad4111x1)
 #define ADC2_NODE DT_NODELABEL(ad4111x2)
