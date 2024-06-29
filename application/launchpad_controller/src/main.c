@@ -5,8 +5,8 @@
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
 
-#define CUSTOM_SENSOR_NODE DT_ALIAS(ext_adc1)
-
+#define ADC1 DT_NODELABEL(ext_adcx1)
+#define ADC2 DT_NODELABEL(ext_adcx2)
 
 LOG_MODULE_REGISTER(main);
 
@@ -17,8 +17,8 @@ int main(void) {
     LOG_INF("++ Starting ADC initialization ++");
 
     // Create adc driver instances
-    const struct device *adc1 = DEVICE_DT_GET(CUSTOM_SENSOR_NODE);
-    const struct device *adc2 = DEVICE_DT_GET(DT_NODELABEL(ext_adc2));
+    const struct device *adc1 = DEVICE_DT_GET(ADC1);
+    const struct device *adc2 = DEVICE_DT_GET(ADC2);
 
     /* Retrieve the device binding for the first ADC */
     // adc1 = device_get_binding("ad4111_1");

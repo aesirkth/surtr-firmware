@@ -9,3 +9,6 @@ zephyr_include_directories(modules/drivers/dts/bindings)
 
 target_sources(app PRIVATE src/main.c src/networking.c modules/drivers/src/ad4111.c)
 target_include_directories(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/modules/drivers)
+
+# Specify the overlay file
+set(DTC_OVERLAY_FILE "boards/native_sim_64.overlay")
