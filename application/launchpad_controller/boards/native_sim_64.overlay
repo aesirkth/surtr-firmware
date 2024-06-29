@@ -1,3 +1,9 @@
+&gpio0 {
+    status = "okay";
+    #gpio-cells = <2>;
+    gpio-controller;
+};
+
 &spi0 {
     compatible = "zephyr,spi-emul-controller";
     status = "okay";
