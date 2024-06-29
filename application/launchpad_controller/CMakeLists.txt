@@ -15,5 +15,5 @@ target_sources(app PRIVATE
 
 # Add additional directories
 target_include_directories(app PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/modules/drivers/inc
+    ${CMAKE_CURRENT_SOURCE_DIR}/modules/drivers
 )
