@@ -1,5 +1,4 @@
-/ {
-    emu_spi: &spi0 {
+    &spi0 {
         compatible = "zephyr,spi-emul-controller";
         status = "okay";
         cs-gpios = <&gpio0 11 GPIO_ACTIVE_LOW>,
@@ -21,4 +20,3 @@
             status = "okay";
         };
     };
-};
