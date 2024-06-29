@@ -3,6 +3,9 @@
 #include "../modules/drivers/inc/ad4111.h"
 #include "networking.h"
 
+#define ADC1_NODE DT_NODELABEL(ad4111x1)
+#define ADC2_NODE DT_NODELABEL(ad4111x2)
+
 LOG_MODULE_REGISTER(main);
 
 int main(void) {
@@ -12,13 +15,12 @@ int main(void) {
     LOG_INF("++ Starting ADC initialization ++");
 
     // Create adc driver instances
-    const struct device *adc1;
-    const struct device *adc2;
+    const struct device *adc1 = DEVICE_DT_GET(ADC1_NODE);
+    const struct device *adc2 = DEVICE_DT_GET(ADC2_NODE);
 
     /* Retrieve the device binding for the first ADC */
-    adc1 = device_get_binding("AD4111_1"); // For debugging
     // adc1 = device_get_binding("ad4111_1");
-    if (!adc1) {
+    if (!device_is_ready(adc1)) {
         LOG_INF("ad4111_1 failed to get binding");
         return -1;  // Indicate error
     } else {
@@ -28,7 +30,7 @@ int main(void) {
     /* Retrieve the device binding for the second ADC */
     adc2 = device_get_binding("ad4111@1"); // For debugging
     // adc2 = device_get_binding("ad4111_2");
-    if (!adc2) {
+    if (!device_is_ready(adc2)) {
         LOG_ERR("ad4111_2 failed to get binding");
         return -1;  // Indicate error
     } else {

@@ -1,30 +1,35 @@
-&gpio0 {
-    status = "okay";
-    #gpio-cells = <2>;
-    gpio-controller;
-};
+/dts-v1/;
 
-&spi0 {
-    compatible = "zephyr,spi-emul-controller";
-    status = "okay";
-    cs-gpios = <&gpio0 11 GPIO_ACTIVE_LOW>,
-               <&gpio0 12 GPIO_ACTIVE_LOW>;
-
-    ext_adc1: ad4111_1@0 {
-        compatible = "analog,ad4111";
-        reg = <0>;
-        spi-max-frequency = <1000000>;
-        cs-gpios = <&gpio0 11 GPIO_ACTIVE_LOW>;
+/ {
+    gpio0: gpio@0 {
+        compatible = "zephyr,gpio-emul";
         status = "okay";
-        label = "AD4111_1"; // Optional, but helpful for debugging
+        #gpio-cells = <2>;
+        gpio-controller;
     };
 
-    ext_adc2: ad4111_2@1 {
-        compatible = "analog,ad4111";
-        reg = <1>;
-        spi-max-frequency = <1000000>;
-        cs-gpios = <&gpio0 12 GPIO_ACTIVE_LOW>;
+    spi0: spi@0 {
+        compatible = "zephyr,spi-emul-controller";
         status = "okay";
-        label = "AD4111_2"; // Optional, but helpful for debugging
+        cs-gpios = <&gpio0 11 GPIO_ACTIVE_LOW>,
+                   <&gpio0 12 GPIO_ACTIVE_LOW>;
+
+        ext_adc1: ad4111x1@0 {
+            compatible = "analog,ad4111";
+            reg = <0>;
+            spi-max-frequency = <1000000>;
+            cs-gpios = <&gpio0 11 GPIO_ACTIVE_LOW>;
+            status = "okay";
+            label = "AD4111_1";
+        };
+
+        ext_adc2: ad4111x2@1 {
+            compatible = "analog,ad4111";
+            reg = <1>;
+            spi-max-frequency = <1000000>;
+            cs-gpios = <&gpio0 12 GPIO_ACTIVE_LOW>;
+            status = "okay";
+            label = "AD4111_2";
+        };
     };
 };
