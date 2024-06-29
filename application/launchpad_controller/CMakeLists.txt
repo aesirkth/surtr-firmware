@@ -10,7 +10,6 @@ project(launchpad_controller)
 target_sources(app PRIVATE
     src/main.c
     src/networking.c
-    modules/drivers/src/ad4111.c
 )
 
 # Include the driver directory
