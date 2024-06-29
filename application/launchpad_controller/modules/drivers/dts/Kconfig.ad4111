@@ -1,6 +1,0 @@
-config ADC_AD4111
-    bool "Analog Devices AD4111 ADC"
-    select ADC
-    select SPI
-    help
-      Enable support for the Analog Devices AD4111 ADC.
