@@ -3,8 +3,8 @@ cmake_minimum_required(VERSION 3.20.0)
 set(BOARD_ROOT ${CMAKE_CURRENT_LIST_DIR})
 
 # Specify the overlay file
-# set(DTC_OVERLAY_FILE "boards/native_sim_64.overlay")
-set(DTC_OVERLAY_FILE "boards/nucleo_h723zg.overlay")
+set(DTC_OVERLAY_FILE "boards/native_sim_64.overlay")
+# set(DTC_OVERLAY_FILE "boards/nucleo_h723zg.overlay")
 
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(launchpad_controller)
