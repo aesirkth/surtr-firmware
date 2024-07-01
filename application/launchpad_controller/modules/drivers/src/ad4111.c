@@ -67,7 +67,7 @@ static int ad4111_reset(const struct device *dev) {
     return 0;
 }
 
-static int ad4111_init(const struct device *dedv) {
+static int ad4111_init(const struct device *dev) {
     const struct ad4111_config *config = dev->config;
     
     /* Do other initialization stuff */
