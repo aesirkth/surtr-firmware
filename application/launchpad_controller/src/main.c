@@ -18,7 +18,7 @@ int main(void) {
 
     // Create adc driver instances
     const struct device *adc1 = DEVICE_DT_GET(ADC1);
-    const struct device *adc2 = DEVICE_DT_GET(ADC2));
+    // const struct device *adc2 = DEVICE_DT_GET(ADC2);
 
     /* Retrieve the device binding for the first ADC */
     // adc1 = device_get_binding("ad4111_1");
