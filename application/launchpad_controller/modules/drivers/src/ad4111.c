@@ -92,14 +92,19 @@ static struct adc_api ad4111_api_functions = {
     .handle_isr = ad4111_handle_isr          // Handle ADC interrupt service routine
 };
 
+// A macro defining the SPI configuration for AD4111
+#define AD4111_SPI_CFG \
+	SPI_OP_MODE_MASTER | SPI_MODE_CPOL | SPI_MODE_CPHA | SPI_WORD_SET(8) | SPI_TRANSFER_MSB
+
 // A macro to easily define and initialize an instance of the ADC driver.
 #define AD4111_DEVICE_DEFINE(inst)                                          \
     static const struct ad4111_config ad4111_cfg_##inst = {                 \
-        .spi = SPI_DT_SPEC_INST_GET(inst),                                  \
-        .irq_gpio = GPIO_DT_SPEC_INST_GET_OR(inst, irq_gpios, {0}),         \
-        .channels = 4;                                                      \
+        .spi = SPI_DT_SPEC_INST_GET(inst, AD4111_SPI_CFG, 1U),              \
+        .channels = 4,                                                      \
     };                                                                      \
-    static struct ad4111_data ad4111_data_##inst;                           \
+    static struct ad4111_data ad4111_data_##inst = {                        \
+                                                                            \
+    };                                                                      \ 
     DEVICE_DT_INST_DEFINE(inst,                                             \
                           ad4111_init,                                      \
                           NULL,                                             \
