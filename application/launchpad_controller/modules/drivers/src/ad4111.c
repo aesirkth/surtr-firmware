@@ -94,16 +94,10 @@ static struct adc_api ad4111_api_functions = {
 
 // A macro to easily define and initialize an instance of the ADC driver.
 #define AD4111_DEVICE_DEFINE(inst)                                          \
-/*    static void ad4111_config_irq_##inst(const struct device *dev) {        \
-        IRQ_CONNECT(DT_IRQN(DT_INST(inst, ad4111)),                         \
-                    DT_IRQ(DT_INST(inst, ad4111), priority),                \
-                    ad4111_isr, DEVICE_GET(ad4111_##inst), 0);              \
-    }                                                                       \
-*/
-    static const struct ad4111_config ad4111_cfg_##inst = {              \
+    static const struct ad4111_config ad4111_cfg_##inst = {                 \
         .spi = SPI_DT_SPEC_INST_GET(inst),                                  \
-        .irq_gpio = GPIO_DT_SPEC_INST_GET_OR(inst, irq_gpios, {0})          \
-        .channels = 4;
+        .irq_gpio = GPIO_DT_SPEC_INST_GET_OR(inst, irq_gpios, {0}),         \
+        .channels = 4;                                                      \
     };                                                                      \
     static struct ad4111_data ad4111_data_##inst;                           \
     DEVICE_DT_INST_DEFINE(inst,                                             \
