@@ -44,10 +44,9 @@ struct ad4111_data {
 };
 
 struct ad4111_config {
-    DEVICE_MMIO_ROM;        // Macro that tells Zephyr to initialize a memory-mapped I/O (MMIO) region for the device.
-    void (*config_irq)(const struct device *dev); // Function pointer to IRQ config function, allows each instance of the AD4111 driver to have its own IRQ configuration function.
     struct spi_dt_spec spi; // This structure holds the SPI configuration for the AD4111 instance. It includes details like the SPI bus, chip select, and maximum frequency. The SPI_DT_SPEC_INST_GET(inst) macro in the AD4111_DEVICE_DEFINE macro fills this structure based on device tree settings.
     const struct gpio_dt_spec cs_gpio;
+    uint8_t channels;
 };
 
 void ad4111_handle_isr(const struct device *dev) {
@@ -102,11 +101,11 @@ static struct adc_api ad4111_api_functions = {
                     ad4111_isr, DEVICE_GET(ad4111_##inst), 0);              \
     }                                                                       \
 */
-    static const struct ad4111_config ad4111_config_##inst = {              \
+    static const struct ad4111_config ad4111_cfg_##inst = {              \
         DEVICE_MMIO_ROM_INIT(DT_DRV_INST(inst)),                            \
-        .config_irq = ad4111_config_irq_##inst,                             \
         .spi = SPI_DT_SPEC_INST_GET(inst),                                  \
         .irq_gpio = GPIO_DT_SPEC_INST_GET_OR(inst, irq_gpios, {0})          \
+        .channels = 4;
     };                                                                      \
     static struct ad4111_data ad4111_data_##inst;                           \
     DEVICE_DT_INST_DEFINE(inst,                                             \

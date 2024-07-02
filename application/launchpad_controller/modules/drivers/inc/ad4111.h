@@ -47,10 +47,10 @@ struct adc_api{
 };
 
 /* Configuration structure for each ADC instance */
-struct adc_config{
+struct adc_cfg{
     DEVICE_MMIO_ROM;
-    adc_config_irq_t config_irq;
     struct spi_dt_spec spi;
+    uint8_t channels;
 };
 
 /* Subsystem functions that can be called on by the device via the API */
