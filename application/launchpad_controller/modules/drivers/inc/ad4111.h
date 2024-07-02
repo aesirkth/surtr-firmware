@@ -48,7 +48,6 @@ struct adc_api{
 
 /* Configuration structure for each ADC instance */
 struct adc_cfg{
-    DEVICE_MMIO_ROM;
     struct spi_dt_spec spi;
     uint8_t channels;
 };

@@ -102,7 +102,6 @@ static struct adc_api ad4111_api_functions = {
     }                                                                       \
 */
     static const struct ad4111_config ad4111_cfg_##inst = {              \
-        DEVICE_MMIO_ROM_INIT(DT_DRV_INST(inst)),                            \
         .spi = SPI_DT_SPEC_INST_GET(inst),                                  \
         .irq_gpio = GPIO_DT_SPEC_INST_GET_OR(inst, irq_gpios, {0})          \
         .channels = 4;
@@ -112,7 +111,7 @@ static struct adc_api ad4111_api_functions = {
                           ad4111_init,                                      \
                           NULL,                                             \
                           &ad4111_data_##inst,                              \
-                          &ad4111_config_##inst,                            \
+                          &ad4111_cfg_##inst,                               \
                           POST_KERNEL,                                      \
                           CONFIG_KERNEL_INIT_PRIORITY_DEVICE,               \
                           &ad4111_api);
