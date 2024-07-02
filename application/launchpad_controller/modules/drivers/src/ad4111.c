@@ -74,7 +74,6 @@ static int ad4111_init(const struct device *dev) {
     
     /* Do other initialization stuff */
     ad4111_reset(dev);
-    config->config_irq(dev);
     
     return 0;
 }
