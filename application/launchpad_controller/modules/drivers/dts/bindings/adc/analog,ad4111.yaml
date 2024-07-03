@@ -16,14 +16,6 @@ properties:
   spi-max-frequency:
     required: true
     description: Maximum SPI clocking speed in Hz
-  duplex:
-    required: false
-    description: SPI duplex mode
-  frame-format:
-    required: false
-    type: string
-    enum: ["motorola", "ti"]
-    description: SPI frame format
   cs-gpios:
     type: phandle-array
     required: true
