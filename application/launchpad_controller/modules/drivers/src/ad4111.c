@@ -89,7 +89,6 @@ static struct adc_api ad4111_api = {
     .write_register = NULL, //ad4111_write_register, // Write to ADC register
     .read_register = NULL, //ad4111_read_register,   // Read from ADC register
     .read_data = NULL, //ad4111_read_data,           // Read from ADC data register NOTE: CONSIDER CHANGING NAME FOR THIS
-    .handle_isr = ad4111_handle_isr          // Handle ADC interrupt service routine
 };
 
 // A macro defining the SPI configuration for AD4111
