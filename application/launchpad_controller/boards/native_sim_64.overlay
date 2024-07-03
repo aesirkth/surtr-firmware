@@ -14,6 +14,8 @@
         compatible = "analog,ad4111";
         reg = <0>;
         spi-max-frequency = <10000000>;
+        duplex= <0>;
+        frame-format = "motorola";
         cs-gpios = <&gpio0 11 GPIO_ACTIVE_LOW>;
         status = "okay";
         label="ADC1";
@@ -23,6 +25,8 @@
         compatible = "analog,ad4111";
         reg = <1>;
         spi-max-frequency = <10000000>;
+        duplex= <0>;
+        frame-format = "motorola";
         cs-gpios = <&gpio0 12 GPIO_ACTIVE_LOW>;
         status = "okay";
         label="ADC2";
