@@ -108,7 +108,7 @@ static struct adc_api ad4111_api = {
 // A macro to easily define and initialize an instance of the ADC driver.
 #define AD4111_DEVICE_DEFINE(inst)                                          \
     static const struct ad4111_config ad4111_cfg_##inst = {                 \
-        .spi = SPI_DT_SPEC_GET(DR_DRV_INST(inst), AD4111_SPI_CFG, 1U),              \
+        .spi = SPI_DT_SPEC_GET(DT_DRV_INST(inst), AD4111_SPI_CFG, 1U),              \
         .channels = 4,                                                      \
     };                                                                      \
     static struct ad4111_data ad4111_data_##inst = {                        \
