@@ -16,7 +16,6 @@
         spi-max-frequency = <10000000>;
         cs-gpios = <&gpio0 11 GPIO_ACTIVE_LOW>;
         status = "okay";
-        label="ADC1";
     };
 
     ext_adcx2: ad4111_2@1 {
@@ -25,6 +24,5 @@
         spi-max-frequency = <10000000>;
         cs-gpios = <&gpio0 12 GPIO_ACTIVE_LOW>;
         status = "okay";
-        label="ADC2";
     };
 };
