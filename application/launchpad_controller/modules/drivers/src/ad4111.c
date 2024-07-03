@@ -72,18 +72,18 @@ static int ad4111_reset(const struct device *dev) {
 static int ad4111_init(const struct device *dev) {
     const struct ad4111_config *config = dev->config;
 
-    if (!device_is_ready(config->spi.bus)) {
-        LOG_ERR("SPI bus is not ready");
-        return -ENODEV;
-    }
+//    if (!device_is_ready(config->spi.bus)) {
+//        LOG_ERR("SPI bus is not ready");
+//        return -ENODEV;
+//    }
 
-    if (!device_is_ready(config->cs_gpio.port)) {
-        LOG_ERR("CS GPIO is not ready");
-        return -ENODEV;
-    }
+//    if (!device_is_ready(config->cs_gpio.port)) {
+//        LOG_ERR("CS GPIO is not ready");
+//       return -ENODEV;
+//    }
 
     /* Do other initialization stuff */
-    // ad4111_reset(dev);
+     ad4111_reset(dev);
     
     return 0;
 }
@@ -108,7 +108,7 @@ static struct adc_api ad4111_api = {
 // A macro to easily define and initialize an instance of the ADC driver.
 #define AD4111_DEVICE_DEFINE(inst)                                          \
     static const struct ad4111_config ad4111_cfg_##inst = {                 \
-        .spi = SPI_DT_SPEC_INST_GET(inst, AD4111_SPI_CFG, 1U),              \
+        .spi = SPI_DT_SPEC_GET(inst, AD4111_SPI_CFG, 1U),              \
         .channels = 4,                                                      \
     };                                                                      \
     static struct ad4111_data ad4111_data_##inst = {                        \
