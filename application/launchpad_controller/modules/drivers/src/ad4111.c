@@ -71,9 +71,19 @@ static int ad4111_reset(const struct device *dev) {
 
 static int ad4111_init(const struct device *dev) {
     const struct ad4111_config *config = dev->config;
-    
+
+    if (!device_is_ready(config->spi.bus)) {
+        LOG_ERR("SPI bus is not ready");
+        return -ENODEV;
+    }
+
+    if (!device_is_ready(config->cs_gpio.port)) {
+        LOG_ERR("CS GPIO is not ready");
+        return -ENODEV;
+    }
+
     /* Do other initialization stuff */
-    ad4111_reset(dev);
+    // ad4111_reset(dev);
     
     return 0;
 }
