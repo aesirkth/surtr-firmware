@@ -31,8 +31,6 @@ typedef int (*adc_config_channel_t) (const struct device *dev, int channel, int 
 typedef int (*adc_write_register_t) (const struct device *dev, uint8_t reg, uint16_t value);
 typedef int (*adc_read_register_t) (const struct device *dev, uint8_t reg, uint16_t *value);
 typedef int (*adc_read_data_t) (const struct device *dev, int channel, int *value);
-typedef void (*adc_config_irq_t) (const struct device *dev);
-typedef void (*adc_handle_isr_t) (const struct device *dev);
 
 /* A structure that functions as a device-independent-adc-API, 
  * applications will be able to program to this generic API */
@@ -43,7 +41,6 @@ struct adc_api{
     adc_write_register_t write_register; // Write to ADC register
     adc_read_register_t read_register;   // Read from ADC register
     adc_read_data_t read_data;           // Read from ADC data register
-    adc_handle_isr_t handle_isr;         // Handle ADC interrupt service routine
 };
 
 /* Configuration structure for each ADC instance */
@@ -87,12 +84,6 @@ static inline int adc_read_data(const struct device *dev, int channel, int *valu
     struct adc_api *api;
     api = (struct adc_api *)dev->api;
     return api->read_data(dev, channel, value);
-}
-
-static inline void adc_handle_isr(const struct device *dev) {
-    struct adc_api *api;
-    api = (struct adc_api *)dev->api;
-    api->handle_isr(dev);
 }
 
 #endif  // ADC_DRIVER_API_H#ifndef ADC_DRIVER_API_H
