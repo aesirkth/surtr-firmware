@@ -82,7 +82,7 @@ static int ad4111_init(const struct device *dev) {
 // Returning CS' high sets the digital interface to the default state and halts any serial interface operation.
 
 // Struct utilizing the adc subsystem api 
-static struct adc_api ad4111_api_functions = {
+static struct adc_api ad4111_api = {
     .init = ad4111_init,                     // Initialize ADC
     .reset = ad4111_reset,                   // Reset ADC
     .config_channel = NULL, //ad4111_config_channel, // Enable/Disable ADC channel
