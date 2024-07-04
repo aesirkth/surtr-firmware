@@ -12,6 +12,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdint.h>
 
 // Zephyr libraries
 #include <zephyr/kernel.h>
@@ -37,17 +38,18 @@ LOG_MODULE_REGISTER(ad4111, CONFIG_SENSOR_LOG_LEVEL);
 /* Data struct used to hold instance-specific data that may change at runtime. 
  * Each instance of the AD4111 driver will have its own ad4111_data structure, 
  * allowing independent operation of multiple instances. */
+struct ad4111_config {
+    struct spi_dt_spec spi; // This structure holds the SPI configuration for the AD4111 instance. It includes details like the SPI bus, chip select, and maximum frequency. The SPI_DT_SPEC_INST_GET(inst) macro in the AD4111_DEVICE_DEFINE macro fills this structure based on device tree settings.
+    struct gpio_dt_spec cs_gpio;
+    uint32_t spi_max_frequency;
+    uint8_t channels;
+};
+
 struct ad4111_data {
     // Add instance-specific data here...
     struct k_mutex ad4111_lock; // kernel mutex used to ensure that access to shared resources (like the SPI bus or data structures) is thread-safe. Prevents race conditions.
     int sample_data; // variable that can hold the most recent ADC conversion result or any other temporary data specific to an instance of the AD4111.
-};
-
-struct ad4111_config {
-    struct spi_dt_spec spi; // This structure holds the SPI configuration for the AD4111 instance. It includes details like the SPI bus, chip select, and maximum frequency. The SPI_DT_SPEC_INST_GET(inst) macro in the AD4111_DEVICE_DEFINE macro fills this structure based on device tree settings.
-    const struct gpio_dt_spec cs_gpio;
-    uint8_t channels;
-};
+}
 
 void ad4111_handle_isr(const struct device *dev) {
     /* Handle interrupt */
@@ -122,7 +124,7 @@ static struct adc_api ad4111_api = {
         &ad4111_cfg_##inst,                                     \
         POST_KERNEL,                                            \
         CONFIG_KERNEL_INIT_PRIORITY_DEVICE,                     \
-        &ad4111_api,                                             \
+        &ad4111_api,                                            \
     );
 
 // Instantiate all defined instances

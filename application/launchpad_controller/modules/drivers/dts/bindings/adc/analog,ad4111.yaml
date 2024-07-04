@@ -13,14 +13,18 @@ properties:
   reg:
     required: true
     description: SPI chip select
-  spi-max-frequency:
-    type: int
-    required: true
-    description: Maximum SPI clocking speed in Hz
   cs-gpios:
     type: phandle-array
     required: true
     description: Chip select GPIO
+  spi-max-frequency:
+    type: int
+    required: true
+    description: Maximum SPI clocking speed in Hz
+  chanels:
+    type: int
+    required: true
+    description: Number of sampling channels
   label:
     type: string
     required: false
