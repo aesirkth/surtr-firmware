@@ -108,9 +108,9 @@ static struct adc_api ad4111_api = {
         .spi_max_frequency = DT_INST_PROP(inst, spi_max_frequency), \
         .channels = DT_INST_PROP(inst, channels),                   \
     };                                                              \
-    static struct ad4111_data ad4111_data_##inst = {                \
                                                                     \
-    };                                                              \ 
+    static struct ad4111_data ad4111_data_##inst;                   \
+                                                                    \
     DEVICE_DT_INST_DEFINE(                                          \
         inst,                                                       \
         ad4111_init,                                                \
