@@ -106,7 +106,7 @@ static struct adc_api ad4111_api = {
         .spi = SPI_DT_SPEC_INST_GET(inst, AD4111_SPI_CFG, 1U),      \
         .cs_gpio = GPIO_DT_SPEC_INST_GET(inst, cs_gpios),           \
         .spi_max_frequency = DT_INST_PROP(inst, spi_max_frequency), \
-        .channels = DT_INST_PROP(inst, channels),                   \                      \
+        .channels = DT_INST_PROP(inst, channels)                    \                      \
     };                                                              \
     static struct ad4111_data ad4111_data_##inst = {                \
                                                                     \
