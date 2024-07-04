@@ -51,21 +51,6 @@ struct ad4111_data {
     int sample_data; // variable that can hold the most recent ADC conversion result or any other temporary data specific to an instance of the AD4111.
 }
 
-/* Function for resetting the AD4111 ADC 
- * After a power-up cycle and when the power supplies are stable, a device reset is required. 
- * Furthermore, in situations where interface synchronization is lost, a device reset is also required. 
- * Returning CS high sets the digital interface to the default state and halts any serial interface operation. */
-static int ad4111_reset(const struct device *dev) {
-    const struct ad4111_config *config = dev->config;
-
-    /* Toggle CS-complement to reset the device */
-    gpio_pin_set_dt(&config->cs_gpio, 0); // Toggle CS-complement high for reset
-    k_sleep(K_MSEC(1)); // wait a bit
-    gpio_pin_set_dt(&config->cs_gpio, 1); // Toggle CS-complement low to allow data flow
-    k_sleep(K_MSEC(1)); // wait a bit
-
-    return 0;
-}
 
 static int ad4111_init(const struct device *dev) {
     const struct ad4111_config *config = dev->config;
@@ -84,10 +69,23 @@ static int ad4111_init(const struct device *dev) {
      ad4111_reset(dev);
     
     return 0;
-}
+};
 
-// Function for resetting the ADCs
-// Returning CS' high sets the digital interface to the default state and halts any serial interface operation.
+/* Function for resetting the AD4111 ADC 
+ * After a power-up cycle and when the power supplies are stable, a device reset is required. 
+ * Furthermore, in situations where interface synchronization is lost, a device reset is also required. 
+ * Returning CS high sets the digital interface to the default state and halts any serial interface operation. */
+static int ad4111_reset(const struct device *dev) {
+    const struct ad4111_config *config = dev->config;
+
+    /* Toggle CS-complement to reset the device */
+    gpio_pin_set_dt(&config->cs_gpio, 0); // Toggle CS-complement high for reset
+    k_sleep(K_MSEC(1)); // wait a bit
+    gpio_pin_set_dt(&config->cs_gpio, 1); // Toggle CS-complement low to allow data flow
+    k_sleep(K_MSEC(1)); // wait a bit
+
+    return 0;
+};
 
 // Struct utilizing the adc subsystem api 
 static struct adc_api ad4111_api = {
