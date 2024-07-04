@@ -44,8 +44,10 @@ struct adc_api{
 };
 
 /* Configuration structure for each ADC instance */
-struct adc_cfg{
+struct adc_config{
     struct spi_dt_spec spi;
+    struct gpio_dt_spec cs_gpio;
+    uint32_t spi_max_frequency;
     uint8_t channels;
 };
 
