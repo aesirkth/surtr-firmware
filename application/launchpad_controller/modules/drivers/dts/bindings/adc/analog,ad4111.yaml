@@ -17,9 +17,9 @@ properties:
       User label for the device
 
   reg:
-    required: true
+    required: false
     description: |
-      SPI chip select
+      SPI chip select SET THIS TO TRUE
 
   spi:
     type: phandle
