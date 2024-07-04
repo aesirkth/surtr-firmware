@@ -101,9 +101,10 @@ static struct adc_api ad4111_api = {
 	SPI_OP_MODE_MASTER | SPI_MODE_CPOL | SPI_MODE_CPHA | SPI_WORD_SET(8) | SPI_TRANSFER_MSB
 
 // A macro to easily define and initialize an instance of the ADC driver.
+// Could possible use this: .spi = DEVICE_DT_GET(DT_INST_PHANDLE(inst, spi)),
 #define AD4111_DEVICE_DEFINE(inst)                                  \
     static const struct ad4111_config ad4111_config_##inst = {      \
-        .spi = DEVICE_DT_GET(DT_INST_PHANDLE(inst, spi)),           \
+        .spi = SPI_DT_SPEC_INST_GET(inst, AD4111_SPI_CONFIG, 1U),   \
         .cs_gpio = GPIO_DT_SPEC_INST_GET(inst, cs_gpios),           \
         .spi_max_frequency = DT_INST_PROP(inst, spi_max_frequency), \
         .channels = DT_INST_PROP(inst, channels),                   \
