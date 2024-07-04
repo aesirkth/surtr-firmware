@@ -14,6 +14,7 @@
         compatible = "analog,ad4111";
         label = "AD111_1";
         reg = <0>;
+        spi = <&spio0>;
         cs-gpios = <&gpio0 11 GPIO_ACTIVE_LOW>;
         spi-max-frequency = <10000000>;
         channels = <4>;
@@ -24,6 +25,7 @@
         compatible = "analog,ad4111";
         label = "AD111_2";
         reg = <1>;
+        spi = <&spio0>;
         cs-gpios = <&gpio0 12 GPIO_ACTIVE_LOW>;
         spi-max-frequency = <10000000>;
         channels = <4>;
