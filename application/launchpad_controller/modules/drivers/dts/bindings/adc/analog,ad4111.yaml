@@ -21,7 +21,7 @@ properties:
     type: int
     required: true
     description: Maximum SPI clocking speed in Hz
-  chanels:
+  channels:
     type: int
     required: true
     description: Number of sampling channels
