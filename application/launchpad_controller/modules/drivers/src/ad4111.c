@@ -106,22 +106,24 @@ static struct adc_api ad4111_api = {
 	SPI_OP_MODE_MASTER | SPI_MODE_CPOL | SPI_MODE_CPHA | SPI_WORD_SET(8) | SPI_TRANSFER_MSB
 
 // A macro to easily define and initialize an instance of the ADC driver.
-#define AD4111_DEVICE_DEFINE(inst)                                          \
-    static const struct ad4111_config ad4111_cfg_##inst = {                 \
-        .spi = SPI_DT_SPEC_INST_GET(inst, AD4111_SPI_CFG, 1U),              \
-        .channels = 4,                                                      \
-    };                                                                      \
-    static struct ad4111_data ad4111_data_##inst = {                        \
-                                                                            \
-    };                                                                      \ 
-    DEVICE_DT_INST_DEFINE(inst,                                             \
-                          ad4111_init,                                      \
-                          NULL,                                             \
-                          &ad4111_data_##inst,                              \
-                          &ad4111_cfg_##inst,                               \
-                          POST_KERNEL,                                      \
-                          CONFIG_KERNEL_INIT_PRIORITY_DEVICE,               \
-                          &ad4111_api);
+#define AD4111_DEVICE_DEFINE(inst)                              \
+    static const struct ad4111_config ad4111_cfg_##inst = {     \
+        .spi = SPI_DT_SPEC_INST_GET(inst, AD4111_SPI_CFG, 1U),  \
+        .channels = 4,                                          \
+    };                                                          \
+    static struct ad4111_data ad4111_data_##inst = {            \
+                                                                \
+    };                                                          \ 
+    DEVICE_DT_INST_DEFINE(                                      \
+        inst,                                                   \
+        ad4111_init,                                            \
+        NULL,                                                   \
+        &ad4111_data_##inst,                                    \
+        &ad4111_cfg_##inst,                                     \
+        POST_KERNEL,                                            \
+        CONFIG_KERNEL_INIT_PRIORITY_DEVICE,                     \
+        &ad4111_api,                                             \
+    );
 
 // Instantiate all defined instances
 DT_INST_FOREACH_STATUS_OKAY(AD4111_DEVICE_DEFINE);
