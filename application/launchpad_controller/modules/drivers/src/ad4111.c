@@ -88,8 +88,8 @@ static int ad4111_init(const struct device *dev) {
 
 // Struct utilizing the adc subsystem api 
 static struct adc_api ad4111_api = {
-    .init = ad4111_init,                     // Initialize ADC
     .reset = ad4111_reset,                   // Reset ADC
+    .init = ad4111_init,                     // Initialize ADC
     .config_channel = NULL, //ad4111_config_channel, // Enable/Disable ADC channel
     .write_register = NULL, //ad4111_write_register, // Write to ADC register
     .read_register = NULL, //ad4111_read_register,   // Read from ADC register
@@ -101,23 +101,25 @@ static struct adc_api ad4111_api = {
 	SPI_OP_MODE_MASTER | SPI_MODE_CPOL | SPI_MODE_CPHA | SPI_WORD_SET(8) | SPI_TRANSFER_MSB
 
 // A macro to easily define and initialize an instance of the ADC driver.
-#define AD4111_DEVICE_DEFINE(inst)                              \
-    static const struct ad4111_config ad4111_cfg_##inst = {     \
-        .spi = SPI_DT_SPEC_INST_GET(inst, AD4111_SPI_CFG, 1U),  \
-        .channels = 4,                                          \
-    };                                                          \
-    static struct ad4111_data ad4111_data_##inst = {            \
-                                                                \
-    };                                                          \ 
-    DEVICE_DT_INST_DEFINE(                                      \
-        inst,                                                   \
-        ad4111_init,                                            \
-        NULL,                                                   \
-        &ad4111_data_##inst,                                    \
-        &ad4111_cfg_##inst,                                     \
-        POST_KERNEL,                                            \
-        CONFIG_KERNEL_INIT_PRIORITY_DEVICE,                     \
-        &ad4111_api,                                            \
+#define AD4111_DEVICE_DEFINE(inst)                                  \
+    static const struct ad4111_config ad4111_cfg_##inst = {         \
+        .spi = SPI_DT_SPEC_INST_GET(inst, AD4111_SPI_CFG, 1U),      \
+        .cs_gpio = GPIO_DT_SPEC_INST_GET(inst, cs_gpios),           \
+        .spi_max_frequency = DT_INST_PROP(inst, spi_max_frequency), \
+        .channels = DT_INST_PROP(inst, channels),                   \                      \
+    };                                                              \
+    static struct ad4111_data ad4111_data_##inst = {                \
+                                                                    \
+    };                                                              \ 
+    DEVICE_DT_INST_DEFINE(                                          \
+        inst,                                                       \
+        ad4111_init,                                                \
+        NULL,                                                       \
+        &ad4111_data_##inst,                                        \
+        &ad4111_cfg_##inst,                                         \
+        POST_KERNEL,                                                \
+        CONFIG_KERNEL_INIT_PRIORITY_DEVICE,                         \
+        &ad4111_api,                                                \
     );
 
 // Instantiate all defined instances
