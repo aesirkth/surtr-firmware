@@ -51,10 +51,6 @@ struct ad4111_data {
     int sample_data; // variable that can hold the most recent ADC conversion result or any other temporary data specific to an instance of the AD4111.
 }
 
-void ad4111_handle_isr(const struct device *dev) {
-    /* Handle interrupt */
-}
-
 /* Function for resetting the AD4111 ADC 
  * After a power-up cycle and when the power supplies are stable, a device reset is required. 
  * Furthermore, in situations where interface synchronization is lost, a device reset is also required. 
