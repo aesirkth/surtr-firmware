@@ -97,13 +97,13 @@ static struct adc_api ad4111_api = {
 };
 
 // A macro defining the SPI configuration for AD4111
-#define AD4111_SPI_CFG \
+#define AD4111_SPI_CONFIG \
 	SPI_OP_MODE_MASTER | SPI_MODE_CPOL | SPI_MODE_CPHA | SPI_WORD_SET(8) | SPI_TRANSFER_MSB
 
 // A macro to easily define and initialize an instance of the ADC driver.
 #define AD4111_DEVICE_DEFINE(inst)                                  \
-    static const struct ad4111_config ad4111_config_##inst = {         \
-        .spi = SPI_DT_SPEC_INST_GET(inst, AD4111_SPI_CFG, 1U),      \
+    static const struct ad4111_config ad4111_config_##inst = {      \
+        .spi = SPI_DT_SPEC_INST_GET(inst, AD4111_SPI_CONFIG, 1U),      \
         .cs_gpio = GPIO_DT_SPEC_INST_GET(inst, cs_gpios),           \
         .spi_max_frequency = DT_INST_PROP(inst, spi_max_frequency), \
         .channels = DT_INST_PROP(inst, channels),                   \
@@ -116,7 +116,7 @@ static struct adc_api ad4111_api = {
         ad4111_init,                                                \
         NULL,                                                       \
         &ad4111_data_##inst,                                        \
-        &ad4111_config_##inst,                                         \
+        &ad4111_config_##inst,                                      \
         POST_KERNEL,                                                \
         CONFIG_KERNEL_INIT_PRIORITY_DEVICE,                         \
         &ad4111_api,                                                \
