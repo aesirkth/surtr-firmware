@@ -27,14 +27,44 @@
 
 	leds: leds {
 		compatible = "gpio-leds";
-		nled24_1: led_0 {
+		nled24_2: led_0 {
+			gpios = <&gpiof 1 GPIO_ACTIVE_HIGH>;
+			label = "User LD2, nLED24_2";
+		};
+		
+		nled24_1: led_1 {
 			gpios = <&gpiof 0 GPIO_ACTIVE_HIGH>;
 			label = "User LD1, nLED24_1";
+		};
+
+		sw1: sw_1 {
+			gpios = <&gpiod 8 GPIO_ACTIVE_HIGH>;
+			label = "Switch 1";
+		};
+
+		sw2: sw_2 {
+			gpios = <&gpiod 9 GPIO_ACTIVE_HIGH>;
+			label = "Switch 2";
+		};
+
+		sw3: sw_3 {
+			gpios = <&gpiod 10 GPIO_ACTIVE_HIGH>;
+			label = "Switch 3";
+		};
+
+		sw4: sw_4 {
+			gpios = <&gpiod 11 GPIO_ACTIVE_HIGH>;
+			label = "Switch 4";
 		};
 	};
 	
 	aliases {
 		led0 = &nled24_1;
+		led1 = &nled24_2;
+		switch1 = &sw1;
+		switch2 = &sw2;
+		switch3 = &sw3;
+		switch4 = &sw4;
 	};
  };
  
