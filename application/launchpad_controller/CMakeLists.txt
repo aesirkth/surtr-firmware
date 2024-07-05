@@ -15,6 +15,7 @@ project(launchpad_controller)
 
 target_sources(app PRIVATE
     src/main.c
+    src/steppers.c
 )
 
 # list(APPEND CMAKE_MODULE_PATH ${ZEPHYR_BASE}/modules/nanopb)
