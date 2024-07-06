@@ -108,8 +108,8 @@ static struct adc_api ad4111_api = {
    //     .channels = DT_INST_PROP(inst, channels),                   
 #define AD4111_DEVICE_DEFINE(inst)                                  \
     static const struct ad4111_config ad4111_config_##inst = {      \
-        .spi = DEVICE_DT_GET(DT_INST_PHANDLE(inst, spi),            \
-        .cs_gpio = DEVICE_DT_GET(DT_INST_PHANDLE(inst, cs_gpios),   \
+        .spi = SPI_DT_SPEC_INST_GET(inst, AD4111_SPI_CONFIG, 1U),   \
+        .cs_gpio = GPIO_DT_SPEC_INST_GET(inst, cs_gpios),           \
         .spi_max_frequency = DT_INST_PROP(inst, spi_max_frequency), \
         .channels = DT_INST_PROP(inst, channels),                   \
     };                                                              \
@@ -128,4 +128,4 @@ static struct adc_api ad4111_api = {
     );
 
 // Instantiate all defined instances
-DT_INST_FOREACH_STATUS_OKAY(AD4111_DEVICE_DEFINE)
+DT_INST_FOREACH_STATUS_OKAY(AD4111_DEVICE_DEFINE);
