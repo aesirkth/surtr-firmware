@@ -7,16 +7,16 @@
  #include <st/h7/stm32h723Xg.dtsi>
  #include <st/h7/stm32h723zgtx-pinctrl.dtsi>
  #include <zephyr/dt-bindings/input/input-event-codes.h>
- 
+
  /*
   * WARNING:
   * JP6 and SB72 must be ON when using Ethernet.
   */
- 
+
  / {
 	 model = "AESIR Surtr Launchpad Controller";
 	 compatible = "aesir,surtr";
- 
+
 	 chosen {
 		 zephyr,console = &usart3;
 		 zephyr,shell-uart = &usart3;
@@ -31,7 +31,7 @@
 			gpios = <&gpiof 1 GPIO_ACTIVE_HIGH>;
 			label = "User LD2, nLED24_2";
 		};
-		
+
 		nled24_1: led_1 {
 			gpios = <&gpiof 0 GPIO_ACTIVE_HIGH>;
 			label = "User LD1, nLED24_1";
@@ -77,7 +77,40 @@
 			label = "Switch 8";
 		};
 	};
-	
+
+	stepctrls: stepper_controls {
+		compatible = "gpio-leds";
+		step1_dir: stepper1_direction {
+			gpios = <&gpiod 2 GPIO_ACTIVE_HIGH>;
+			label = "Stepper Motor 1 Direction Pin";
+		};
+
+		step2_dir: stepper2_direction {
+			gpios = <&gpiod 4 GPIO_ACTIVE_HIGH>;
+			label = "Stepper Motor 2 Direction Pin";
+		};
+
+		step3_dir: stepper3_direction {
+			gpios = <&gpiod 6 GPIO_ACTIVE_HIGH>;
+			label = "Stepper Motor 3 Direction Pin";
+		};
+
+		step1_ctrl: stepper1_control {
+			gpios = <&gpiod 1 GPIO_ACTIVE_HIGH>;
+			label = "Stepper Motor 1 Control Pin";
+		};
+
+		step2_ctrl: stepper2_control {
+			gpios = <&gpiod 3 GPIO_ACTIVE_HIGH>;
+			label = "Stepper Motor 2 Control Pin";
+		};
+
+		step3_ctrl: stepper3_control {
+			gpios = <&gpiod 5 GPIO_ACTIVE_HIGH>;
+			label = "Stepper Motor 3 Control Pin";
+		};
+	};
+
 	aliases {
 		led0 = &nled24_1;
 		// led0 = &sw1;
@@ -88,30 +121,30 @@
 		switch4 = &sw4;
 	};
  };
- 
+
  &clk_lsi {
 	 status = "okay";
  };
- 
+
  &clk_hsi {
 	hsi-div = <1>;
 	status = "okay";
 };
- 
+
  &clk_hsi48 {
 	 status = "okay";
  };
- 
+
  &clk_hse {
 	//  hse-bypass;
 	 clock-frequency = <DT_FREQ_M(50)>; /* onboard 50MHz clock */
 	 status = "okay";
  };
- 
+
 //  &clk_lse {
 // 	 status = "disabled";
 //  };
- 
+
  &pll {
 	 div-m = <32>;
 	 mul-n = <275>;
@@ -131,7 +164,7 @@
 // 	clocks = <&clk_hsi>;
 // 	status = "okay";
 // };
- 
+
 //  &pll3 {
 // 	div-m = <32>;
 // 	mul-n = <250>;
@@ -152,56 +185,65 @@
 	 d2ppre2 = <4>; /* APB3: 137.5 MHz */
 	 d3ppre = <2>;  /* APB4: 137.5 MHz */
  };
- 
+
 //  &usart3 {
 // 	 pinctrl-0 = <&usart3_tx_pd8 &usart3_rx_pd9>;
 // 	 pinctrl-names = "default";
 // 	 current-speed = <115200>;
 // 	 status = "disabled";
 //  };
- 
+
 //  &usart2 {
 // 	 pinctrl-0 = <&usart2_tx_pd5 &usart2_rx_pd6>;
 // 	 pinctrl-names = "default";
 // 	 current-speed = <115200>;
 // 	 status = "disabled";
 //  };
- 
+
 //  &rtc {
 // 	 clocks = <&rcc STM32_CLOCK_BUS_APB4 0x00010000>,
 // 		  <&rcc STM32_SRC_LSI RTC_SEL(2)>;
 // 	 status = "disabled";
 //  };
- 
+
 //  &spi1 {
 // 	 status = "disabled";
 // 	 pinctrl-0 = <&spi1_sck_pa5 &spi1_miso_pa6 &spi1_mosi_pb5>;
 // 	 pinctrl-names = "default";
 // 	 cs-gpios = <&gpiod 14 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
 //  };
- 
+
+&spi3 {
+	status = "okay";
+	pinctrl-0 = <&spi3_sck_pc10 &spi3_miso_pc11 &spi3_mosi_pc12>;
+	pinctrl-names = "default";
+	cs-gpios = <&gpioe 8 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>,
+	 <&gpioe 9 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>,
+	 <&gpioe 10 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+};
+
 //  &i2c1 {
 // 	 pinctrl-0 = <&i2c1_scl_pb8 &i2c1_sda_pb9>;
 // 	 pinctrl-names = "default";
 // 	 status = "disabled";
 // 	 clock-frequency = <I2C_BITRATE_FAST>;
 //  };
- 
+
  &backup_sram {
 	 status = "okay";
  };
- 
+
  &timers12 {
 	 st,prescaler = <10000>;
 	 status = "okay";
- 
+
 	 pwm12: pwm {
 		 status = "okay";
 		 pinctrl-0 = <&tim12_ch1_pb14>;
 		 pinctrl-names = "default";
 	 };
  };
- 
+
 //  &mac {
 // 	 status = "okay";
 // 	 pinctrl-0 = <&eth_ref_clk_pa1
@@ -227,7 +269,7 @@
 	&eth_tx_en_pb11
 	&eth_txd0_pg13
 	&eth_txd1_pg12
-	&rcc_mco_1_pa8 
+	&rcc_mco_1_pa8
 	>;
 	pinctrl-names = "default";
 };
@@ -247,4 +289,3 @@
  &rng {
 	 status = "okay";
  };
- 
