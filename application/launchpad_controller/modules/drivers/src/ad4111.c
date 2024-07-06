@@ -128,4 +128,4 @@ static struct adc_api ad4111_api = {
     );
 
 // Instantiate all defined instances
-DT_INST_FOREACH_STATUS_OKAY(AD4111_DEVICE_DEFINE);
+DT_INST_FOREACH_STATUS_OKAY(AD4111_DEVICE_DEFINE)
