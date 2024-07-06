@@ -111,6 +111,29 @@ int main(void)
         }   
     }
 
+    // quick test of switch1
+
+    // turn on
+    ret = gpio_pin_toggle_dt(&switches[0]);
+    switch_states[0] = !switch_states[0];
+    k_msleep(5000);
+
+    // turn off
+    ret = gpio_pin_toggle_dt(&switches[0]);
+    switch_states[0] = !switch_states[0];
+    k_msleep(5000);
+
+    // turn on
+    ret = gpio_pin_toggle_dt(&switches[0]);
+    switch_states[0] = !switch_states[0];
+    k_msleep(5000);
+
+    // turn off
+    ret = gpio_pin_toggle_dt(&switches[0]);
+    switch_states[0] = !switch_states[0];
+    k_msleep(5000);
+
+
     // initialize LEDs
 
     bool led_states[] = {0, 0};
@@ -242,7 +265,7 @@ int main(void)
                 data += sent_len;
                 len -= sent_len;
             }
-            
+
 close_client:
 		ret = close(client);
 		if (ret == 0) {
