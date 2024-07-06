@@ -21,10 +21,6 @@ properties:
     description: |
       SPI chip select SET THIS TO TRUE WHEN BUILD WORKS
 
-  zephyr,init-priority:
-    type: int
-    description: Initialization priority for the ADC
-    default: 60
   spi:
     type: phandle
     required: true
