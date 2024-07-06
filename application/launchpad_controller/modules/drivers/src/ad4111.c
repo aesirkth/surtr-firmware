@@ -39,7 +39,7 @@ LOG_MODULE_REGISTER(ad4111, CONFIG_SENSOR_LOG_LEVEL);
  * Each instance of the AD4111 driver will have its own ad4111_data structure, 
  * allowing independent operation of multiple instances. */
 struct ad4111_config {
-    const struct device *spi; // This structure holds the SPI configuration for the AD4111 instance. It includes details like the SPI bus, chip select, and maximum frequency. The SPI_DT_SPEC_INST_GET(inst) macro in the AD4111_DEVICE_DEFINE macro fills this structure based on device tree settings.
+    struct spi_dt_spec spi; // This structure holds the SPI configuration for the AD4111 instance. It includes details like the SPI bus, chip select, and maximum frequency. The SPI_DT_SPEC_INST_GET(inst) macro in the AD4111_DEVICE_DEFINE macro fills this structure based on device tree settings.
     struct gpio_dt_spec cs_gpio;
     uint32_t spi_max_frequency;
     uint8_t channels;
@@ -108,8 +108,8 @@ static struct adc_api ad4111_api = {
    //     .channels = DT_INST_PROP(inst, channels),                   
 #define AD4111_DEVICE_DEFINE(inst)                                  \
     static const struct ad4111_config ad4111_config_##inst = {      \
-        .spi = DEVICE_DT_GET(DT_INST_PHANDLE(inst, spi)),            \
-        .cs_gpio = GPIO_DT_SPEC_INST_GET(inst, cs_gpios),   \
+        .spi = SPI_DT_SPEC_INST_GET(inst, AD4111_SPI_CONFIG, 1U),   \
+        .cs_gpio = GPIO_DT_SPEC_INST_GET(inst, cs_gpios)),          \
         .spi_max_frequency = DT_INST_PROP(inst, spi_max_frequency), \
         .channels = DT_INST_PROP(inst, channels),                   \
     };                                                              \
