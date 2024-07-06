@@ -241,7 +241,7 @@ void stepper_thread(void *p1, void *p2, void *p3) {
         }
 
         k_usleep(pulse_length_us);
-
+    
         if (motor1_current_pos != target_motor1) {
             gpio_pin_set_dt(&motor1_step_dt, 0);
             motor1_current_pos += dir1;

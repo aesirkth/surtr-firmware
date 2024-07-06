@@ -25,6 +25,7 @@
 #endif
 
 #include <zephyr/drivers/gpio.h>
+#include "steppers.h"
 
 #define BIND_PORT 8080
 
@@ -33,14 +34,6 @@
 #endif
 
 #define CHECK(r) { if (r == -1) { printk("Error: " #r "\n"); exit(1); } }
-
-static const char content[] = {
-#if USE_BIG_PAYLOAD
-    #include "response_big.html.bin.inc"
-#else
-    #include "response_small.html.bin.inc"
-#endif
-};
 
 /* If accept returns an error, then we are probably running
  * out of resource. Sleep a small amount of time in order the
@@ -70,17 +63,6 @@ int stepper2_steps = 0; //positive or negative
 #define SWITCH4_NODE DT_ALIAS(switch4)
 
 #include <zephyr/logging/log.h>
-LOG_MODULE_REGISTER(net_dhcpv4_client_sample, LOG_LEVEL_DBG);
-
-#include <zephyr/linker/sections.h>
-#include <errno.h>
-#include <stdio.h>
-
-#include <zephyr/net/net_if.h>
-#include <zephyr/net/net_core.h>
-#include <zephyr/net/net_context.h>
-#include <zephyr/net/net_mgmt.h>
-
 static const struct gpio_dt_spec leds[] = {
     GPIO_DT_SPEC_GET(LED0_NODE, gpios),
     GPIO_DT_SPEC_GET(LED1_NODE, gpios),
@@ -110,28 +92,6 @@ int main(void)
         }   
     }
 
-    // quick test of switch1
-
-    // turn on
-    ret = gpio_pin_toggle_dt(&switches[0]);
-    switch_states[0] = !switch_states[0];
-    k_msleep(5000);
-
-    // turn off
-    ret = gpio_pin_toggle_dt(&switches[0]);
-    switch_states[0] = !switch_states[0];
-    k_msleep(5000);
-
-    // turn on
-    ret = gpio_pin_toggle_dt(&switches[0]);
-    switch_states[0] = !switch_states[0];
-    k_msleep(5000);
-
-    // turn off
-    ret = gpio_pin_toggle_dt(&switches[0]);
-    switch_states[0] = !switch_states[0];
-    k_msleep(5000);
-
 
     // initialize LEDs
 
@@ -146,6 +106,18 @@ int main(void)
             return 0;
         }   
     }
+
+    // quick test of led0
+
+    // wait 1s, turn on
+    // k_msleep(1000);
+    // ret = gpio_pin_toggle_dt(&leds[0]);
+    // led_states[0] = !led_states[0];
+
+    // // wait 1s, turn off
+    // k_msleep(1000);
+    // ret = gpio_pin_toggle_dt(&leds[0]);
+    // led_states[0] = !led_states[0];
 
     // initialize TCP socket
 	int serv;
@@ -170,8 +142,7 @@ int main(void)
         socklen_t client_addr_len = sizeof(client_addr);
         char addr_str[32];
         // int req_state = 0;
-        const char *data;
-        size_t len;
+        // size_t len;
 
         int client = accept(serv, (struct sockaddr *)&client_addr,
                     &client_addr_len);
@@ -180,7 +151,6 @@ int main(void)
             sleep_after_error(ACCEPT_ERROR_WAIT);
             continue;
         }
-
         inet_ntop(client_addr.sin_family, &client_addr.sin_addr,
             addr_str, sizeof(addr_str));
         printk("Connection #%d from %s\n", counter++, addr_str);
@@ -190,9 +160,14 @@ int main(void)
         */
 
         char command_data[100];
+        // for (int i = 0; i < 100; i++) {
+        //     command_data[i] = '\0';
+        // }
+        memset(command_data, 0, sizeof(command_data));
+        int commandDataOffset = 0;
         while (1) {
             ssize_t r;
-            char c; // TODO: delete all references
+            char c;
 
             r = recv(client, &c, 1, 0);
             if (r == 0) {
@@ -213,58 +188,74 @@ int main(void)
                 break;
             }
             else {
-                strncat(command_data, &c, 1);
+                command_data[commandDataOffset++] = c;
             }
         }
 
         // logic here
-        if(strcmp(command_data, "ignition")) {
+        if(!strcmp(command_data, "ignition")) {
 
         }
-        else if(strcmp(command_data, "abort")) {
+        else if(!strcmp(command_data, "abort")) {
 
         }
-        else if(strcmp(command_data, "switch1")) {
-            ret = gpio_pin_toggle_dt(&switches[0]);
+        else if(!strcmp(command_data, "switch1")) {
             switch_states[0] = !switch_states[0];
+            ret = gpio_pin_set_dt(&switches[0], switch_states[0]);
+
+            led_states[0] = !led_states[0];
+            ret = gpio_pin_set_dt(&leds[0], led_states[0]);
         }
-        else if(strcmp(command_data, "switch2")) {
+        else if(!strcmp(command_data, "switch2")) {
             ret = gpio_pin_toggle_dt(&switches[1]);
             switch_states[1] = !switch_states[1];
+
+            ret = gpio_pin_toggle_dt(&leds[1]);
+            led_states[1] = !led_states[1];
+
         }
-        else if(strcmp(command_data, "switch3")) {
+        else if(!strcmp(command_data, "switch3")) {
             ret = gpio_pin_toggle_dt(&switches[2]);
             switch_states[2] = !switch_states[2];
         }
-        else if(strcmp(command_data, "switch4")) {
+        else if(!strcmp(command_data, "switch4")) {
             ret = gpio_pin_toggle_dt(&switches[3]);
             switch_states[3] = !switch_states[3];
         }
-        else if(strcmp(command_data, "led0")) {
+        else if(!strcmp(command_data, "led0")) {
             ret = gpio_pin_toggle_dt(&leds[0]);
             led_states[0] = !led_states[0];
         }
-        else if(strcmp(command_data, "led1")) {
+        else if(!strcmp(command_data, "led1")) {
             ret = gpio_pin_toggle_dt(&leds[1]);
             led_states[1] = !led_states[1];
         }
+        else if(!strcmp(command_data, "step1")) {
+
+        }
+        else if(!strcmp(command_data, "step2")) {
+            
+        }
+
+        memset(command_data, 0, sizeof(command_data));
+        commandDataOffset = 0;
         // here to add stepper stepping ourselves
 
         // use this to mirror a state packet
         // state packet looks like: {switches state, calculated stepper state}
-        data = content;
-        len = sizeof(content);
-        while (len) {
-            int sent_len = send(client, data, len, 0);
+        // data = content;
+        // len = sizeof(content);
+        // while (len) {
+        //     int sent_len = send(client, data, len, 0);
 
-            if (sent_len == -1) {
-                printk("Error sending data to peer, errno: %d\n", errno);
-                break;
-            }
-            data += sent_len;
-            len -= sent_len;
-        }
-
+        //     if (sent_len == -1) {
+        //         printk("Error sending data to peer, errno: %d\n", errno);
+        //         break;
+        //     }
+        //     data += sent_len;
+        //     len -= sent_len;
+        // }
+        // continue;
 close_client:
 		ret = close(client);
 		if (ret == 0) {
