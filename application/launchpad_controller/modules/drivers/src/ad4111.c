@@ -119,7 +119,7 @@ static struct adc_api ad4111_api = {
         &ad4111_data_##inst,                                        \
         &ad4111_config_##inst,                                      \
         POST_KERNEL,                                                \
-        CONFIG_KERNEL_INIT_PRIORITY_DEVICE,                         \
+        CONFIG_SENSOR_INIT_PRIORITY_DEVICE,                         \
         &ad4111_api,                                                \
     );
 
