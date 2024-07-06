@@ -32,7 +32,7 @@
 #define USE_BIG_PAYLOAD 1
 #endif
 
-#define CHECK(r) { if (r == -1) { printf("Error: " #r "\n"); exit(1); } }
+#define CHECK(r) { if (r == -1) { printk("Error: " #r "\n"); exit(1); } }
 
 static const char content[] = {
 #if USE_BIG_PAYLOAD
@@ -69,18 +69,17 @@ int stepper2_steps = 0; //positive or negative
 #define SWITCH3_NODE DT_ALIAS(switch3)
 #define SWITCH4_NODE DT_ALIAS(switch4)
 
+#include <zephyr/logging/log.h>
+LOG_MODULE_REGISTER(net_dhcpv4_client_sample, LOG_LEVEL_DBG);
 
-/*
- * A build error on this line means your board is unsupported.
- * See the sample documentation for information on how to fix this.
- */
-// static const struct gpio_dt_spec led0 = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
-// static const struct gpio_dt_spec led1 = GPIO_DT_SPEC_GET(LE10_NODE, gpios);
+#include <zephyr/linker/sections.h>
+#include <errno.h>
+#include <stdio.h>
 
-// static const struct gpio_dt_spec switch1 = GPIO_DT_SPEC_GET(SWITCH1_NODE, gpios);
-// static const struct gpio_dt_spec switch2 = GPIO_DT_SPEC_GET(SWITCH2_NODE, gpios);
-// static const struct gpio_dt_spec switch3 = GPIO_DT_SPEC_GET(SWITCH3_NODE, gpios);
-// static const struct gpio_dt_spec switch4 = GPIO_DT_SPEC_GET(SWITCH4_NODE, gpios);
+#include <zephyr/net/net_if.h>
+#include <zephyr/net/net_core.h>
+#include <zephyr/net/net_context.h>
+#include <zephyr/net/net_mgmt.h>
 
 static const struct gpio_dt_spec leds[] = {
     GPIO_DT_SPEC_GET(LED0_NODE, gpios),
@@ -137,7 +136,7 @@ int main(void)
     // initialize LEDs
 
     bool led_states[] = {0, 0};
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 2; i++) {
         if (!gpio_is_ready_dt(&leds[i])) {
 		    return 0;
         }
@@ -163,115 +162,115 @@ int main(void)
 
 	CHECK(listen(serv, 5));
 
-	printf("Single-threaded dumb HTTP server waits for a connection on "
+	printk("Single-threaded dumb HTTP server waits for a connection on "
 	       "port %d...\n", BIND_PORT);
 
+    while (1) {
+        struct sockaddr_in client_addr;
+        socklen_t client_addr_len = sizeof(client_addr);
+        char addr_str[32];
+        // int req_state = 0;
+        const char *data;
+        size_t len;
+
+        int client = accept(serv, (struct sockaddr *)&client_addr,
+                    &client_addr_len);
+        if (client < 0) {
+            printk("Error in accept: %d - continuing\n", errno);
+            sleep_after_error(ACCEPT_ERROR_WAIT);
+            continue;
+        }
+
+        inet_ntop(client_addr.sin_family, &client_addr.sin_addr,
+            addr_str, sizeof(addr_str));
+        printk("Connection #%d from %s\n", counter++, addr_str);
+
+        /* Discard HTTP request (or otherwise client will get
+        * connection reset error).
+        */
+
+        char command_data[100];
         while (1) {
-            struct sockaddr_in client_addr;
-            socklen_t client_addr_len = sizeof(client_addr);
-            char addr_str[32];
-            // int req_state = 0;
-            const char *data;
-            size_t len;
+            ssize_t r;
+            char c; // TODO: delete all references
 
-            int client = accept(serv, (struct sockaddr *)&client_addr,
-                        &client_addr_len);
-            if (client < 0) {
-                printf("Error in accept: %d - continuing\n", errno);
-                sleep_after_error(ACCEPT_ERROR_WAIT);
-                continue;
+            r = recv(client, &c, 1, 0);
+            if (r == 0) {
+                goto close_client;
             }
 
-            inet_ntop(client_addr.sin_family, &client_addr.sin_addr,
-                addr_str, sizeof(addr_str));
-            printf("Connection #%d from %s\n", counter++, addr_str);
-
-            /* Discard HTTP request (or otherwise client will get
-            * connection reset error).
-            */
-
-            char command_data[100];
-            while (1) {
-                ssize_t r;
-                char c; // TODO: delete all references
-
-                r = recv(client, &c, 1, 0);
-                if (r == 0) {
-                    goto close_client;
+            if (r < 0) {
+                if (errno == EAGAIN || errno == EINTR) {
+                    continue;
                 }
 
-                if (r < 0) {
-                    if (errno == EAGAIN || errno == EINTR) {
-                        continue;
-                    }
-
-                    printf("Got error %d when receiving from "
-                        "socket\n", errno);
-                    goto close_client;
-                }
-
-                if(c == '\n') {
-                    break;
-                }
-                else {
-                    strncat(command_data, &c, 1);
-                }
+                printk("Got error %d when receiving from "
+                    "socket\n", errno);
+                goto close_client;
             }
 
-            // logic here
-            if(strcmp(command_data, "ignition")) {
+            if(c == '\n') {
+                break;
+            }
+            else {
+                strncat(command_data, &c, 1);
+            }
+        }
 
-            }
-            else if(strcmp(command_data, "abort")) {
+        // logic here
+        if(strcmp(command_data, "ignition")) {
 
-            }
-            else if(strcmp(command_data, "switch1")) {
-                ret = gpio_pin_toggle_dt(&switches[0]);
-                switch_states[0] = !switch_states[0];
-            }
-            else if(strcmp(command_data, "switch2")) {
-                ret = gpio_pin_toggle_dt(&switches[1]);
-                switch_states[1] = !switch_states[1];
-            }
-            else if(strcmp(command_data, "switch3")) {
-                ret = gpio_pin_toggle_dt(&switches[2]);
-                switch_states[2] = !switch_states[2];
-            }
-            else if(strcmp(command_data, "switch4")) {
-                ret = gpio_pin_toggle_dt(&switches[3]);
-                switch_states[3] = !switch_states[3];
-            }
-            else if(strcmp(command_data, "led0")) {
-                ret = gpio_pin_toggle_dt(&leds[0]);
-                led_states[0] = !led_states[0];
-            }
-            else if(strcmp(command_data, "led1")) {
-                ret = gpio_pin_toggle_dt(&leds[1]);
-                led_states[1] = !led_states[1];
-            }
-            // here to add stepper stepping ourselves
+        }
+        else if(strcmp(command_data, "abort")) {
 
-            // use this to mirror a state packet
-            // state packet looks like: {switches state, calculated stepper state}
-            data = content;
-            len = sizeof(content);
-            while (len) {
-                int sent_len = send(client, data, len, 0);
+        }
+        else if(strcmp(command_data, "switch1")) {
+            ret = gpio_pin_toggle_dt(&switches[0]);
+            switch_states[0] = !switch_states[0];
+        }
+        else if(strcmp(command_data, "switch2")) {
+            ret = gpio_pin_toggle_dt(&switches[1]);
+            switch_states[1] = !switch_states[1];
+        }
+        else if(strcmp(command_data, "switch3")) {
+            ret = gpio_pin_toggle_dt(&switches[2]);
+            switch_states[2] = !switch_states[2];
+        }
+        else if(strcmp(command_data, "switch4")) {
+            ret = gpio_pin_toggle_dt(&switches[3]);
+            switch_states[3] = !switch_states[3];
+        }
+        else if(strcmp(command_data, "led0")) {
+            ret = gpio_pin_toggle_dt(&leds[0]);
+            led_states[0] = !led_states[0];
+        }
+        else if(strcmp(command_data, "led1")) {
+            ret = gpio_pin_toggle_dt(&leds[1]);
+            led_states[1] = !led_states[1];
+        }
+        // here to add stepper stepping ourselves
 
-                if (sent_len == -1) {
-                    printf("Error sending data to peer, errno: %d\n", errno);
-                    break;
-                }
-                data += sent_len;
-                len -= sent_len;
+        // use this to mirror a state packet
+        // state packet looks like: {switches state, calculated stepper state}
+        data = content;
+        len = sizeof(content);
+        while (len) {
+            int sent_len = send(client, data, len, 0);
+
+            if (sent_len == -1) {
+                printk("Error sending data to peer, errno: %d\n", errno);
+                break;
             }
+            data += sent_len;
+            len -= sent_len;
+        }
 
 close_client:
 		ret = close(client);
 		if (ret == 0) {
-			printf("Connection from %s closed\n", addr_str);
+			printk("Connection from %s closed\n", addr_str);
 		} else {
-			printf("Got error %d while closing the "
+			printk("Got error %d while closing the "
 			       "socket\n", errno);
 		}
 
@@ -280,7 +279,7 @@ close_client:
 		struct net_buf_pool *rx_data, *tx_data;
 
 		net_pkt_get_info(&rx, &tx, &rx_data, &tx_data);
-		printf("rx buf: %d, tx buf: %d\n",
+		printk("rx buf: %d, tx buf: %d\n",
 		       atomic_get(&rx_data->avail_count), atomic_get(&tx_data->avail_count));
 #endif
 

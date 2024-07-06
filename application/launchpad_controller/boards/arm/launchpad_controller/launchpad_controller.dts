@@ -112,9 +112,11 @@
 	};
 
 	aliases {
-		led0 = &nled24_1;
+		// led0 = &nled24_1;
+		led0 = &nled24_2;
 		// led0 = &sw1;
-		led1 = &nled24_2;
+		// led1 = &nled24_2;
+		led1 = &nled24_1;
 		switch1 = &sw1;
 		switch2 = &sw2;
 		switch3 = &sw3;
