@@ -5,7 +5,8 @@
 };
 
 &spi0 {
-    compatible = "zephyr,spi-emul-controller";
+    //compatible = "zephyr,spi-emul-controller";
+    //compatible = "spi-device"
     status = "okay";
     cs-gpios = <&gpio0 11 GPIO_ACTIVE_LOW>,
                <&gpio0 12 GPIO_ACTIVE_LOW>;
