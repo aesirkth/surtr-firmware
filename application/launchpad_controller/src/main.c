@@ -49,10 +49,6 @@ static void sleep_after_error(unsigned int amount)
 	usleep(amount * 1000U);
 #endif
 }
-// TODO: might need to put this in a semaphore if we do multithreading for steps 
-// (might not need to though lol)
-int stepper1_steps = 0; 
-int stepper2_steps = 0; //positive or negative
 
 #define LED0_NODE DT_ALIAS(led0)
 #define LED1_NODE DT_ALIAS(led1)
@@ -231,10 +227,10 @@ int main(void)
             led_states[1] = !led_states[1];
         }
         else if(!strcmp(command_data, "step1")) {
-
+            target_motor1 += 100;
         }
         else if(!strcmp(command_data, "step2")) {
-            
+            target_motor2 += 100;   
         }
 
         memset(command_data, 0, sizeof(command_data));
@@ -243,16 +239,16 @@ int main(void)
 
         // use this to mirror a state packet
         // state packet looks like: {switches state, calculated stepper state}
-        // data = content;
-        // len = sizeof(content);
+        // char buf = "ok\n";
+        // len = 3;
         // while (len) {
-        //     int sent_len = send(client, data, len, 0);
+        //     int sent_len = send(client, buf, len, 0);
 
         //     if (sent_len == -1) {
         //         printk("Error sending data to peer, errno: %d\n", errno);
         //         break;
         //     }
-        //     data += sent_len;
+        //     buf += sent_len;
         //     len -= sent_len;
         // }
         // continue;

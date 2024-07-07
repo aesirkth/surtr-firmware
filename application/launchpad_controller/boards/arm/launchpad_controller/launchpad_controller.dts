@@ -215,9 +215,30 @@
 	status = "okay";
 	pinctrl-0 = <&spi3_sck_pc10 &spi3_miso_pc11 &spi3_mosi_pc12>;
 	pinctrl-names = "default";
-	cs-gpios = <&gpioe 8 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>,
-	 <&gpioe 9 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>,
-	 <&gpioe 10 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+	cs-gpios = <&gpiod 0 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>,
+	 <&gpiog 2 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>,
+	 <&gpiod 5 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+	 clock-frequency = <1000000>;
+
+
+	motor1: spi-device@0 {
+		status = "okay";
+		compatible = "spi-device";
+		spi-max-frequency = <1000000>;
+		reg = <0>;
+	};
+	motor2: spi-device@1 {
+		status = "okay";
+		compatible = "spi-device";
+		spi-max-frequency = <1000000>;
+		reg = <1>;
+	};
+	motor3: spi-device@2 {
+		status = "okay";
+		compatible = "spi-device";
+		spi-max-frequency = <1000000>;
+		reg = <2>;
+	};
 };
 
 //  &i2c1 {

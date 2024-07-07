@@ -63,9 +63,9 @@ uint16_t stepper_read_reg(const struct device *spi, const struct spi_config *cfg
         .count = 1
     };
 
-    tx_buf[0] = (address & 0xF) << 4;
+    tx_buf[0] = (0x8 | (address & 0x7)) << 4;
     spi_transceive(spi, cfg, &spi_tx_buf_set, &spi_rx_buf_set);
-    uint16_t result = ((rx_buf[0] & 0xF0) << 8) + rx_buf[1];
+    uint16_t result = ((rx_buf[0] & 0xF) << 8) + rx_buf[1];
     // printk("read register %d and got %d\n", );
     return result;
 }
@@ -81,7 +81,7 @@ void stepper_write_reg(const struct device *spi, const struct spi_config *cfg, u
         .count = 1
     };
 
-    tx_buf[0] = ((address & 0xF) << 4) & ((value & 0xF00) >> 8);
+    tx_buf[0] = ((address & 0x7) << 4) & ((value & 0xF00) >> 8);
     tx_buf[1] = value & 0xFF;
     spi_write(spi, cfg, &spi_tx_buf_set);
 }
@@ -171,19 +171,20 @@ void stepper_thread(void *p1, void *p2, void *p3) {
     const struct device *spi = DEVICE_DT_GET(DT_NODELABEL(spi3));
 
     if (!device_is_ready(spi)) {
-        printf("Device SPI not ready, aborting test");
+        printk("Device SPI not ready, aborting test");
         return;
     }
     const struct spi_config motor1_cfg = {
         .frequency = 1000000,
         .operation = SPI_OP_MODE_MASTER | SPI_TRANSFER_MSB | SPI_WORD_SET(8),
-        .cs = SPI_CS_GPIOS_DT_SPEC_GET(DT_NODELABEL(motor1)),
+        .cs = SPI_CS_CONTROL_INIT(DT_NODELABEL(motor1), 2),
     };
 
+    // TODO: consider SPI_TRANSFER_LSB instead of SPI_TRANSFER_MSB
     const struct spi_config motor2_cfg = {
         .frequency = 1000000,
         .operation = SPI_OP_MODE_MASTER | SPI_TRANSFER_MSB | SPI_WORD_SET(8),
-        .cs = SPI_CS_GPIOS_DT_SPEC_GET(DT_NODELABEL(motor2)),
+        .cs = SPI_CS_CONTROL_INIT(DT_NODELABEL(motor2), 2),
     };
 
     int e;
@@ -241,7 +242,7 @@ void stepper_thread(void *p1, void *p2, void *p3) {
         }
 
         k_usleep(pulse_length_us);
-    
+
         if (motor1_current_pos != target_motor1) {
             gpio_pin_set_dt(&motor1_step_dt, 0);
             motor1_current_pos += dir1;
