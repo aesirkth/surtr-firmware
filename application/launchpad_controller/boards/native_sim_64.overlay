@@ -1,3 +1,6 @@
+/dts-v1/;
+/plugin/;
+
 &gpio0 {
     status = "okay";
     #gpio-cells = <2>;
@@ -6,7 +9,7 @@
 
 &spi0 {
     compatible = "zephyr,spi-emul-controller";
-    //compatible = "spi-device"
+    // compatible = "spi-device";
     status = "okay";
     cs-gpios = <&gpio0 11 GPIO_ACTIVE_LOW>,
                <&gpio0 12 GPIO_ACTIVE_LOW>;
@@ -16,8 +19,6 @@
         label = "AD111_1";
         reg = <0>;
         zephyr,init-priority = <50>;
-        spi = <&spi0>;
-        cs-gpios = <&gpio0 11 GPIO_ACTIVE_LOW>;
         spi-max-frequency = <10000000>;
         channels = <4>;
         status = "okay";
@@ -28,8 +29,6 @@
         label = "AD111_2";
         reg = <1>;
         zephyr,init-priority = <51>;
-        spi = <&spi0>;
-        cs-gpios = <&gpio0 12 GPIO_ACTIVE_LOW>;
         spi-max-frequency = <10000000>;
         channels = <4>;
         status = "okay";
