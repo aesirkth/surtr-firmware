@@ -20,6 +20,7 @@
 #include <zephyr/device.h>
 #include <zephyr/drivers/spi.h>
 #include <zephyr/drivers/gpio.h>
+#include <zephyr/devicetree.h>
 #include <zephyr/linker/devicetree_regions.h>
 // #include <zephyr/ztest.h> // Zephyrs Testing Framework, must also be enabled in prj.conf if used
 
