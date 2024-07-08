@@ -11,6 +11,7 @@
     zephyr,init-priority = <8>;
     cs-gpios = <&gpio0 11 GPIO_ACTIVE_LOW>,
                <&gpio0 12 GPIO_ACTIVE_LOW>;
+    zephyr,init-priority = <8>;
 
     ext_adcx1: ad4111_1@0 {
         compatible = "analog,ad4111";
