@@ -125,7 +125,7 @@ static struct adc_api ad4111_api = {
         &ad4111_data_##inst,                                        \
         &ad4111_config_##inst,                                      \
         POST_KERNEL,                                                \
-        50,                                   \
+        90,                                   \
         &ad4111_api                                                \
     );
 
