@@ -15,6 +15,7 @@
 #include <stdint.h>
 
 // Zephyr libraries
+#include <zephyr/zephyr.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/device.h>
