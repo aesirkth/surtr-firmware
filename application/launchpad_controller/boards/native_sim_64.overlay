@@ -8,16 +8,14 @@
     compatible = "zephyr,spi-emul-controller";
     //compatible = "spi-device"
     status = "okay";
-    zephyr,init-priority = <8>;
     cs-gpios = <&gpio0 11 GPIO_ACTIVE_LOW>,
                <&gpio0 12 GPIO_ACTIVE_LOW>;
-    zephyr,init-priority = <8>;
 
     ext_adcx1: ad4111_1@0 {
         compatible = "analog,ad4111";
         label = "AD111_1";
         reg = <0>;
-        zephyr,init-priority = <50>;
+        zephyr,init-priority = <90>;
         spi = <&spi0>;
         cs-gpios = <&gpio0 11 GPIO_ACTIVE_LOW>;
         spi-max-frequency = <10000000>;
@@ -29,7 +27,7 @@
         compatible = "analog,ad4111";
         label = "AD111_2";
         reg = <1>;
-        zephyr,init-priority = <51>;
+        zephyr,init-priority = <91>;
         spi = <&spi0>;
         cs-gpios = <&gpio0 12 GPIO_ACTIVE_LOW>;
         spi-max-frequency = <10000000>;
