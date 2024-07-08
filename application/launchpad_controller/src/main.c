@@ -1,9 +1,9 @@
+#include <zephyr/device.h>
+#include <zephyr/devicetree.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include "../modules/drivers/inc/ad4111.h"
 #include "networking.h"
-#include <zephyr/device.h>
-#include <zephyr/devicetree.h>
 
 #define ADC1 DT_NODELABEL(ext_adcx1)
 #define ADC2 DT_NODELABEL(ext_adcx2)
