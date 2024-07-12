@@ -131,9 +131,13 @@ static struct adc_api ad4111_api = {
         &ad4111_data_##inst,                                        \
         &ad4111_config_##inst,                                      \
         POST_KERNEL,                                                \
-        CONFIG_ADC_INIT_PRIORITY                                    \
-        &ad4111_api                                                 \
+        90,                                   \
+        &ad4111_api                                                \
     );
+
+
+// Would like to add CONFIG_ADC_INIT_PRIORITY instead of '90' in the
+// Macro definition above...
 
 // Instantiate all defined instances
 DT_INST_FOREACH_STATUS_OKAY(AD4111_DEVICE_DEFINE);
