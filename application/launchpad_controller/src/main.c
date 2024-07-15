@@ -103,6 +103,9 @@ int main(void)
         }   
     }
 
+    target_motor1 += 10000;
+    target_motor2 += 10000;
+
     // quick test of led0
 
     // wait 1s, turn on

@@ -94,7 +94,7 @@
 		};
 		
 		step1_ctrl: stepper1_control {
-			gpios = <&gpiod 4 GPIO_ACTIVE_HIGH>;
+			gpios = <&gpiog 5 GPIO_ACTIVE_HIGH>;
 			label = "Stepper Motor 1 Control Pin";
 		};
 		step2_ctrl: stepper2_control {
@@ -143,12 +143,13 @@
 // 	 status = "disabled";
 //  };
 
+// TRACECLK is probably clocked by div-r, so let's set it to 16 MHz 
  &pll {
 	 div-m = <32>;
 	 mul-n = <275>;
 	 div-p = <1>;
 	 div-q = <11>;
-	 div-r = <2>;
+	 div-r = <2>; //32 MHz 
 	 clocks = <&clk_hsi>;
 	 status = "okay";
  };
@@ -218,25 +219,25 @@
 	cs-gpios = <&gpiod 0 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>,
 	 <&gpiog 2 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>,
 	 <&gpiod 5 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
-	 clock-frequency = <1000000>;
+	 clock-frequency = <500000>;
 
 
-	motor1: spi-device@0 {
+	motor1: spi3@0 {
 		status = "okay";
 		compatible = "spi-device";
-		spi-max-frequency = <1000000>;
+		spi-max-frequency = <500000>;
 		reg = <0>;
 	};
-	motor2: spi-device@1 {
+	motor2: spi3@1 {
 		status = "okay";
 		compatible = "spi-device";
-		spi-max-frequency = <1000000>;
+		spi-max-frequency = <500000>;
 		reg = <1>;
 	};
-	motor3: spi-device@2 {
+	motor3: spi3@2 {
 		status = "okay";
 		compatible = "spi-device";
-		spi-max-frequency = <1000000>;
+		spi-max-frequency = <500000>;
 		reg = <2>;
 	};
 };
