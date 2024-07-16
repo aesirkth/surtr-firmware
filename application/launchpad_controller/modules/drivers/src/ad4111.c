@@ -59,12 +59,14 @@ struct ad4111_data {
 static int ad4111_reset(const struct device *dev) {
     const struct ad4111_config *config = dev->config;
 
+    
     /* Toggle CS-complement to reset the device */
+    /*
     gpio_pin_set_dt(&config->cs_gpio, 0); // Toggle CS-complement high for reset
     k_sleep(K_MSEC(1)); // wait a bit
     gpio_pin_set_dt(&config->cs_gpio, 1); // Toggle CS-complement low to allow data flow
     k_sleep(K_MSEC(1)); // wait a bit
-
+    */
     return 0;
 };
 
