@@ -112,7 +112,7 @@ static struct adc_api ad4111_api = {
     //    .spi_max_frequency = DT_INST_PROP(inst, spi_max_frequency), 
     //    .channels = DT_INST_PROP(inst, channels),                   
 #define AD4111_DEVICE_DEFINE(inst)                                  \
-    static const struct ad4111_config ad4111_config_##inst = {      \
+    static struct ad4111_config ad4111_config_##inst = {      \
         .spi_max_frequency = DT_INST_PROP(inst,spi_max_frequency),  \
     };                                                              \
                                                                     \
