@@ -5,9 +5,9 @@
 
 description: Analog to Digital Converter (ADC) driver
 
-compatible: "analog-ad4111"
+compatible: "analog,ad4111"
 
-include: spi-device.yaml
+include: zephyr,spi-emul-controller
 
 properties:
   label:
