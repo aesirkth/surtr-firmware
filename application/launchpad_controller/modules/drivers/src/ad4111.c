@@ -48,8 +48,8 @@ struct ad4111_config {
 
 struct ad4111_data {
     // Add instance-specific data here...
-    struct k_mutex ad4111_lock; // kernel mutex used to ensure that access to shared resources (like the SPI bus or data structures) is thread-safe. Prevents race conditions.
-    int sample_data; // variable that can hold the most recent ADC conversion result or any other temporary data specific to an instance of the AD4111.
+    //struct k_mutex ad4111_lock; // kernel mutex used to ensure that access to shared resources (like the SPI bus or data structures) is thread-safe. Prevents race conditions.
+    //int sample_data; // variable that can hold the most recent ADC conversion result or any other temporary data specific to an instance of the AD4111.
 };
 
 /* Function for resetting the AD4111 ADC 
@@ -85,7 +85,7 @@ static int ad4111_init(const struct device *dev) {
      ad4111_reset(dev);
     
     return 0;
-}; */
+};
 
 // Struct utilizing the adc subsystem api 
 static struct adc_api ad4111_api = {
@@ -112,11 +112,12 @@ static struct adc_api ad4111_api = {
     //    .spi_max_frequency = DT_INST_PROP(inst, spi_max_frequency), 
     //    .channels = DT_INST_PROP(inst, channels),                   
 #define AD4111_DEVICE_DEFINE(inst)                                  \
-    static struct ad4111_config ad4111_config_##inst = {      \
+    static struct ad4111_data ad4111_data_##inst;                   \
+                                                                    \
+    /* Pull instance configuration from DeviceTree */               \
+    static const struct ad4111_config ad4111_config_##inst = {      \
         .spi_max_frequency = DT_INST_PROP(inst,spi_max_frequency),  \
     };                                                              \
-                                                                    \
-    static struct ad4111_data ad4111_data_##inst;                   \
                                                                     \
     DEVICE_DT_INST_DEFINE(                                          \
         inst,                                                       \
