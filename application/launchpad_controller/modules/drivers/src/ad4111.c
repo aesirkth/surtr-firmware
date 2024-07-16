@@ -7,7 +7,6 @@
  */
 
 // Find Zephyr Device Tree Bindings
-#define DT_DRV_COMPAT zephyr_spi-emul-controller
 #define DT_DRV_COMPAT analog_ad4111 
 
 // General libraries
