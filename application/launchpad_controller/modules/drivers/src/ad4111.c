@@ -68,6 +68,7 @@ static int ad4111_reset(const struct device *dev) {
     return 0;
 };
 
+/*
 static int ad4111_init(const struct device *dev) {
     const struct ad4111_config *config = dev->config;
 
@@ -85,7 +86,7 @@ static int ad4111_init(const struct device *dev) {
      ad4111_reset(dev);
     
     return 0;
-};
+}; */
 
 // Struct utilizing the adc subsystem api 
 static struct adc_api ad4111_api = {
