@@ -64,9 +64,11 @@ uint16_t stepper_read_reg(const struct device *spi, const struct spi_config *cfg
     };
 
     tx_buf[0] = (0x8 | (address & 0x7)) << 4;
+    // tx_buf[0] = (0x0 | (address & 0x7)) << 4; // invert RW bit
     // tx_buf[1] = (0x8 | (address & 0x7)) << 4;
 
-    spi_transceive(spi, cfg, &spi_tx_buf_set, &spi_rx_buf_set);
+    int ret = spi_transceive(spi, cfg, &spi_tx_buf_set, &spi_rx_buf_set);
+    printk("ret: %d\n", ret);
     uint16_t result = ((rx_buf[0] & 0xF) << 8) + rx_buf[1];
     // printk("read register %d and got %d\n", );
     return result;
@@ -93,6 +95,7 @@ void stepper_write_reg(const struct device *spi, const struct spi_config *cfg, u
     // tx_buf[1] = 0xff
 
     tx_buf[0] = ((address & 0x7) << 4) | ((value & 0xF00) >> 8);
+    // tx_buf[0] = ((0x8 | (address & 0x7)) << 4) | ((value & 0xF00) >> 8); // invert RW bit
     tx_buf[1] = value & 0xFF;
 
     // tx_buf[1] = ((address & 0x7) << 4) | ((value & 0xF00) >> 8);
@@ -152,7 +155,7 @@ int stepper_init(const struct device *spi, const struct spi_config *cfg) {
 
 
     // current limit
-    uint16_t current = 3000; // mA
+    uint16_t current = 1000; // mA
     uint8_t isgainBits = 0b11;
     uint16_t torqueBits = ((uint32_t)768  * current) / 6875;
 
@@ -247,7 +250,7 @@ void stepper_thread(void *p1, void *p2, void *p3) {
 
     int pulse_length_us = 1000;
 
-    int pulse_every = 20000;
+    int pulse_every = 2000;
 
     int motor1_current_pos = 0;
     int motor2_current_pos = 0;

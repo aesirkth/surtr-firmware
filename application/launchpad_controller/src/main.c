@@ -27,11 +27,14 @@
 #include <zephyr/drivers/gpio.h>
 #include "steppers.h"
 
-#define BIND_PORT 8080
+#include <zephyr/logging/log.h>
+#include "src/commands.pb.h"
+#include "src/sensor_vals.pb.h"
+#include <pb_encode.h>
+#include <pb_decode.h>
 
-#ifndef USE_BIG_PAYLOAD
-#define USE_BIG_PAYLOAD 1
-#endif
+
+#define BIND_PORT 8080
 
 #define CHECK(r) { if (r == -1) { printk("Error: " #r "\n"); exit(1); } }
 
@@ -58,7 +61,6 @@ static void sleep_after_error(unsigned int amount)
 #define SWITCH3_NODE DT_ALIAS(switch3)
 #define SWITCH4_NODE DT_ALIAS(switch4)
 
-#include <zephyr/logging/log.h>
 static const struct gpio_dt_spec leds[] = {
     GPIO_DT_SPEC_GET(LED0_NODE, gpios),
     GPIO_DT_SPEC_GET(LED1_NODE, gpios),
