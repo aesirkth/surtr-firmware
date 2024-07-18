@@ -16,14 +16,14 @@
     cs-gpios = <&gpioe 11 GPIO_ACTIVE_LOW>,
                <&gpioe 12 GPIO_ACTIVE_LOW>;
 
-    ext_adc1: ad4111_1@0 {
+    ext_adcx1: ad4111_1@0 {
         compatible = "analog,ad4111";
         reg = <0>; // Refers to the CS line
         spi-max-frequency = <1000000>; // Verify with datasheet
         status = "okay";
     };
 
-    ext_adc2: ad4111_2@1 {
+    ext_adcx2: ad4111_2@1 {
         compatible = "analog,ad4111";
         reg = <1>; // Refers to the CS line
         spi-max-frequency = <1000000>; // Verify with datasheet
