@@ -118,7 +118,7 @@ static struct adc_api ad4111_api = {
                                                                     \
     /* Pull instance configuration from DeviceTree */               \
     static const struct ad4111_config ad4111_config_##inst = {      \
-        .spi_max_frequency = DT_INST_PROP(inst, spi_max_frequency), \
+    .spi = SPI_DT_SPEC_INST_GET(inst, AD4111_SPI_CONFIG, 1U),       \ 
     };                                                              \
                                                                     \
     DEVICE_DT_INST_DEFINE(                                          \
