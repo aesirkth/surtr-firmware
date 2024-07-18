@@ -6,7 +6,7 @@
 #include "networking.h"
 
 #define aesirADC1 DT_NODELABEL(ext_adcx1)
-#define aeisrADC2 DT_NODELABEL(ext_adcx2)
+#define aesirADC2 DT_NODELABEL(ext_adcx2)
 
 LOG_MODULE_REGISTER(main);
 
