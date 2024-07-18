@@ -1,3 +1,5 @@
+
+/* 
 &gpio0 {
     status = "okay";
     #gpio-cells = <2>;
@@ -25,3 +27,4 @@
         status = "okay";
     };
 };
+*/
