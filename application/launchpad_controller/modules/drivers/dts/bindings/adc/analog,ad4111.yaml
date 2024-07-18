@@ -10,37 +10,13 @@ compatible: "analog,ad4111"
 include: spi-device.yaml
 
 properties:
-  label:
-    type: string
-    required: false
-    description: |
-      User label for the device
-
   reg:
     required: false
     description: |
       SPI chip select SET THIS TO TRUE WHEN BUILD WORKS
-
-  spi:
-    type: phandle
-    required: true
-    description: |
-      SPI port which the device is connected to
-
-  cs-gpios:
-    type: phandle-array
-    required: true
-    description: |
-      Chip select GPIO
 
   spi-max-frequency:
     type: int
     required: true
     description: |
       Maximum SPI clocking speed in Hz
-
-  channels:
-    type: int
-    required: true
-    description: |
-      Number of sampling channels
