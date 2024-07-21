@@ -73,6 +73,30 @@ static const struct gpio_dt_spec switches[] = {
     GPIO_DT_SPEC_GET(SWITCH4_NODE, gpios),
 };
 
+
+// read and write callbacks taken from common.c in deps/modules/lib/nanopb/examples/network_server
+static bool write_callback(pb_ostream_t *stream, const uint8_t *buf, size_t count)
+{
+    int fd = (intptr_t)stream->state;
+    return send(fd, buf, count, 0) == count;
+}
+
+static bool read_callback(pb_istream_t *stream, uint8_t *buf, size_t count)
+{
+    int fd = (intptr_t)stream->state;
+    int result;
+    
+    if (count == 0)
+        return true;
+
+    result = recv(fd, buf, count, MSG_WAITALL);
+    
+    if (result == 0)
+        stream->bytes_left = 0; /* EOF */
+    
+    return result == count;
+}
+
 int main(void)
 {
     // should use a better data structure for this (struct!)
@@ -155,6 +179,9 @@ int main(void)
         inet_ntop(client_addr.sin_family, &client_addr.sin_addr,
             addr_str, sizeof(addr_str));
         printk("Connection #%d from %s\n", counter++, addr_str);
+
+        pb_ostream_t protoOutputStream = {&write_callback, (void*)(intptr_t) client, SIZE_MAX, 0};
+        pb_istream_t protoInputStream = {&read_callback, (void*)(intptr_t) client, SIZE_MAX, 0};
 
         /* Discard HTTP request (or otherwise client will get
         * connection reset error).
