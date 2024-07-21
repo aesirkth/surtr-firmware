@@ -1,0 +1,76 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "cwd": "${workspaceRoot}",
+            "executable": "${workspaceRoot}/build/zephyr/zephyr.elf",
+            "name": "Cortex Debug with OpenOCD",
+            "request": "launch",
+            "type": "cortex-debug",
+            "servertype": "openocd",
+            "interface": "swd",
+            "swoConfig": {
+                "enabled": true,
+                "cpuFrequency": 550000000, // 550 MHz
+                "swoFrequency": 16000000, // 64/4 = 16 MHz
+                "source": "probe",
+                "decoders": [
+                    {
+                        "type": "console",
+                        "label": "ITM0",
+                        "port": 0,
+                        "encoding": "utf8",
+                        "showOnStartup": false
+                    },
+
+                    // {
+                    //     "type": "console",
+                    //     "label": "ITM1",
+                    //     "port": 1,
+                    //     "encoding": "utf8",
+                    //     "showOnStartup": false
+                    // },
+
+                    // {
+                    //     "type": "console",
+                    //     "label": "ITM24",
+                    //     "port": 24,
+                    //     "encoding": "utf8",
+                    //     "showOnStartup": true
+                    // }
+                ]
+            },
+            // "overrideLaunchCommands": [
+            //     "interpreter-exec console \"monitor reset halt\"",
+            //     // 'target-download',
+            //     // 'interpreter-exec console \"monitor reset halt\"',
+            //     "-enable-pretty-printing"
+            // ],
+            "device": "STM32H723ZG",
+            "svdFile": "${workspaceRoot}/application/launchpad_controller/boards/arm/launchpad_controller/support/STM32H7_svd/STM32H7_svd_V1.9/STM32H723.svd",
+            "configFiles": [
+                "${workspaceRoot}/application/launchpad_controller/boards/arm/launchpad_controller/support/openocd.cfg"
+                // "interface/stlink-dap.cfg",
+                // "target/stm32h7x.cfg"
+            ],
+            "searchDir": [],
+            "runToEntryPoint": "main",
+            "showDevDebugOutput": "none"
+        },
+        {
+            "type": "gdb",
+            "request": "attach",
+            "stopAtEntry": true,
+            "gdbpath": "arm-none-eabi-gdb",
+            "name": "Fjalar Debug",
+            "executable": "${workspaceRoot}/build/zephyr/zephyr.elf",
+            "target": ":3333",
+            "remote": true,
+            "cwd": "${workspaceRoot}",
+            "valuesFormatting": "parseText"
+        }
+    ]
+}
