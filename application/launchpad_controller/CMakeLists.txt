@@ -2,12 +2,12 @@ cmake_minimum_required(VERSION 3.20.0)
 
 set(BOARD_ROOT ${CMAKE_CURRENT_LIST_DIR})
 
-
 # if(TEST_BUILD)
 #     set(EXTRA_CONF_FILE ${CMAKE_CURRENT_LIST_DIR}/testing/preferences.conf)
 # else()
 #     set(EXTRA_CONF_FILE ${CMAKE_CURRENT_LIST_DIR}/preferences.conf)
 # endif()
+
 
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 
