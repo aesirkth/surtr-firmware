@@ -3,441 +3,309 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/dts-v1/;
-#include <st/h7/stm32h723Xg.dtsi>
-#include <st/h7/stm32h723zgtx-pinctrl.dtsi>
-#include <zephyr/dt-bindings/input/input-event-codes.h>
+ /dts-v1/;
+ #include <st/h7/stm32h723Xg.dtsi>
+ #include <st/h7/stm32h723zgtx-pinctrl.dtsi>
+ #include <zephyr/dt-bindings/input/input-event-codes.h>
 
-/*
- * WARNING:
- * JP6 and SB72 must be ON when using Ethernet.
- */
+ /*
+  * WARNING:
+  * JP6 and SB72 must be ON when using Ethernet.
+  */
 
-/ {
-	model = "AESIR Launchpad Controller";
-	compatible = "st,launchpad_controller";
+ / {
+	 model = "AESIR Surtr Launchpad Controller";
+	 compatible = "aesir,surtr";
 
-	chosen {
-		zephyr,console = &usart3; /* TODO: change to whatever ST-LINK uses */
-		zephyr,shell-uart = &usart3; /* TODO: same? or maybe usart1 */
-		zephyr,dtcm = &dtcm;
-		zephyr,sram = &sram0;
-		zephyr,flash = &flash0;
-	};
+	 chosen {
+		 zephyr,console = &usart3;
+		 zephyr,shell-uart = &usart3;
+		 zephyr,dtcm = &dtcm;
+		 zephyr,sram = &sram0;
+		 zephyr,flash = &flash0;
+	 };
 
 	leds: leds {
 		compatible = "gpio-leds";
-		green_led: led_0 {
-			gpios = <&gpiod 0 GPIO_ACTIVE_LOW>;
-			label = "User LD1";
+		nled24_2: led_0 {
+			gpios = <&gpiof 1 GPIO_ACTIVE_HIGH>;
+			label = "User LD2, nLED24_2";
 		};
-		yellow_led: led_1 {
-			gpios = <&gpioe 14 GPIO_ACTIVE_LOW>;
-			label = "User LD2";
-		};
-		red_led: led_2 {
-			gpios = <&gpioe 15 GPIO_ACTIVE_LOW>;
-			label = "User LD3";
-		};
-		blue_led: led_3 {
-			gpios = <&gpioe 13 GPIO_ACTIVE_LOW>;
-			label = "User LD4";
-		};
-	};
 
-	switches: switches {
-		compatible = "gpio-leds"; /* why is this driver called LEDs lol */
-		/* TODO: rewrite to have switches numbered by physical placement */
-		switch0: switch_0 {
+		nled24_1: led_1 {
+			gpios = <&gpiof 0 GPIO_ACTIVE_HIGH>;
+			label = "User LD1, nLED24_1";
+		};
+
+		sw1: sw_1 {
+			gpios = <&gpioe 6 GPIO_ACTIVE_HIGH>;
+			label = "Switch 1";
+		};
+
+		sw2: sw_2 {
+			gpios = <&gpioc 13 GPIO_ACTIVE_HIGH>;
+			label = "Switch 2";
+		};
+
+		sw3: sw_3 {
+			gpios = <&gpioc 14 GPIO_ACTIVE_HIGH>;
+			label = "Switch 3";
+		};
+
+		sw4: sw_4 {
+			gpios = <&gpioc 15 GPIO_ACTIVE_HIGH>;
+			label = "Switch 4";
+		};
+
+		sw5: sw_5 {
 			gpios = <&gpiod 8 GPIO_ACTIVE_HIGH>;
-			label = "High Power Switch 0/1";
+			label = "Switch 5";
 		};
-		switch1: switch_1 {
+
+		sw6: sw_6 {
 			gpios = <&gpiod 9 GPIO_ACTIVE_HIGH>;
-			label = "High Power Switch 1/2";
+			label = "Switch 6";
 		};
-		switch2: switch_2 {
+
+		sw7: sw_7 {
 			gpios = <&gpiod 10 GPIO_ACTIVE_HIGH>;
-			label = "High Power Switch 2/3";
+			label = "Switch 7";
 		};
-		switch3: switch_3 {
+
+		sw8: sw_8 {
 			gpios = <&gpiod 11 GPIO_ACTIVE_HIGH>;
-			label = "High Power Switch 3/4";
-		};
-		switch4: switch_4 {
-			gpios = <&gpiod 12 GPIO_ACTIVE_HIGH>;
-			label = "High Power Switch 4/5";
-		};
-		switch5: switch_5 {
-			gpios = <&gpiod 13 GPIO_ACTIVE_HIGH>;
-			label = "High Power Switch 5/6";
-		};
-		switch6: switch_6 {
-			gpios = <&gpiod 14 GPIO_ACTIVE_HIGH>;
-			label = "High Power Switch 6/7";
-		};
-		switch7: switch_7 {
-			gpios = <&gpiod 15 GPIO_ACTIVE_HIGH>;
-			label = "High Power Switch 7/8";
+			label = "Switch 8";
 		};
 	};
-
-	// pwmleds {
-	// 	compatible = "pwm-leds";
-
-	// 	red_pwm_led: red_pwm_led {
-	// 		pwms = <&pwm12 1 PWM_MSEC(20) PWM_POLARITY_NORMAL>;
-	// 		label = "User LD3 - PWM12";
-	// 	};
-	// };
 
 	stepctrls: stepper_controls {
 		compatible = "gpio-leds";
 		step1_dir: stepper1_direction {
-			gpios = <&gpiod 2 GPIO_ACTIVE_HIGH>;
-			label = "Stepper Motor 1 Direction Pin";			
+			gpios = <&gpiog 6 GPIO_ACTIVE_HIGH>;
+			label = "Stepper Motor 1 Direction Pin";
 		};
-
 		step2_dir: stepper2_direction {
-			gpios = <&gpiod 4 GPIO_ACTIVE_HIGH>;
-			label = "Stepper Motor 2 Direction Pin";			
+			gpios = <&gpiod 15 GPIO_ACTIVE_HIGH>;
+			label = "Stepper Motor 2 Direction Pin";
 		};
-
 		step3_dir: stepper3_direction {
-			gpios = <&gpiod 6 GPIO_ACTIVE_HIGH>;
-			label = "Stepper Motor 3 Direction Pin";			
+			gpios = <&gpiod 4 GPIO_ACTIVE_HIGH>;
+			label = "Stepper Motor 3 Direction Pin";
 		};
-
+		
 		step1_ctrl: stepper1_control {
-			gpios = <&gpiod 1 GPIO_ACTIVE_HIGH>;
-			label = "Stepper Motor 1 Control Pin";			
-		};
-
-		step2_ctrl: stepper2_control {
-			gpios = <&gpiod 3 GPIO_ACTIVE_HIGH>;
-			label = "Stepper Motor 2 Control Pin";			
-		};
-
-		step3_ctrl: stepper3_control {
-			gpios = <&gpiod 5 GPIO_ACTIVE_HIGH>;
-			label = "Stepper Motor 3 Control Pin";			
-		};
-	};
-
-	gpio_keys {
-		compatible = "gpio-keys";
-		user_button: button_0 {
-			label = "User";
-			gpios = <&gpioc 13 GPIO_ACTIVE_HIGH>;
-			zephyr,code = <INPUT_KEY_0>;
-		};
-	};
-
-	step_states: stepper_state_pins {
-		compatible = "gpio-keys"; // TODO: change to a more generic GPIO input driver? 
-		step1_nFault: stepper1_state1 {
-			label = "Stepper 1 Fault";
-			gpios = <&gpiog 0 GPIO_ACTIVE_HIGH>;
-		};
-		step2_nFault: stepper2_state1 {
-			label = "Stepper 2 Fault";
-			gpios = <&gpiog 2 GPIO_ACTIVE_HIGH>;
-		};
-		step3_nFault: stepper3_state1 {
-			label = "Stepper 3 Fault";
-			gpios = <&gpiog 4 GPIO_ACTIVE_HIGH>;
-		};
-
-		step1_nFault: stepper1_state2 {
-			label = "Stepper 1 Stall";
-			gpios = <&gpiog 1 GPIO_ACTIVE_HIGH>;
-		};
-		step2_nFault: stepper2_state2 {
-			label = "Stepper 2 Stall";
-			gpios = <&gpiog 3 GPIO_ACTIVE_HIGH>;
-		};
-		step3_nFault: stepper3_state2 {
-			label = "Stepper 3 Stall";
 			gpios = <&gpiog 5 GPIO_ACTIVE_HIGH>;
+			label = "Stepper Motor 1 Control Pin";
+		};
+		step2_ctrl: stepper2_control {
+			gpios = <&gpiod 14 GPIO_ACTIVE_HIGH>;
+			label = "Stepper Motor 2 Control Pin";
+		};
+		step3_ctrl: stepper3_control {
+			gpios = <&gpiod 3 GPIO_ACTIVE_HIGH>;
+			label = "Stepper Motor 3 Control Pin";
 		};
 	};
 
 	aliases {
-		led0 = &green_led;
-		led1 = &yellow_led;
-		led2 = &red_led;
-		led3 = &blue_led;
-		/* pwm-led0 = &red_pwm_led; */
-		sw0 = &user_button;
+		// led0 = &nled24_1;
+		led0 = &nled24_2;
+		// led0 = &sw1;
+		// led1 = &nled24_2;
+		led1 = &nled24_1;
+		switch1 = &sw1;
+		switch2 = &sw2;
+		switch3 = &sw3;
+		switch4 = &sw4;
 	};
-};
+ };
 
-&clk_lsi {
+ &clk_lsi {
+	 status = "okay";
+ };
+
+ &clk_hsi {
+	hsi-div = <1>;
 	status = "okay";
 };
 
-&clk_hsi48 {
-	status = "okay";
-};
+ &clk_hsi48 {
+	 status = "okay";
+ };
 
-&clk_hse {
-	hse-bypass;
-	clock-frequency = <DT_FREQ_M(50)>; /* 50MHz oscillator */
-	status = "okay";
-};
+ &clk_hse {
+	//  hse-bypass;
+	 clock-frequency = <DT_FREQ_M(50)>; /* onboard 50MHz clock */
+	 status = "okay";
+ };
 
-&clk_lse {
-	status = "okay";
-};
+//  &clk_lse {
+// 	 status = "disabled";
+//  };
 
-&pll {
-	div-m = <4>;
-	mul-n = <275>;
-	div-p = <1>;
-	div-q = <4>;
-	div-r = <2>;
-	clocks = <&clk_hse>;
-	status = "okay";
-};
+// TRACECLK is probably clocked by div-r, so let's set it to 16 MHz 
+ &pll {
+	 div-m = <32>;
+	 mul-n = <275>;
+	 div-p = <1>;
+	 div-q = <11>;
+	 div-r = <2>; //32 MHz 
+	 clocks = <&clk_hsi>;
+	 status = "okay";
+ };
 
-// TODO: fix according to
-&rcc {
-	clocks = <&pll>;
-	clock-frequency = <DT_FREQ_M(550)>;
-	d1cpre = <1>;
-	hpre = <2>;    /* HCLK: 275   MHz */
-	d1ppre = <2>;  /* APB1: 137.5 MHz */
-	d2ppre1 = <2>; /* APB2: 137.5 MHz */
-	d2ppre2 = <2>; /* APB3: 137.5 MHz */
-	d3ppre = <2>;  /* APB4: 137.5 MHz */
-};
+//  &pll2 {
+// 	div-m = <32>;
+// 	mul-n = <275>;
+// 	div-p = <4>;
+// 	div-q = <4>;
+// 	div-r = <2>;
+// 	clocks = <&clk_hsi>;
+// 	status = "okay";
+// };
 
-&usart3 {
-	pinctrl-0 = <&usart3_tx_pd8 &usart3_rx_pd9>;
-	pinctrl-names = "default";
-	current-speed = <115200>;
-	status = "okay";
-};
+//  &pll3 {
+// 	div-m = <32>;
+// 	mul-n = <250>;
+// 	div-p = <2>;
+// 	div-q = <4>;
+// 	div-r = <2>;
+// 	clocks = <&clk_hsi>;
+// 	status = "okay";
+// };
 
-&usart2 {
-	pinctrl-0 = <&usart2_tx_pd5 &usart2_rx_pd6>;
-	pinctrl-names = "default";
-	current-speed = <115200>;
-	status = "okay";
-};
+ &rcc {
+	 clocks = <&pll>;
+	 clock-frequency = <DT_FREQ_M(550)>;
+	 d1cpre = <1>;
+	 hpre = <2>;    /* HCLK: 275   MHz */
+	 d1ppre = <4>;  /* APB1: 137.5 MHz */
+	 d2ppre1 = <4>; /* APB2: 137.5 MHz */
+	 d2ppre2 = <4>; /* APB3: 137.5 MHz */
+	 d3ppre = <2>;  /* APB4: 137.5 MHz */
+ };
 
+//  &usart3 {
+// 	 pinctrl-0 = <&usart3_tx_pd8 &usart3_rx_pd9>;
+// 	 pinctrl-names = "default";
+// 	 current-speed = <115200>;
+// 	 status = "disabled";
+//  };
 
-/* TODO: can't use USART1! Check CubeMX and fix */
-&usart1 {
-	pinctrl-0 = <&usart1_tx_pb14 &usart1_rx_pb7>;
-	pinctrl-names = "default";
-	current-speed = <115200>;
-	status = "okay";
-};
+//  &usart2 {
+// 	 pinctrl-0 = <&usart2_tx_pd5 &usart2_rx_pd6>;
+// 	 pinctrl-names = "default";
+// 	 current-speed = <115200>;
+// 	 status = "disabled";
+//  };
 
+//  &rtc {
+// 	 clocks = <&rcc STM32_CLOCK_BUS_APB4 0x00010000>,
+// 		  <&rcc STM32_SRC_LSI RTC_SEL(2)>;
+// 	 status = "disabled";
+//  };
 
-&rtc {
-	clocks = <&rcc STM32_CLOCK_BUS_APB4 0x00010000>,
-		 <&rcc STM32_SRC_LSI RTC_SEL(2)>;
-	status = "okay";
-};
+//  &spi1 {
+// 	 status = "disabled";
+// 	 pinctrl-0 = <&spi1_sck_pa5 &spi1_miso_pa6 &spi1_mosi_pb5>;
+// 	 pinctrl-names = "default";
+// 	 cs-gpios = <&gpiod 14 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+//  };
 
-// spi1 is for the ADCs
-// ADC1_CS on PE11, ADC2_CS on PE12
-&spi1 {
-	status = "okay";
-	pinctrl-0 = <&spi1_sck_pg11 &spi1_miso_pg9 &spi1_mosi_pd7>;
-	pinctrl-names = "default";
-	cs-gpios = <&gpioe 11 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>,
-	 <&gpioe 12 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
-
-	ext_adc1: ad4111_1@0 {
-		compatible="analog,ad4111";
-		reg = <0>; // should be referring to the CS line??
-		spi-max-frequency = <1000000>; // TODO: randomly 1MHz, verify with datasheet
-	};
-
-	ext_adc2: ad4111_2@1 {
-		compatible="analog,ad4111";
-		reg = <1>; // should be referring to the CS line??
-		spi-max-frequency = <1000000>; // TODO: randomly 1MHz, verify with datasheet
-	};
-};
-
-// spi3 is for the stepper drivers
-// MOTOR1_SCS on PE8 MOTOR2_SCS on PE9 MOTOR3_SCS on PE10 
 &spi3 {
 	status = "okay";
-	pinctrl-0 = <&spi3_sck_pc10 &spi1_miso_pc11 &spi1_mosi_pc12>;
+	pinctrl-0 = <&spi3_sck_pc10 &spi3_miso_pc11 &spi3_mosi_pc12>;
 	pinctrl-names = "default";
-	cs-gpios = <&gpioe 8 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>,
-	 <&gpioe 9 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>,
-	 <&gpioe 10 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
-	
-	motor1: motor36v4_1@0 {
-		compatible="ti,drv8711";
-		reg = <0>;
-		spi-max-frequency=<1000000>;
-	};
-
-	motor2: motor36v4_2@1 {
-		compatible="ti,drv8711";
-		reg = <1>;
-		spi-max-frequency=<1000000>;
-	};
-
-	motor3: motor36v4_3@2 {
-		compatible="ti,drv8711";
-		reg = <2>;
-		spi-max-frequency=<1000000>;
-	};
-};
+	cs-gpios = <&gpiod 0 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>,
+	 <&gpiog 2 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>,
+	 <&gpiod 5 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>;
+	 clock-frequency = <500000>;
 
 
-// spi5 is exposed on the header. can be used later, disabled for now
-&spi5 {
-	status = "disabled";
-	pinctrl-0 = <&spi5_sck_pf7 &spi5_miso_pf8 &spi5_mosi_pf9>;
-	pinctrl-names = "default";
-	cs-gpios = <&gpioe 8 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>,
-	 <&gpioe 9 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>,
-	 <&gpioe 10 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
-};
-
-
-/* checked */
-&i2c1 {
-	pinctrl-0 = <&i2c1_scl_pb6 &i2c1_sda_pb9>;
-	pinctrl-names = "default";
-	status = "okay";
-	clock-frequency = <I2C_BITRATE_FAST>;
-};
-
-/* checked */
-// i2c2 is exposed on the header. can be used later, disabled for now
-&i2c2 {
-	pinctrl-0 = <&i2c2_scl_pf1 &i2c2_sda_pf0>;
-	pinctrl-names = "default";
-	status = "disabled";
-	clock-frequency = <I2C_BITRATE_FAST>;
-};
-
-// TODO: check how to define single-ended ADC measurement
-&adc1 {
-	pinctrl-0 = <&adc1_inp2_pf11 &adc1_inp3_pa6 &adc1_inp5_pb1 &adc1_inp6_pf11>;
-	pinctrl-names = "default";
-
-	// #address-cells = <1>;
-	// #size-cells = <0>;
-	// status = "okay";
-	st,adc-clock-source = < 1 >; // TODO: review which clock source this refers to
-	st,adc-prescaler = < 1 >;
-
-	// channel@F {
-	// 	reg = <15>; //15
-	// 	zephyr,gain = "ADC_GAIN_1";
-	// 	zephyr,reference = "ADC_REF_INTERNAL";
-	// 	zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
-	// 	zephyr,resolution = <14>;
-	// 	zephyr,oversampling = <4>;
-	// 	status = "okay";
-	// };
-};
-
-&adc2 {
-	pinctrl-0 = <&adc2_inp2_pf13 &adc2_inp6_pf14
-	&adc2_inp9_pb0 &adc2_inp10_pc0
-	&adc2_inp15_pa3 &adc2_inp18_pa4
-	&adc2_inp19_pa5>;
-	pinctrl-names = "default";
-
-	// #address-cells = <1>;
-	// #size-cells = <0>;
-	// status = "okay";
-	st,adc-clock-source = < 1 >; // TODO: review which clock source this refers to
-	st,adc-prescaler = < 1 >;
-
-	// channel@F {
-	// 	reg = <15>; //15
-	// 	zephyr,gain = "ADC_GAIN_1";
-	// 	zephyr,reference = "ADC_REF_INTERNAL";
-	// 	zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
-	// 	zephyr,resolution = <14>;
-	// 	zephyr,oversampling = <4>;
-	// 	status = "okay";
-	// };
-};
-
-&adc3 {
-	// #address-cells = <1>;
-	// #size-cells = <0>;
-	// status = "okay";
-	// st,adc-prescaler = <1>;
-
-	// channel@F {
-	// 	reg = <15>; //15
-	// 	zephyr,gain = "ADC_GAIN_1";
-	// 	zephyr,reference = "ADC_REF_INTERNAL";
-	// 	zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
-	// 	zephyr,resolution = <14>;
-	// 	zephyr,oversampling = <4>;
-	// 	status = "okay";
-	// };
-};
-
-
-&backup_sram {
-	status = "okay";
-};
-
-&timers12 {
-	st,prescaler = <10000>;
-	status = "okay";
-
-	pwm12: pwm {
+	motor1: spi3@0 {
 		status = "okay";
-		pinctrl-0 = <&tim12_ch1_pb14>;
-		pinctrl-names = "default";
+		compatible = "spi-device";
+		spi-max-frequency = <500000>;
+		reg = <0>;
+	};
+	motor2: spi3@1 {
+		status = "okay";
+		compatible = "spi-device";
+		spi-max-frequency = <500000>;
+		reg = <1>;
+	};
+	motor3: spi3@2 {
+		status = "okay";
+		compatible = "spi-device";
+		spi-max-frequency = <500000>;
+		reg = <2>;
 	};
 };
 
-/* checked, looks correct */
-&mac {
+//  &i2c1 {
+// 	 pinctrl-0 = <&i2c1_scl_pb8 &i2c1_sda_pb9>;
+// 	 pinctrl-names = "default";
+// 	 status = "disabled";
+// 	 clock-frequency = <I2C_BITRATE_FAST>;
+//  };
+
+ &backup_sram {
+	 status = "okay";
+ };
+
+ &timers12 {
+	 st,prescaler = <10000>;
+	 status = "okay";
+
+	 pwm12: pwm {
+		 status = "okay";
+		 pinctrl-0 = <&tim12_ch1_pb14>;
+		 pinctrl-names = "default";
+	 };
+ };
+
+//  &mac {
+// 	 status = "okay";
+// 	 pinctrl-0 = <&eth_ref_clk_pa1
+// 			  &eth_mdio_pa2
+// 			  &eth_crs_dv_pa7
+// 			  &eth_mdc_pc1
+// 			  &eth_rxd0_pc4
+// 			  &eth_rxd1_pc5
+// 			  &eth_tx_en_pb11
+// 			  &eth_txd0_pg13
+// 			  &eth_txd1_pg12>;
+// 	 pinctrl-names = "default";
+//  };
+
+
+ &mac {
+	// note that we add the MCO clock pin in this pinctrl-0
 	status = "okay";
 	pinctrl-0 = <&eth_ref_clk_pa1
-		     &eth_mdio_pa2
-		     &eth_crs_dv_pa7
-		     &eth_mdc_pc1
-		     &eth_rxd0_pc4
-		     &eth_rxd1_pc5
-		     &eth_tx_en_pb11
-		     &eth_txd0_pg13 /* TODO: POSSIBLE ERROR ON SCHEMATIC */
-		     &eth_txd1_pg12>; /* TODO: POSSIBLE ERROR ON SCHEMATIC,could have this as pg12 */
+	&eth_crs_dv_pa7
+	&eth_rxd0_pc4
+	&eth_rxd1_pc5
+	&eth_tx_en_pb11
+	&eth_txd0_pg13
+	&eth_txd1_pg12
+	&rcc_mco_1_pa8
+	>;
 	pinctrl-names = "default";
 };
 
-&rng {
+&mdio {
 	status = "okay";
+	pinctrl-0 = <&eth_mdio_pa2 &eth_mdc_pc1>;
+	pinctrl-names = "default";
+
+	phy: ethernet-phy@0 {
+		compatible = "ethernet-phy";
+		reg = <0>;
+		status = "okay";
+	};
 };
 
-/* TODO: review clocks, pins checked*/
-&fdcan1 {
-	clocks = <&rcc STM32_CLOCK_BUS_APB1_2 0x00000200>,
-		 <&rcc STM32_SRC_PLL1_Q FDCAN1_SEL(1)>;
-	pinctrl-0 = <&fdcan1_rx_pa11 &fdcan1_tx_pa12>;
-	pinctrl-names = "default";
-	bus-speed = <125000>;
-	bus-speed-data = <1000000>;
-	status = "okay";
-};
-
-/* TODO: review clocks, pins checked*/
-&fdcan2 {
-	clocks = <&rcc STM32_CLOCK_BUS_APB1_2 0x00000200>,
-		 <&rcc STM32_SRC_PLL1_Q FDCAN2_SEL(1)>;
-	pinctrl-0 = <&fdcan2_rx_pb12 &fdcan2_tx_pb13>;
-	pinctrl-names = "default";
-	bus-speed = <125000>;
-	bus-speed-data = <1000000>;
-	status = "okay";
-};
+ &rng {
+	 status = "okay";
+ };
