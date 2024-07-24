@@ -154,47 +154,56 @@
 	 status = "okay";
  };
 
-// TODO: fix according to
-&rcc {
-	clocks = <&pll>;
-	clock-frequency = <DT_FREQ_M(550)>;
-	d1cpre = <1>;
-	hpre = <2>;    /* HCLK: 275   MHz */
-	d1ppre = <2>;  /* APB1: 137.5 MHz */
-	d2ppre1 = <2>; /* APB2: 137.5 MHz */
-	d2ppre2 = <2>; /* APB3: 137.5 MHz */
-	d3ppre = <2>;  /* APB4: 137.5 MHz */
-};
-
-// &usart3 {
-// 	pinctrl-0 = <&usart3_tx_pd8 &usart3_rx_pd9>;
-// 	pinctrl-names = "default";
-// 	current-speed = <115200>;
+//  &pll2 {
+// 	div-m = <32>;
+// 	mul-n = <275>;
+// 	div-p = <4>;
+// 	div-q = <4>;
+// 	div-r = <2>;
+// 	clocks = <&clk_hsi>;
 // 	status = "okay";
 // };
 
-// &usart2 {
-// 	pinctrl-0 = <&usart2_tx_pd5 &usart2_rx_pd6>;
-// 	pinctrl-names = "default";
-// 	current-speed = <115200>;
+//  &pll3 {
+// 	div-m = <32>;
+// 	mul-n = <250>;
+// 	div-p = <2>;
+// 	div-q = <4>;
+// 	div-r = <2>;
+// 	clocks = <&clk_hsi>;
 // 	status = "okay";
 // };
 
+ &rcc {
+	 clocks = <&pll>;
+	 clock-frequency = <DT_FREQ_M(550)>;
+	 d1cpre = <1>;
+	 hpre = <2>;    /* HCLK: 275   MHz */
+	 d1ppre = <4>;  /* APB1: 137.5 MHz */
+	 d2ppre1 = <4>; /* APB2: 137.5 MHz */
+	 d2ppre2 = <4>; /* APB3: 137.5 MHz */
+	 d3ppre = <2>;  /* APB4: 137.5 MHz */
+ };
 
-// /* TODO: can't use USART1! Check CubeMX and fix */
-// &usart1 {
-// 	pinctrl-0 = <&usart1_tx_pb14 &usart1_rx_pb7>;
-// 	pinctrl-names = "default";
-// 	current-speed = <115200>;
-// 	status = "okay";
-// };
+//  &usart3 {
+// 	 pinctrl-0 = <&usart3_tx_pd8 &usart3_rx_pd9>;
+// 	 pinctrl-names = "default";
+// 	 current-speed = <115200>;
+// 	 status = "disabled";
+//  };
 
+//  &usart2 {
+// 	 pinctrl-0 = <&usart2_tx_pd5 &usart2_rx_pd6>;
+// 	 pinctrl-names = "default";
+// 	 current-speed = <115200>;
+// 	 status = "disabled";
+//  };
 
-&rtc {
-	clocks = <&rcc STM32_CLOCK_BUS_APB4 0x00010000>,
-		 <&rcc STM32_SRC_LSI RTC_SEL(2)>;
-	status = "okay";
-};
+//  &rtc {
+// 	 clocks = <&rcc STM32_CLOCK_BUS_APB4 0x00010000>,
+// 		  <&rcc STM32_SRC_LSI RTC_SEL(2)>;
+// 	 status = "disabled";
+//  };
 
 // spi1 is for the ADCs
 // ADC1_CS on PE11, ADC2_CS on PE12
@@ -222,180 +231,85 @@
     };
 };
 
-// // spi3 is for the stepper drivers
-// // MOTOR1_SCS on PE8 MOTOR2_SCS on PE9 MOTOR3_SCS on PE10 
-// &spi3 {
-// 	status = "okay";
-// 	pinctrl-0 = <&spi3_sck_pc10 &spi1_miso_pc11 &spi1_mosi_pc12>;
-// 	pinctrl-names = "default";
-// 	cs-gpios = <&gpioe 8 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>,
-// 	 <&gpioe 9 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>,
-// 	 <&gpioe 10 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
-	
-// 	motor1 : motor36v4_1@0 {
-// 		compatible="ti,drv8711";
-// 		reg = <0>;
-// 		spi-max-frequency=<1000000>;
-// 	};
-
-// 	motor2 : motor36v4_2@1 {
-// 		compatible="ti,drv8711";
-// 		reg = <1>;
-// 		spi-max-frequency=<1000000>;
-// 	};
-
-// 	motor3 : motor36v4_3@2 {
-// 		compatible="ti,drv8711";
-// 		reg = <2>;
-// 		spi-max-frequency=<1000000>;
-// 	};
-// };
+&spi3 {
+	status = "okay";
+	pinctrl-0 = <&spi3_sck_pc10 &spi3_miso_pc11 &spi3_mosi_pc12>;
+	pinctrl-names = "default";
+	cs-gpios = <&gpiod 0 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>,
+	 <&gpiog 2 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>,
+	 <&gpiod 5 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>;
+	 clock-frequency = <500000>;
 
 
-// // spi5 is exposed on the header. can be used later, disabled for now
-// &spi5 {
-// 	status = "disabled";
-// 	pinctrl-0 = <&spi5_sck_pf7 &spi5_miso_pf8 &spi5_mosi_pf9>;
-// 	pinctrl-names = "default";
-// 	cs-gpios = <&gpioe 8 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>,
-// 	 <&gpioe 9 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>,
-// 	 <&gpioe 10 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
-// };
+	motor1: spi3@0 {
+		status = "okay";
+		compatible = "spi-device";
+		spi-max-frequency = <500000>;
+		reg = <0>;
+	};
+	motor2: spi3@1 {
+		status = "okay";
+		compatible = "spi-device";
+		spi-max-frequency = <500000>;
+		reg = <1>;
+	};
+	motor3: spi3@2 {
+		status = "okay";
+		compatible = "spi-device";
+		spi-max-frequency = <500000>;
+		reg = <2>;
+	};
+};
 
+//  &i2c1 {
+// 	 pinctrl-0 = <&i2c1_scl_pb8 &i2c1_sda_pb9>;
+// 	 pinctrl-names = "default";
+// 	 status = "disabled";
+// 	 clock-frequency = <I2C_BITRATE_FAST>;
+//  };
 
-// /* checked */
-// &i2c1 {
-// 	pinctrl-0 = <&i2c1_scl_pb6 &i2c1_sda_pb9>;
-// 	pinctrl-names = "default";
-// 	status = "okay";
-// 	clock-frequency = <I2C_BITRATE_FAST>;
-// };
+ &backup_sram {
+	 status = "okay";
+ };
 
-// /* checked */
-// // i2c2 is exposed on the header. can be used later, disabled for now
-// &i2c2 {
-// 	pinctrl-0 = <&i2c2_scl_pf1 &i2c2_sda_pf0>;
-// 	pinctrl-names = "default";
-// 	status = "disabled";
-// 	clock-frequency = <I2C_BITRATE_FAST>;
-// };
+ &timers12 {
+	 st,prescaler = <10000>;
+	 status = "okay";
 
-// // TODO: check how to define single-ended ADC measurement
-// &adc1 {
-// 	pinctrl-0 = <&adc1_inp2_pf11 &adc1_inp3_pa6 &adc1_inp5_pb1 &adc1_inp6_pf11>;
-// 	pinctrl-names = "default";
+	 pwm12: pwm {
+		 status = "okay";
+		 pinctrl-0 = <&tim12_ch1_pb14>;
+		 pinctrl-names = "default";
+	 };
+ };
 
-// 	// #address-cells = <1>;
-// 	// #size-cells = <0>;
-// 	// status = "okay";
-// 	st,adc-clock-source = < 1 >; // TODO: review which clock source this refers to
-// 	st,adc-prescaler = < 1 >;
+ &mac {
+	// note that we add the MCO clock pin in this pinctrl-0
+	status = "okay";
+	pinctrl-0 = <&eth_ref_clk_pa1
+	&eth_crs_dv_pa7
+	&eth_rxd0_pc4
+	&eth_rxd1_pc5
+	&eth_tx_en_pb11
+	&eth_txd0_pg13
+	&eth_txd1_pg12
+	&rcc_mco_1_pa8
+	>;
+	pinctrl-names = "default";
+};
 
-// 	// channel@F {
-// 	// 	reg = <15>; //15
-// 	// 	zephyr,gain = "ADC_GAIN_1";
-// 	// 	zephyr,reference = "ADC_REF_INTERNAL";
-// 	// 	zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
-// 	// 	zephyr,resolution = <14>;
-// 	// 	zephyr,oversampling = <4>;
-// 	// 	status = "okay";
-// 	// };
-// };
+&mdio {
+	status = "okay";
+	pinctrl-0 = <&eth_mdio_pa2 &eth_mdc_pc1>;
+	pinctrl-names = "default";
 
-// &adc2 {
-// 	pinctrl-0 = <&adc2_inp2_pf13 &adc2_inp6_pf14
-// 	&adc2_inp9_pb0 &adc2_inp10_pc0
-// 	&adc2_inp15_pa3 &adc2_inp18_pa4
-// 	&adc2_inp19_pa5>;
-// 	pinctrl-names = "default";
+	phy: ethernet-phy@0 {
+		compatible = "ethernet-phy";
+		reg = <0>;
+		status = "okay";
+	};
+};
 
-// 	// #address-cells = <1>;
-// 	// #size-cells = <0>;
-// 	// status = "okay";
-// 	st,adc-clock-source = < 1 >; // TODO: review which clock source this refers to
-// 	st,adc-prescaler = < 1 >;
-
-// 	// channel@F {
-// 	// 	reg = <15>; //15
-// 	// 	zephyr,gain = "ADC_GAIN_1";
-// 	// 	zephyr,reference = "ADC_REF_INTERNAL";
-// 	// 	zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
-// 	// 	zephyr,resolution = <14>;
-// 	// 	zephyr,oversampling = <4>;
-// 	// 	status = "okay";
-// 	// };
-// };
-
-// &adc3 {
-// 	// #address-cells = <1>;
-// 	// #size-cells = <0>;
-// 	// status = "okay";
-// 	// st,adc-prescaler = <1>;
-
-// 	// channel@F {
-// 	// 	reg = <15>; //15
-// 	// 	zephyr,gain = "ADC_GAIN_1";
-// 	// 	zephyr,reference = "ADC_REF_INTERNAL";
-// 	// 	zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
-// 	// 	zephyr,resolution = <14>;
-// 	// 	zephyr,oversampling = <4>;
-// 	// 	status = "okay";
-// 	// };
-// };
-
-
-// &backup_sram {
-// 	status = "okay";
-// };
-
-// &timers12 {
-// 	st,prescaler = <10000>;
-// 	status = "okay";
-
-// 	pwm12: pwm {
-// 		status = "okay";
-// 		pinctrl-0 = <&tim12_ch1_pb14>;
-// 		pinctrl-names = "default";
-// 	};
-// };
-
-// /* checked, looks correct */
-// &mac {
-// 	status = "okay";
-// 	pinctrl-0 = <&eth_ref_clk_pa1
-// 		     &eth_mdio_pa2
-// 		     &eth_crs_dv_pa7
-// 		     &eth_mdc_pc1
-// 		     &eth_rxd0_pc4
-// 		     &eth_rxd1_pc5
-// 		     &eth_tx_en_pb11
-// 		     &eth_txd0_pg13 /* TODO: POSSIBLE ERROR ON SCHEMATIC */
-// 		     &eth_txd1_pg12>; /* TODO: POSSIBLE ERROR ON SCHEMATIC,could have this as pg12 */
-// 	pinctrl-names = "default";
-// };
-
-// &rng {
-// 	status = "okay";
-// };
-
-// /* TODO: review clocks, pins checked*/
-// &fdcan1 {
-// 	clocks = <&rcc STM32_CLOCK_BUS_APB1_2 0x00000200>,
-// 		 <&rcc STM32_SRC_PLL1_Q FDCAN1_SEL(1)>;
-// 	pinctrl-0 = <&fdcan1_rx_pa11 &fdcan1_tx_pa12>;
-// 	pinctrl-names = "default";
-// 	bus-speed = <125000>;
-// 	bus-speed-data = <1000000>;
-// 	status = "okay";
-// };
-
-// /* TODO: review clocks, pins checked*/
-// &fdcan2 {
-// 	clocks = <&rcc STM32_CLOCK_BUS_APB1_2 0x00000200>,
-// 		 <&rcc STM32_SRC_PLL1_Q FDCAN1_SEL(1)>;
-// 	pinctrl-0 = <&fdcan2_rx_pb12 &fdcan2_tx_pb13>;
-// 	pinctrl-names = "default";
-// 	bus-speed = <125000>;
-// 	bus-speed-data = <1000000>;
-// 	status = "okay";
-// };
+ &rng {
+	 status = "okay";
+ };

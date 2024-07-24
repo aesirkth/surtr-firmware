@@ -1,6 +1,5 @@
 deps/
 build/
-.vscode/
 venv/
 __pycache__w
 
