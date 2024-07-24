@@ -17,4 +17,4 @@ build:
     # the root of this repository.
     dts_root: .
   depends: 
-    - drivers
+    - ad4111
