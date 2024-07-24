@@ -7,7 +7,7 @@ set(BOARD_ROOT ${CMAKE_CURRENT_LIST_DIR})
 # set(DTC_OVERLAY_FILE "boards/nucleo_h723zg.overlay")
 
 list(APPEND ZEPHYR_EXTRA_MODULES 
-    ${CMAKE_CURRENT_SOURCE_DIR}/modules/drivers
+    ${CMAKE_CURRENT_SOURCE_DIR}/modules/ad4111
 )
 
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
