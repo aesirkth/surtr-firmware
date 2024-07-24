@@ -1,7 +1,7 @@
 [manifest]
 path = application
 file = west.yml
+project-filter = +nanopb
 
 [zephyr]
 base = deps/zephyr
-

@@ -20,6 +20,7 @@
 /* Preprocessor directive, if not defined then define... */
 #ifndef ADC_DRIVER_API_H
 #define ADC_DRIVER_API_H
+#define DT_DRV_COMPAT analog_ad4111 
 
 #include <zephyr/device.h>
 #include <zephyr/drivers/spi.h>

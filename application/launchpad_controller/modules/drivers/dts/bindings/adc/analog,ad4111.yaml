@@ -9,14 +9,18 @@ compatible: "analog,ad4111"
 
 include: spi-device.yaml
 
-properties:
-  reg:
-    required: false
-    description: |
-      SPI chip select SET THIS TO TRUE WHEN BUILD WORKS
 
-  spi-max-frequency:
-    type: int
-    required: true
-    description: |
-      Maximum SPI clocking speed in Hz
+# This is already defined in the spi-device bindings, so commenting.
+# on-bus: spi
+
+# properties:
+#   reg:
+#     required: true
+#     description: |
+#       SPI chip select SET THIS TO TRUE WHEN BUILD WORKS
+
+#   spi-max-frequency:
+#     type: int
+#     required: true
+#     description: |
+#       Maximum SPI clocking speed in Hz

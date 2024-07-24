@@ -11,7 +11,7 @@ manifest:
   projects:
     - name: zephyr
       remote: zephyrproject
-      revision: ffbe0f29288ee08d67b537f29bda7a97f0819d8d
+      revision: f9e3b65d3a9794ee2233aa88172346f887b48d04
       import:
         path-prefix: deps
 

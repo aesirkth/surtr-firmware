@@ -1,0 +1,5 @@
+board:
+  name: launchpad_controller
+  vendor: st
+  socs:
+    - name: stm32h723xx

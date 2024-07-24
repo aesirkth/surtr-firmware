@@ -2,11 +2,20 @@
 #include <zephyr/devicetree.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
-#include "../modules/drivers/inc/ad4111.h"
-#include "networking.h"
+// #include "../modules/drivers/inc/ad4111.h"
+#include "../modules/drivers/src/ad4111.h"
+// #include "networking.h"
 
-#define aesirADC1 DT_NODELABEL(ext_adcx1)
-#define aesirADC2 DT_NODELABEL(ext_adcx2)
+#if !DT_NODE_EXISTS(DT_NODELABEL(ext_adc1))
+#error "whoops, no adc1"
+#endif
+#if !DT_NODE_EXISTS(DT_NODELABEL(ext_adc2))
+#error "whoops, no adc2"
+#endif
+
+
+#define aesirADC1 DT_NODELABEL(ext_adc1)
+#define aesirADC2 DT_NODELABEL(ext_adc2)
 
 LOG_MODULE_REGISTER(main);
 
@@ -30,7 +39,7 @@ int main(void) {
     }
 
     /* Retrieve the device binding for the second ADC */
-    adc2 = device_get_binding("ad4111@1"); // For debugging
+    // adc2 = device_get_binding("ad4111@1"); // For debugging
     // adc2 = device_get_binding("ad4111_2");
     if (!device_is_ready(adc2)) {
         LOG_ERR("ad4111_2 failed to get binding");
