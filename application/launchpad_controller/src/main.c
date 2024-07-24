@@ -33,6 +33,23 @@
 #include <pb_encode.h>
 #include <pb_decode.h>
 
+// ADC includes
+#include <zephyr/device.h>
+#include <zephyr/devicetree.h>
+#include <zephyr/kernel.h>
+#include <zephyr/logging/log.h>
+// #include "../modules/drivers/inc/ad4111.h"
+#include "../modules/drivers/src/ad4111.h"
+// #include "networking.h"
+
+#if !DT_NODE_EXISTS(DT_NODELABEL(ext_adc1))
+#error "whoops, no adc1"
+#endif
+#if !DT_NODE_EXISTS(DT_NODELABEL(ext_adc2))
+#error "whoops, no adc2"
+#endif
+
+// end ADC includes
 
 #define BIND_PORT 8080
 
@@ -60,6 +77,11 @@ static void sleep_after_error(unsigned int amount)
 #define SWITCH2_NODE DT_ALIAS(switch2)
 #define SWITCH3_NODE DT_ALIAS(switch3)
 #define SWITCH4_NODE DT_ALIAS(switch4)
+
+#define aesirADC1 DT_NODELABEL(ext_adc1)
+#define aesirADC2 DT_NODELABEL(ext_adc2)
+
+LOG_MODULE_REGISTER(main);
 
 static const struct gpio_dt_spec leds[] = {
     GPIO_DT_SPEC_GET(LED0_NODE, gpios),
@@ -98,53 +120,103 @@ static bool read_callback(pb_istream_t *stream, uint8_t *buf, size_t count)
 }
 
 int main(void)
-{
-    // should use a better data structure for this (struct!)
-    // initialize switches
-    bool switch_states[] = {0,0,0,0};
-    int ret;
-    for(int i = 0; i < 4; i++) {
-        if (!gpio_is_ready_dt(&switches[i])) {
-		    return 0;
-        }
+{ 
+  // should use a better data structure for this (struct!)
+  // initialize switches
+  bool switch_states[] = {0,0,0,0};
+  int ret;
+  for(int i = 0; i < 4; i++) {
+      if (!gpio_is_ready_dt(&switches[i])) {
+      return 0;
+      }
 
-        ret = gpio_pin_configure_dt(&switches[i], GPIO_OUTPUT_INACTIVE);
-        if (ret < 0) {
-            return 0;
-        }   
-    }
+      ret = gpio_pin_configure_dt(&switches[i], GPIO_OUTPUT_INACTIVE);
+      if (ret < 0) {
+          return 0;
+      }   
+  }
 
 
-    // initialize LEDs
+  // initialize LEDs
 
-    bool led_states[] = {0, 0};
-    for (int i = 0; i < 2; i++) {
-        if (!gpio_is_ready_dt(&leds[i])) {
-		    return 0;
-        }
+  bool led_states[] = {0, 0};
+  for (int i = 0; i < 2; i++) {
+      if (!gpio_is_ready_dt(&leds[i])) {
+      return 0;
+      }
 
-        ret = gpio_pin_configure_dt(&leds[i], GPIO_OUTPUT_INACTIVE);
-        if (ret < 0) {
-            return 0;
-        }   
-    }
+      ret = gpio_pin_configure_dt(&leds[i], GPIO_OUTPUT_INACTIVE);
+      if (ret < 0) {
+          return 0;
+      }   
+  }
 
-    target_motor1 += 10000;
-    target_motor2 += 10000;
+  // begin ADC initialization
+    LOG_INF("++ Initiliazing... ++");
 
-    // quick test of led0
+  // Let's go..!
+  LOG_INF("++ Starting ADC initialization ++");
 
-    // wait 1s, turn on
-    // k_msleep(1000);
-    // ret = gpio_pin_toggle_dt(&leds[0]);
-    // led_states[0] = !led_states[0];
+  // Create adc driver instances
+  const struct device *adc1 = DEVICE_DT_GET(aesirADC1);
+  const struct device *adc2 = DEVICE_DT_GET(aesirADC2);
 
-    // // wait 1s, turn off
-    // k_msleep(1000);
-    // ret = gpio_pin_toggle_dt(&leds[0]);
-    // led_states[0] = !led_states[0];
+  /* Retrieve the device binding for the first ADC */
+  // adc1 = device_get_binding("ad4111_1");
+  if (!device_is_ready(adc1)) {
+      LOG_INF("ad4111_1 failed to get binding");
+      return -1;  // Indicate error
+  } else {
+    LOG_INF("ad4111_1 successfully retrieved");
+  }
 
-    // initialize TCP socket
+  /* Retrieve the device binding for the second ADC */
+  // adc2 = device_get_binding("ad4111@1"); // For debugging
+  // adc2 = device_get_binding("ad4111_2");
+  if (!device_is_ready(adc2)) {
+      LOG_ERR("ad4111_2 failed to get binding");
+      return -1;  // Indicate error
+  } else {
+      LOG_INF("ad4111_2 successfully retrieved");
+  }
+
+  /* Initialize the first ADC */
+  if (adc_init(adc1) != 0) {
+      LOG_ERR("ad4111_1 failed to initialize");
+      return -1;  // Indicate error
+  } else {
+      LOG_INF("ad4111_1 successfully initialized");
+  }
+
+  /* Initialize the second ADC */
+  if (adc_init(adc2) != 0) {
+      LOG_ERR("ad4111_2 failed to initialize");
+      return -1;  // Indicate error
+  } else {
+      LOG_INF("ad4111_2 successfully initialized");
+  }
+
+  // Fail or success! 
+  LOG_INF("++ Finished ADC initialization ++");
+
+  // End ADC initialization
+
+  target_motor1 += 10000;
+  target_motor2 += 10000;
+
+  // quick test of led0
+
+  // wait 1s, turn on
+  // k_msleep(1000);
+  // ret = gpio_pin_toggle_dt(&leds[0]);
+  // led_states[0] = !led_states[0];
+
+  // // wait 1s, turn off
+  // k_msleep(1000);
+  // ret = gpio_pin_toggle_dt(&leds[0]);
+  // led_states[0] = !led_states[0];
+
+  // initialize TCP socket
 	int serv;
 	struct sockaddr_in bind_addr;
 	static int counter;

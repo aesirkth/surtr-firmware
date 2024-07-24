@@ -1,0 +1,60 @@
+/* 
+ * This overlay file is used to allow for compiling using a virtual nucleo_u575zi_q board.
+ * The nucleo_u575zi_q board has the same MCU as we are using for the Surtr project.
+ *
+ */
+/* 
+ &gpioe {
+    status = "okay";
+};
+*/
+
+&spi0 {
+    status = "okay";
+    pinctrl-names = "default";
+    pinctrl-0 = <&spi1_sck_pg11 &spi1_miso_pg9 &spi1_mosi_pd7>;
+    cs-gpios = <&gpioe 11 GPIO_ACTIVE_LOW>,
+               <&gpioe 12 GPIO_ACTIVE_LOW>;
+
+    ext_adcx1: ad4111_1@0 {
+        compatible = "analog,ad4111";
+        reg = <0>; // Refers to the CS line
+        spi-max-frequency = <1000000>; // Verify with datasheet
+        status = "okay";
+    };
+
+    ext_adcx2: ad4111_2@1 {
+        compatible = "analog,ad4111";
+        reg = <1>; // Refers to the CS line
+        spi-max-frequency = <1000000>; // Verify with datasheet
+        status = "okay";
+    };
+};
+/* 
+&gpiog {
+    spi1_sck_pg11: pinmux_spi1_sck_pg11 {
+        gpio-hog;
+        // pinmux = <STM32_PINMUX_PG11__SPI1_SCK>; // Issues with these rows - can I use some other command?
+        bias-pull-up;
+        drive-push-pull;
+        status = "okay";
+    };
+
+    spi1_miso_pg9: pinmux_spi1_miso_pg9 {
+        gpio-hog;
+        // pinmux = <STM32_PINMUX_PG9__SPI1_MISO>;
+        bias-pull-up;
+        drive-push-pull;
+        status = "okay";
+    };
+};
+
+&gpiod {
+    spi1_mosi_pd7: pinmux_spi1_mosi_pd7 {
+        gpio-hog;
+        // pinmux = <STM32_PINMUX_PD7__SPI1_MOSI>;
+        bias-pull-up;
+        drive-push-pull;
+        status = "okay";
+    };
+};*/
