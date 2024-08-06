@@ -18,3 +18,4 @@ build:
     dts_root: .
   depends: 
     - ad4111
+    - drv8711

@@ -1,0 +1,7 @@
+build:
+  kconfig: Kconfig
+  cmake: .
+  settings:
+    dts_root: .
+
+# Note default name will be folder name, i.e. drv8711

@@ -1,0 +1,22 @@
+# Bindings for AD4111 Analog to Digital Converter (ADC)
+# SPDX-License-Identifier: MIT
+# Author: Chaitanya Katpatal
+# Date: 2024-07-25
+
+description: TI DRV8711 Stepper Motor Driver Driver
+
+compatible: "ti,drv8711"
+
+include: spi-device.yaml
+
+properties:
+  # TODO: make current limit more generic and introduce a value denoting the R_ISENSE resistor instead?
+  # current-limit-ma:
+  #   type: int
+  #   required: true
+  #   description: |
+  #     Stepper Current Limit (in mA) adjusted for Pololu 36v4 Drivers
+  step-pin:
+    type: phandle
+  dir-pin:
+    type: phandle

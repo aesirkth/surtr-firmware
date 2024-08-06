@@ -40,6 +40,7 @@
 #include <zephyr/logging/log.h>
 // #include "../modules/drivers/inc/ad4111.h"
 #include "../modules/ad4111/src/ad4111.h"
+#include "../modules/drv8711/src/drv8711.h"
 // #include "networking.h"
 
 #if !DT_NODE_EXISTS(DT_NODELABEL(ext_adc1))
