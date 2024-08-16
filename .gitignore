@@ -1,6 +1,7 @@
 deps/
 build/
 venv/
+.venv/
 __pycache__w
 
 # MacOS Specific Ignores

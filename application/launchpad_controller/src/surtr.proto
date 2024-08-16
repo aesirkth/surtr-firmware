@@ -2,7 +2,7 @@
 // from UI application to LC.
 syntax = "proto3";
 
-package commands;
+package surtrpb;
 
 message SwitchControl {
     bool state = 1;

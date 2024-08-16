@@ -14,8 +14,6 @@
 #include <zephyr/net/net_pkt.h>
 
 #include <zephyr/logging/log.h>
-#include "src/commands.pb.h"
-#include "src/sensor_vals.pb.h"
 #include <pb_encode.h>
 #include <pb_decode.h>
 
@@ -36,7 +34,8 @@ int main(void)
 	LOG_INF("SWO logging enabled on STM32!");
 
 	init_actuation(NULL, NULL, NULL);
-    // while (1) {
+    init_networking(NULL, NULL, NULL);
+	// while (1) {
     //     LOG_INF("Logging data...");
     //     k_sleep(K_MSEC(1000));
     // }

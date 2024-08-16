@@ -1,6 +1,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/logging/log.h>
+#include <drv8711.h>
 
 LOG_MODULE_REGISTER(actuation, CONFIG_APP_LOG_LEVEL);
 
@@ -47,6 +48,10 @@ void init_actuation(void *p1, void *p2, void *p3) {
             LOG_ERR("led gpio couldn't be configured");
         }
     }
+
+}
+
+void init_steppers() {
 
 }
 

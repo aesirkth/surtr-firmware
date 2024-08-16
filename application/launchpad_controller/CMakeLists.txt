@@ -20,4 +20,5 @@ target_sources(app PRIVATE
     src/networking.c
     src/sensors.c
     src/actuation.c
+    src/protocol.c
 )

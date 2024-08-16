@@ -8,6 +8,11 @@
 
 
 
+#include <zephyr/net/net_if.h>
+#include <zephyr/net/net_core.h>
+#include <zephyr/net/net_context.h>
+#include <zephyr/net/net_mgmt.h>
+
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -25,12 +30,95 @@ void networking_thread(void *p1, void *p2, void *p3);
 
 
 
-K_MSGQ_DEFINE(network_msgq, sizeof(struct surtr_message), 64, 4);
+K_MSGQ_DEFINE(network_msgq, sizeof(surtrpb_SurtrMessage), 64, 4);
 
-K_THREAD_DEFINE(networking_tid, 4096, networking_thread, NULL, NULL, NULL, 5, 0, 0);
+K_THREAD_DEFINE(networking_tid, 4096, networking_thread, NULL, NULL, NULL, 5, 0, 1000);
+
+
+
+
+
+
+#define DHCP_OPTION_NTP (42)
+
+static uint8_t ntp_server[4];
+
+static struct net_mgmt_event_callback mgmt_cb;
+
+static struct net_dhcpv4_option_callback dhcp_cb;
+
+static void handler(struct net_mgmt_event_callback *cb,
+		    uint32_t mgmt_event,
+		    struct net_if *iface)
+{
+	int i = 0;
+
+	if (mgmt_event != NET_EVENT_IPV4_ADDR_ADD) {
+		return;
+	}
+
+	for (i = 0; i < NET_IF_MAX_IPV4_ADDR; i++) {
+		char buf[NET_IPV4_ADDR_LEN];
+
+		if (iface->config.ip.ipv4->unicast[i].ipv4.addr_type !=
+							NET_ADDR_DHCP) {
+			continue;
+		}
+
+		LOG_INF("   Address[%d]: %s", net_if_get_by_iface(iface),
+			net_addr_ntop(AF_INET,
+			    &iface->config.ip.ipv4->unicast[i].ipv4.address.in_addr,
+						  buf, sizeof(buf)));
+		LOG_INF("    Subnet[%d]: %s", net_if_get_by_iface(iface),
+			net_addr_ntop(AF_INET,
+				       &iface->config.ip.ipv4->unicast[i].netmask,
+				       buf, sizeof(buf)));
+		LOG_INF("    Router[%d]: %s", net_if_get_by_iface(iface),
+			net_addr_ntop(AF_INET,
+						 &iface->config.ip.ipv4->gw,
+						 buf, sizeof(buf)));
+		LOG_INF("Lease time[%d]: %u seconds", net_if_get_by_iface(iface),
+			iface->config.dhcpv4.lease_time);
+	}
+}
+
+static void option_handler(struct net_dhcpv4_option_callback *cb,
+			   size_t length,
+			   enum net_dhcpv4_msg_type msg_type,
+			   struct net_if *iface)
+{
+	char buf[NET_IPV4_ADDR_LEN];
+
+	LOG_INF("DHCP Option %d: %s", cb->option,
+		net_addr_ntop(AF_INET, cb->data, buf, sizeof(buf)));
+}
+
+
+
+static void start_dhcpv4_client(struct net_if *iface, void *user_data)
+{
+	ARG_UNUSED(user_data);
+
+	LOG_INF("Start on %s: index=%d", net_if_get_device(iface)->name,
+		net_if_get_by_iface(iface));
+	net_dhcpv4_start(iface);
+}
 
 void init_networking(void *p1, void *p2, void *p3) {
+	LOG_INF("init networking");
+	net_mgmt_init_event_callback(&mgmt_cb, handler,
+				     NET_EVENT_IPV4_ADDR_ADD);
+	net_mgmt_add_event_callback(&mgmt_cb);
 
+	net_dhcpv4_init_option_callback(&dhcp_cb, option_handler,
+					DHCP_OPTION_NTP, ntp_server,
+					sizeof(ntp_server));
+
+	int e = net_dhcpv4_add_option_callback(&dhcp_cb);
+	if (e) {
+		LOG_ERR("add option failed with %d", e);
+	}
+	net_if_foreach(start_dhcpv4_client, NULL);
 }
 
 void networking_thread(void *p1, void *p2, void *p3) {
@@ -46,20 +134,20 @@ void networking_thread(void *p1, void *p2, void *p3) {
 	serv = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (serv < 0) {
 		LOG_ERR("error: socket: %d\n", errno);
-		exit(1);
+		return;
 	}
 
 	if (bind(serv, (struct sockaddr *)&bind_addr, sizeof(bind_addr)) < 0) {
 		LOG_ERR("error: bind: %d\n", errno);
-		exit(1);
+		return;
 	}
 
 	if (listen(serv, 5) < 0) {
 		LOG_ERR("error: listen: %d\n", errno);
-		exit(1);
+		return;
 	}
 
-	LOG_INF("Waiting for connection on port %d...\n", BIND_PORT);
+	LOG_INF("Waiting for connection on port %d...", BIND_PORT);
 
     while(true) {
         struct sockaddr_in client_addr;
@@ -69,19 +157,21 @@ void networking_thread(void *p1, void *p2, void *p3) {
         int client = accept(serv, (struct sockaddr *)&client_addr,
                     &client_addr_len);
         if (client < 0) {
-            printk("Error in accept: %d - continuing\n", errno);
+            LOG_ERR("Error in accept: %d - continuing", errno);
             k_msleep(100);
             continue;
         }
         inet_ntop(client_addr.sin_family, &client_addr.sin_addr,
             addr_str, sizeof(addr_str));
-        printk("Connection from %s\n", addr_str);
+        LOG_INF("Connection from %s\n", addr_str);
 
+		struct protocol_state protocol_state;
+		reset_protocol_state(&protocol_state);
         while (1) {
 			ssize_t r;
-			char c;
+			uint8_t rx_buf[1024];
 
-			r = recv(client, &c, 1, 0);
+			r = recv(client, rx_buf, sizeof(rx_buf), 0);
 			if (r < 0) {
 				if (errno == EAGAIN || errno == EINTR) {
 					continue;
@@ -91,14 +181,27 @@ void networking_thread(void *p1, void *p2, void *p3) {
 					"socket\n", errno);
 				goto close_client;
 			}
+
+			for (int i = 0; i < r; i++) {
+				surtrpb_SurtrMessage msg;
+				int ret = parse_protocol_message(&protocol_state, rx_buf[i], &msg);
+				if (ret < 0) {
+					LOG_WRN("Got invalid byte");
+					reset_protocol_state(&protocol_state);
+				}
+				if (ret > 0) {
+					LOG_INF("received msg");
+					// do somethin
+				}
+			}
 		}
 
 		close_client:
 		ret = close(client);
 		if (ret == 0) {
-			printk("Connection from %s closed\n", addr_str);
+			LOG_INF("Connection from %s closed\n", addr_str);
 		} else {
-			printk("Got error %d while closing the "
+			LOG_ERR("Got error %d while closing the "
 			       "socket\n", errno);
 
 		}

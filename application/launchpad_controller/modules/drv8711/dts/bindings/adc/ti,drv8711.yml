@@ -16,7 +16,7 @@ properties:
   #   required: true
   #   description: |
   #     Stepper Current Limit (in mA) adjusted for Pololu 36v4 Drivers
-  step-pin:
-    type: phandle
-  dir-pin:
-    type: phandle
+  step-gpios:
+    type: phandle-array
+  dir-gpios:
+    type: phandle-array

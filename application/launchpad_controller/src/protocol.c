@@ -2,22 +2,22 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/crc.h>
 
-#include "schema.pb.h"
-#include "pb_encode.h"
-#include "pb_decode.h"
+#include <pb_encode.h>
+#include <pb_decode.h>
+#include <src/surtr.pb.h>
 
 #include "protocol.h"
 
 #define PROTOCOL_CRC_POLY 0x1011
 #define PROTOCOL_CRC_SEED 0x35
 
-#define PROTOCOL_ALIGNMENT_BYTE '\x33'
+#define PROTOCOL_ALIGNMENT_BYTE '\x34'
 
-LOG_MODULE_REGISTER(protocol, CONFIG_PROTOCOL_LOG_LEVEL);
+LOG_MODULE_REGISTER(protocol, CONFIG_APP_LOG_LEVEL);
 
-int encode_fjalar_message(fjalar_message_t *msg, uint8_t *buf) {
+int encode_surtr_message(surtrpb_SurtrMessage *msg, uint8_t *buf) {
     pb_ostream_t stream = pb_ostream_from_buffer(buf + PROTOCOL_HEADER_SIZE, PROTOCOL_BUFFER_LENGTH);
-    if (pb_encode(&stream, FJALAR_MESSAGE_FIELDS, msg) != true) {
+    if (pb_encode(&stream, surtrpb_SurtrMessage_fields, msg) != true) {
         LOG_ERR("Could not encode message");
         return -1;
     };
@@ -40,7 +40,7 @@ void reset_protocol_state(struct protocol_state *ps) {
 // 1 received message
 // 0 no message
 // -1 an error reset the state machine
-int parse_fjalar_message(struct protocol_state *ps, uint8_t byte, fjalar_message_t *message) {
+int parse_protocol_message(struct protocol_state *ps, uint8_t byte, surtrpb_SurtrMessage *message) {
     switch(ps->state) {
         case PROT_STATE_ALIGNMENT:
             LOG_DBG("Alignment byte: %d", byte);
@@ -88,9 +88,9 @@ int parse_fjalar_message(struct protocol_state *ps, uint8_t byte, fjalar_message
             pb_istream_t istream = pb_istream_from_buffer(ps->data, ps->length);
             if (tmp_crc == ps->crc) {
                 int ret;
-                ret = pb_decode(&istream, FJALAR_MESSAGE_FIELDS, message);
+                ret = pb_decode(&istream, surtrpb_SurtrMessage_fields, message);
                 if (ret != true) {
-                    LOG_ERR("Could not deocde fjalar message");
+                    LOG_ERR("Could not deocde surtr message");
                     return -1;
                 }
                 return 1;
