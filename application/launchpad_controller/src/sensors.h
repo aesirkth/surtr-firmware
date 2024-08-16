@@ -1,0 +1,1 @@
+void init_sensors(void *p1, void *p2, void *p3);

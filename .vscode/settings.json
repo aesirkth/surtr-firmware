@@ -1,9 +1,3 @@
 {
-    "cmake.sourceDirectory": "/Users/chaitanya/Documents/AESIR.nosync/launchpad-controller-v2-firmware/application/launchpad_controller",
-    "devicetree.defaultBoard": "nucleo_h723zg",
-    "files.associations": {
-        "log.h": "c",
-        "input.h": "c",
-        "ad4111.h": "c"
-    }
+    "cortex-debug.gdbPath": "gdb-multiarch"
 }

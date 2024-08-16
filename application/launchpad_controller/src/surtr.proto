@@ -1,0 +1,54 @@
+//Message format for transmitting commands
+// from UI application to LC.
+syntax = "proto3";
+
+package commands;
+
+message SwitchControl {
+    bool state = 1;
+}
+
+message StepperControl {
+    sint32 motorDelta = 1;
+}
+
+message Ignition {
+    int32 password = 1;
+}
+
+message CurrentMeasurement {
+    int32 id = 1;
+    float current = 2;
+}
+
+message VoltageMeasurement {
+    int32 id = 1;
+    float voltage = 2;
+}
+
+message SurtrMessage {
+    optional int64 us_since_boot = 1;
+    oneof command {
+        SwitchControl s1 = 2;
+        SwitchControl s2 = 3;
+        SwitchControl s3 = 4;
+        SwitchControl s4 = 5;
+        SwitchControl s5 = 6;
+        SwitchControl s6 = 7;
+        SwitchControl s7 = 8;
+        SwitchControl s8 = 9;
+        SwitchControl led1 = 10;
+        SwitchControl led2 = 11;
+        SwitchControl led3 = 12;
+        SwitchControl led4 = 13;
+        StepperControl stepper1 = 14;
+        StepperControl stepper2 = 15;
+        StepperControl stepper3 = 16;
+
+        CurrentMeasurement current_measurement = 17;
+        VoltageMeasurement voltage_measurement = 18;
+
+        // combination command for ignition sequence
+        Ignition ignition = 19;
+    };
+}

@@ -23,24 +23,24 @@
                         "label": "ITM0",
                         "port": 0,
                         "encoding": "utf8",
-                        "showOnStartup": false
+                        "showOnStartup": true
                     },
 
-                    // {
-                    //     "type": "console",
-                    //     "label": "ITM1",
-                    //     "port": 1,
-                    //     "encoding": "utf8",
-                    //     "showOnStartup": false
-                    // },
+                    {
+                        "type": "console",
+                        "label": "ITM1",
+                        "port": 1,
+                        "encoding": "utf8",
+                        "showOnStartup": true
+                    },
 
-                    // {
-                    //     "type": "console",
-                    //     "label": "ITM24",
-                    //     "port": 24,
-                    //     "encoding": "utf8",
-                    //     "showOnStartup": true
-                    // }
+                    {
+                        "type": "console",
+                        "label": "ITM24",
+                        "port": 24,
+                        "encoding": "utf8",
+                        "showOnStartup": true
+                    }
                 ]
             },
             // "overrideLaunchCommands": [
@@ -64,7 +64,7 @@
             "type": "gdb",
             "request": "attach",
             "stopAtEntry": true,
-            "gdbpath": "arm-none-eabi-gdb",
+            "gdbpath": "gdb-multiarch",
             "name": "Fjalar Debug",
             "executable": "${workspaceRoot}/build/zephyr/zephyr.elf",
             "target": ":3333",

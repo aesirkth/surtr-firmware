@@ -1,0 +1,11 @@
+{
+    "configurations": [
+        {
+            "name": "bro_what",
+            "cStandard": "gnu11",
+            "cppStandard": "gnu++14",
+            "compileCommands": "${workspaceFolder}/build/compile_commands.json"
+        }
+    ],
+    "version": 4
+}

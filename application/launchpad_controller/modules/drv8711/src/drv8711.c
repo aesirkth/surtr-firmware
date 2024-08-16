@@ -24,9 +24,9 @@ struct drv8711_data {
     uint16_t ctrl;
     uint16_t torque;
     uint16_t off;
-    uint16_t blank; 
-    uint16_t decay; 
-    uint16_t stall; 
+    uint16_t blank;
+    uint16_t decay;
+    uint16_t stall;
     uint16_t drive;
 };
 
@@ -124,7 +124,7 @@ void applyDefaultSettingsDrv8711(const struct device* dev) {
     drv8711_write_reg(dev, STALL, stall);
     drv8711_write_reg(dev, DRIVE, drive);
 
-    const struct drv8711_data* data = dev->data;
+    struct drv8711_data* data = dev->data;
     data->ctrl = ctrl;
     data->torque = torque;
     data->off = off;
@@ -132,7 +132,6 @@ void applyDefaultSettingsDrv8711(const struct device* dev) {
     data->decay = decay;
     data->stall = stall;
     data->drive = drive;
-
 }
 
 // return false if the registers on DRV8711 don't match what's currently in RAM
@@ -147,12 +146,12 @@ bool verifySettingsDrv8711(const struct device* dev) {
     uint16_t drive = drv8711_read_reg(dev, DRIVE);
 
     return (
-        (ctrl == data->ctrl) && 
-        (torque == data->torque) && 
-        (off == data->off) && 
-        (blank == data->blank) && 
-        (decay == data->decay) && 
-        (stall == data->stall) && 
+        (ctrl == data->ctrl) &&
+        (torque == data->torque) &&
+        (off == data->off) &&
+        (blank == data->blank) &&
+        (decay == data->decay) &&
+        (stall == data->stall) &&
         (drive == data->drive)
     );
 }
@@ -178,7 +177,7 @@ void rotateDrv8711(const struct device* dev, int steps, uint8_t direction) {
 
 void setStepResolutionDrv8711(const struct device* dev, MicrostepResolution resolution) {
     struct drv8711_data* data = dev->data;
-    uint16_t ctrl = data->ctrl;/
+    uint16_t ctrl = data->ctrl;
     ctrl = (ctrl & 0xff87) | ((resolution & 0x0f) << 3);
     drv8711_write_reg(dev, CTRL, ctrl);
     data->ctrl = ctrl;
@@ -189,7 +188,7 @@ void setCurrentMilliamps36v4(const struct device* dev, uint16_t current) {
     uint16_t ctrl = data->ctrl;
     uint16_t torque = data->torque;
 
-    // TODO: Figure out if this is the best way to avoid overwriting the ctrl and torque registers 
+    // TODO: Figure out if this is the best way to avoid overwriting the ctrl and torque registers
     // uint16_t ctrl = drv8711_read_reg(dev, CTRL);
     // uint16_t torque = drv8711_read_reg(dev, CTRL);
 
@@ -245,7 +244,7 @@ void setDecayModeDrv8711(const struct device* dev, DecayMode decayMode) {
         drv8711_init,                                                           \
         NULL,                                                                   \
         drv8711_data_##inst,                                                    \
-        drv8711_config_##inst,                                                  \ 
+        drv8711_config_##inst,                                                  \
         POST_KERNEL, CONFIG_APPLICATION_INIT_PRIORITY,                          \
         &drv8711_driver_api                                                     \
         );

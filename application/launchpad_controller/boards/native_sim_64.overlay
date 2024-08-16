@@ -1,3 +1,82 @@
 / {
+    aliases {
+		// led0 = &nled24_1;
+		led0 = &nled24_2;
+		// led0 = &sw1;
+		// led1 = &nled24_2;
+		led1 = &nled24_1;
+		switch1 = &sw1;
+		switch2 = &sw2;
+		switch3 = &sw3;
+		switch4 = &sw4;
+		xadc1 = &ext_adc1;
+		xadc2 = &ext_adc2;
+	};
 
+    ext_adc1: ext_adc1 {
+        compatible = "zephyr,adc-emul";
+        status = "okay";
+
+        #io-channel-cells = <1>;
+    };
+
+    ext_adc2: ext_adc2 {
+        compatible = "zephyr,adc-emul";
+        status = "okay";
+
+        #io-channel-cells = <1>;
+    };
+
+    leds: leds {
+		compatible = "gpio-leds";
+		nled24_2: led_0 {
+			gpios = <&gpio0 1 GPIO_ACTIVE_HIGH>;
+			label = "User LD2, nLED24_2";
+		};
+
+		nled24_1: led_1 {
+			gpios = <&gpio0 0 GPIO_ACTIVE_HIGH>;
+			label = "User LD1, nLED24_1";
+		};
+
+		sw1: sw_1 {
+			gpios = <&gpio0 6 GPIO_ACTIVE_HIGH>;
+			label = "Switch 1";
+		};
+
+		sw2: sw_2 {
+			gpios = <&gpio0 13 GPIO_ACTIVE_HIGH>;
+			label = "Switch 2";
+		};
+
+		sw3: sw_3 {
+			gpios = <&gpio0 14 GPIO_ACTIVE_HIGH>;
+			label = "Switch 3";
+		};
+
+		sw4: sw_4 {
+			gpios = <&gpio0 15 GPIO_ACTIVE_HIGH>;
+			label = "Switch 4";
+		};
+
+		sw5: sw_5 {
+			gpios = <&gpio0 8 GPIO_ACTIVE_HIGH>;
+			label = "Switch 5";
+		};
+
+		sw6: sw_6 {
+			gpios = <&gpio0 9 GPIO_ACTIVE_HIGH>;
+			label = "Switch 6";
+		};
+
+		sw7: sw_7 {
+			gpios = <&gpio0 10 GPIO_ACTIVE_HIGH>;
+			label = "Switch 7";
+		};
+
+		sw8: sw_8 {
+			gpios = <&gpio0 11 GPIO_ACTIVE_HIGH>;
+			label = "Switch 8";
+		};
+	};
 };
