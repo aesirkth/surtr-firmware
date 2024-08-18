@@ -4,15 +4,14 @@
 #include <ad4111.h>
 
 #include "sensors.h"
+#include "protocol.h"
+#include "networking.h"
 
 LOG_MODULE_REGISTER(sensors, CONFIG_APP_LOG_LEVEL);
 
 void sensors_thread(void *p1, void *p2, void *p3);
 
 K_THREAD_DEFINE(sensors_tid, 4096, sensors_thread, NULL, NULL, NULL, 5, 0, 0);
-
-volatile _Atomic int32_t adc_channels1[12];
-volatile _Atomic int32_t adc_channels2[12];
 
 void sensors_thread(void *p1, void *p2, void *p3) {
     const struct device *ext_adc1 = DEVICE_DT_GET(DT_ALIAS(xadc1));
@@ -30,18 +29,32 @@ void sensors_thread(void *p1, void *p2, void *p3) {
         LOG_INF("ext_adc2 ready");
     }
 
+    const struct device *adcs[2] = {ext_adc1, ext_adc2};
     while (true) {
-        for (int i = 0; i < 12; i++) {
-            int32_t value;
-            ad4111_read_channel(ext_adc1, i, &value);
-            adc_channels1[i] = value;
+        for (int i = 0; i < 2; i++) {
+            int32_t adc_values[12];
+            surtrpb_SurtrMessage msg;
+            msg.has_us_since_boot = true;
+            msg.us_since_boot = k_uptime_get() * 1000;
+            msg.which_command = surtrpb_SurtrMessage_adc_measurements_tag;
+            for (int j = 0; j < 12; j++) {
+                ad4111_read_channel(adcs[i], j, &adc_values[j]);
+            }
+            msg.command.adc_measurements.id = i;
+            msg.command.adc_measurements.value0 = adc_values[0];
+            msg.command.adc_measurements.value1 = adc_values[1];
+            msg.command.adc_measurements.value2 = adc_values[2];
+            msg.command.adc_measurements.value3 = adc_values[3];
+            msg.command.adc_measurements.value4 = adc_values[4];
+            msg.command.adc_measurements.value5 = adc_values[5];
+            msg.command.adc_measurements.value6 = adc_values[6];
+            msg.command.adc_measurements.value7 = adc_values[7];
+            msg.command.adc_measurements.value8 = adc_values[8];
+            msg.command.adc_measurements.value9 = adc_values[9];
+            msg.command.adc_measurements.value10 = adc_values[10];
+            msg.command.adc_measurements.value11 = adc_values[11];
+            send_msg(&msg);
+            k_msleep(5);
         }
-
-        for (int i = 0; i < 12; i++) {
-            int32_t value;
-            ad4111_read_channel(ext_adc2, i, &value);
-            adc_channels2[i] = value;
-        }
-        k_msleep(1);
     }
 }

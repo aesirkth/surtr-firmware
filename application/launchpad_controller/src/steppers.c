@@ -6,8 +6,8 @@
 
 LOG_MODULE_REGISTER(stepper, CONFIG_APP_LOG_LEVEL);
 
-#define PULSE_LENGTH_US 1000
-#define PULSE_EVERY_US 2000
+#define PULSE_LENGTH_US 250
+#define PULSE_EVERY_US 500
 
 _Atomic int32_t target_motor1 = 0;
 _Atomic int32_t target_motor2 = 0;
@@ -17,7 +17,7 @@ _Atomic int32_t current_motor2 = 0;
 
 void steppers_thread(void *p1, void *p2, void *p3);
 
-// K_THREAD_DEFINE(steppers_tid, 4096, steppers_thread, NULL, NULL, NULL, 1, 0, 2000);
+K_THREAD_DEFINE(steppers_tid, 4096, steppers_thread, NULL, NULL, NULL, 1, 0, 2000);
 
 void steppers_thread(void *p1, void *p2, void *p3) {
     const struct device *motor1 = DEVICE_DT_GET(DT_ALIAS(motor1));

@@ -9,6 +9,10 @@
 		switch2 = &sw2;
 		switch3 = &sw3;
 		switch4 = &sw4;
+		switch5 = &sw5;
+		switch6 = &sw6;
+		switch7 = &sw7;
+		switch8 = &sw8;
 		xadc1 = &ext_adc1;
 		xadc2 = &ext_adc2;
 		motor1 = &motor1;

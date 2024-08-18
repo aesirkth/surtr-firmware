@@ -161,7 +161,7 @@ void networking_thread(void *p1, void *p2, void *p3) {
         }
         inet_ntop(client_addr.sin_family, &client_addr.sin_addr,
             addr_str, sizeof(addr_str));
-        LOG_INF("Connection from %s\n", addr_str);
+        LOG_INF("Connection from %s", addr_str);
 
 		struct protocol_state protocol_state;
 		reset_protocol_state(&protocol_state);
@@ -170,13 +170,13 @@ void networking_thread(void *p1, void *p2, void *p3) {
 			uint8_t rx_buf[1024];
 
 			r = recv(client_socket, rx_buf, sizeof(rx_buf), 0);
+			LOG_DBG("recv returned %d", r);
 			if (r < 0) {
 				if (errno == EAGAIN || errno == EINTR) {
 					continue;
 				}
 
-				printk("Got error %d when receiving from "
-					"socket\n", errno);
+				LOG_WRN("Got error %d when receiving from socket", errno);
 				goto close_client;
 			}
 
@@ -189,7 +189,8 @@ void networking_thread(void *p1, void *p2, void *p3) {
 				}
 				if (ret > 0) {
 					LOG_INF("received msg");
-					// do somethin
+					handle_message(&msg);
+					reset_protocol_state(&protocol_state);
 				}
 			}
 		}
@@ -215,7 +216,7 @@ void sender_thread(void *p1, void *p2, void *p3) {
 			if (client_socket == -1) {
 				continue;
 			}
-			LOG_INF("Sending msg");
+			LOG_DBG("Sending msg");
 			uint8_t tx_buf[PROTOCOL_BUFFER_LENGTH];
 			int len = encode_surtr_message(&msg, tx_buf);
 			int sent = 0;
@@ -225,8 +226,14 @@ void sender_thread(void *p1, void *p2, void *p3) {
 					break;
 				}
 				sent += ret;
-				k_msleep(1);
 			}
 		}
+	}
+}
+
+void send_msg(surtrpb_SurtrMessage *msg) {
+	int ret = k_msgq_put(&network_msgq, msg, K_NO_WAIT);
+	if (ret) {
+		LOG_WRN("Couldn't put message (code %d)", ret);
 	}
 }

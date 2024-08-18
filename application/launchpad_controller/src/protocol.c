@@ -7,6 +7,9 @@
 #include <src/surtr.pb.h>
 
 #include "protocol.h"
+#include "ignition.h"
+#include "actuation.h"
+#include "steppers.h"
 
 #define PROTOCOL_CRC_POLY 0x1011
 #define PROTOCOL_CRC_SEED 0x35
@@ -104,4 +107,37 @@ int parse_protocol_message(struct protocol_state *ps, uint8_t byte, surtrpb_Surt
 
 int get_encoded_message_length(uint8_t *buf) {
     return buf[1] + PROTOCOL_FOOTER_SIZE + PROTOCOL_FOOTER_SIZE;
+}
+
+void handle_message(surtrpb_SurtrMessage *msg) {
+    switch (msg->which_command) {
+        case surtrpb_SurtrMessage_sw_ctrl_tag:
+            LOG_INF("Handling switch control msg");
+            toggle_switch(msg->command.sw_ctrl.id, msg->command.sw_ctrl.state);
+            break;
+
+        case surtrpb_SurtrMessage_ignition_tag:
+            LOG_INF("Handling ignition msg");
+            if (msg->command.ignition.password == 43) {
+                start_ignition_sequence();
+            }
+            break;
+
+        case surtrpb_SurtrMessage_step_ctrl_tag:
+            LOG_INF("Handling step control msg");
+            switch (msg->command.step_ctrl.id) {
+                case 1:
+                    target_motor1 += msg->command.step_ctrl.motorDelta;
+                    break;
+                case 2:
+                    target_motor2 += msg->command.step_ctrl.motorDelta;
+                    break;
+                default:
+                    LOG_WRN("got invalid stepper id");
+            }
+            break;
+
+        default:
+            LOG_WRN("got unknown message");
+    }
 }

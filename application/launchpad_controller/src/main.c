@@ -34,7 +34,7 @@ int main(void)
 	init_actuation(NULL, NULL, NULL);
     init_networking(NULL, NULL, NULL);
 	while (1) {
-        LOG_INF("Logging data...");
-        k_sleep(K_MSEC(1000));
+        LOG_INF("I'm alive");
+        k_sleep(K_MSEC(4000));
     }
 }

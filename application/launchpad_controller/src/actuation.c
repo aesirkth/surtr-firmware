@@ -3,6 +3,10 @@
 #include <zephyr/logging/log.h>
 #include <drv8711.h>
 
+#include "protocol.h"
+#include "networking.h"
+#include "steppers.h"
+
 LOG_MODULE_REGISTER(actuation, CONFIG_APP_LOG_LEVEL);
 
 static const struct gpio_dt_spec leds[] = {
@@ -16,6 +20,10 @@ static const struct gpio_dt_spec switches[] = {
     GPIO_DT_SPEC_GET(DT_ALIAS(switch2), gpios),
     GPIO_DT_SPEC_GET(DT_ALIAS(switch3), gpios),
     GPIO_DT_SPEC_GET(DT_ALIAS(switch4), gpios),
+    GPIO_DT_SPEC_GET(DT_ALIAS(switch5), gpios),
+    GPIO_DT_SPEC_GET(DT_ALIAS(switch6), gpios),
+    GPIO_DT_SPEC_GET(DT_ALIAS(switch7), gpios),
+    GPIO_DT_SPEC_GET(DT_ALIAS(switch8), gpios),
 };
 #define NUM_SWITCHES (sizeof(switches) / sizeof(switches[0]))
 
@@ -59,7 +67,7 @@ void toggle_switch(int id, bool on) {
         LOG_WRN("tried to toggle invalid switch");
         return;
     }
-    gpio_pin_set_dt(&leds[id - 1], on);
+    gpio_pin_set_dt(&switches[id - 1], on);
     switch_states[id - 1] = on;
 }
 
@@ -70,7 +78,23 @@ void blinker_thread(void *p1, void *p2, void *p3) {
             gpio_pin_set_dt(&leds[i], ping);
         }
         ping = !ping;
-        LOG_ERR("hej");
-        k_msleep(1000);
+        k_msleep(100);
+
+        surtrpb_SurtrMessage msg;
+        msg.has_us_since_boot = true;
+        msg.us_since_boot = k_uptime_get() * 1000; // epic
+        msg.which_command = surtrpb_SurtrMessage_switch_states_tag;
+        msg.command.switch_states.sw1 = switch_states[0];
+        msg.command.switch_states.sw2 = switch_states[1];
+        msg.command.switch_states.sw3 = switch_states[2];
+        msg.command.switch_states.sw4 = switch_states[3];
+        msg.command.switch_states.sw5 = switch_states[4];
+        msg.command.switch_states.sw6 = switch_states[5];
+        msg.command.switch_states.sw7 = switch_states[6];
+        msg.command.switch_states.sw8 = switch_states[7];
+        msg.command.switch_states.step1 = current_motor1;
+        msg.command.switch_states.step2 = current_motor2;
+
+        send_msg(&msg);
     }
 }

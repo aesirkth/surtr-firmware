@@ -14,10 +14,6 @@ message StepperControl {
     sint32 motorDelta = 2;
 }
 
-message Ignition {
-    int32 password = 1;
-}
-
 message SwitchStates {
     bool sw1 = 1;
     bool sw2 = 2;
@@ -27,6 +23,8 @@ message SwitchStates {
     bool sw6 = 6;
     bool sw7 = 7;
     bool sw8 = 8;
+    int32 step1 = 9;
+    int32 step2 = 10;
 }
 
 message ADCMeasurements {
@@ -43,6 +41,10 @@ message ADCMeasurements {
     int32 value9 = 11;
     int32 value10 = 12;
     int32 value11 = 13;
+}
+
+message Ignition {
+    int32 password = 1;
 }
 
 message SurtrMessage {

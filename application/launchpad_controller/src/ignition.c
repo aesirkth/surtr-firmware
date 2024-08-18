@@ -13,7 +13,7 @@ K_THREAD_DEFINE(ignition_tid, 4096, ignition_thread, NULL, NULL, NULL, 2, 0, 200
 
 #define PYRO_SWITCH 4
 #define VALVE_PARTIAL_OPENING 100
-#define VALVE_FULL_OPENING 500
+#define VALVE_FULL_OPENING 250
 
 volatile bool should_start_ignition_sequence;
 
@@ -34,13 +34,14 @@ void ignition_thread(void *p1, void *p2, void *p3) {
         k_msleep(200);
         target_motor2 = VALVE_PARTIAL_OPENING;
         LOG_INF("motor2 partial opening");
-        k_msleep(300);
+        k_msleep(500);
         toggle_switch(PYRO_SWITCH, true);
         LOG_INF("enabling pyro");
-        k_msleep(100);
+        k_msleep(200);
         target_motor1 = VALVE_FULL_OPENING;
         target_motor2 = VALVE_FULL_OPENING;
         LOG_INF("Valves fully opening");
+        k_msleep(3000);
         toggle_switch(PYRO_SWITCH, false);
     }
 }
