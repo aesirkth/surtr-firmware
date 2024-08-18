@@ -18,6 +18,7 @@ K_THREAD_DEFINE(ignition_tid, 4096, ignition_thread, NULL, NULL, NULL, 2, 0, 200
 volatile bool should_start_ignition_sequence;
 
 void start_ignition_sequence() {
+    LOG_WRN("Starting ignition!");
     should_start_ignition_sequence = true;
 }
 

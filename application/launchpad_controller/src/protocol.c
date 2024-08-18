@@ -118,8 +118,10 @@ void handle_message(surtrpb_SurtrMessage *msg) {
 
         case surtrpb_SurtrMessage_ignition_tag:
             LOG_INF("Handling ignition msg");
-            if (msg->command.ignition.password == 43) {
+            if (msg->command.ignition.password == 42) {
                 start_ignition_sequence();
+            } else {
+                LOG_WRN("Got incorrect password");
             }
             break;
 
