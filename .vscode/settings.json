@@ -11,6 +11,7 @@
         "ad4111.h": "c",
         "ad4111_driver.h": "c",
         "stdatomic.h": "c",
-        "atomic": "c"
+        "atomic": "c",
+        "gpio.h": "c"
     }
 }

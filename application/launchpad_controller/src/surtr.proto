@@ -18,9 +18,31 @@ message Ignition {
     int32 password = 1;
 }
 
-message ADCMeasurement {
+message SwitchStates {
+    bool sw1 = 1;
+    bool sw2 = 2;
+    bool sw3 = 3;
+    bool sw4 = 4;
+    bool sw5 = 5;
+    bool sw6 = 6;
+    bool sw7 = 7;
+    bool sw8 = 8;
+}
+
+message ADCMeasurements {
     int32 id = 1;
-    int32 value = 2;
+    int32 value0 = 2;
+    int32 value1 = 3;
+    int32 value2 = 4;
+    int32 value3 = 5;
+    int32 value4 = 6;
+    int32 value5 = 7;
+    int32 value6 = 8;
+    int32 value7 = 9;
+    int32 value8 = 10;
+    int32 value9 = 11;
+    int32 value10 = 12;
+    int32 value11 = 13;
 }
 
 message SurtrMessage {
@@ -28,7 +50,8 @@ message SurtrMessage {
     oneof command {
         SwitchControl sw_ctrl = 2;
         StepperControl step_ctrl = 3;
-        ADCMeasurement adc_measurement = 4;
+        ADCMeasurements adc_measurements = 4;
         Ignition ignition = 5;
+        SwitchStates switch_states = 6;
     };
 }

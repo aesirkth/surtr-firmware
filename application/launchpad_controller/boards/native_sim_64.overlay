@@ -11,6 +11,8 @@
 		switch4 = &sw4;
 		xadc1 = &ext_adc1;
 		xadc2 = &ext_adc2;
+		motor1 = &motor1;
+		motor2 = &motor2;
 	};
 
     ext_adc1: ext_adc1 {
@@ -88,6 +90,34 @@
 		sw8: sw_8 {
 			gpios = <&gpio0 11 GPIO_ACTIVE_HIGH>;
 			label = "Switch 8";
+		};
+	};
+
+	stepctrls: stepper_controls {
+		compatible = "gpio-leds";
+		step1_dir: stepper1_direction {
+			gpios = <&gpio0 6 GPIO_ACTIVE_HIGH>;
+			label = "Stepper Motor 1 Direction Pin";
+		};
+		step2_dir: stepper2_direction {
+			gpios = <&gpio0 15 GPIO_ACTIVE_HIGH>;
+			label = "Stepper Motor 2 Direction Pin";
+		};
+		step3_dir: stepper3_direction {
+			gpios = <&gpio0 4 GPIO_ACTIVE_HIGH>;
+			label = "Stepper Motor 3 Direction Pin";
+		};
+		step1_ctrl: stepper1_control {
+			gpios = <&gpio0 5 GPIO_ACTIVE_HIGH>;
+			label = "Stepper Motor 1 Control Pin";
+		};
+		step2_ctrl: stepper2_control {
+			gpios = <&gpio0 14 GPIO_ACTIVE_HIGH>;
+			label = "Stepper Motor 2 Control Pin";
+		};
+		step3_ctrl: stepper3_control {
+			gpios = <&gpio0 3 GPIO_ACTIVE_HIGH>;
+			label = "Stepper Motor 3 Control Pin";
 		};
 	};
 };

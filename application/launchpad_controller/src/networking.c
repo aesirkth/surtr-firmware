@@ -27,19 +27,17 @@
 LOG_MODULE_REGISTER(networking, CONFIG_APP_LOG_LEVEL);
 
 void networking_thread(void *p1, void *p2, void *p3);
-
+void sender_thread(void *p1, void *p2, void *p3);
 
 
 K_MSGQ_DEFINE(network_msgq, sizeof(surtrpb_SurtrMessage), 64, 4);
 
 K_THREAD_DEFINE(networking_tid, 4096, networking_thread, NULL, NULL, NULL, 5, 0, 1000);
-
-
-
-
-
+K_THREAD_DEFINE(sender_tid, 4096, sender_thread, NULL, NULL, NULL, 5, 0, 1000);
 
 #define DHCP_OPTION_NTP (42)
+
+int volatile client_socket = -1;
 
 static uint8_t ntp_server[4];
 
@@ -154,9 +152,9 @@ void networking_thread(void *p1, void *p2, void *p3) {
         socklen_t client_addr_len = sizeof(client_addr);
         char addr_str[32];
 
-        int client = accept(serv, (struct sockaddr *)&client_addr,
+        client_socket = accept(serv, (struct sockaddr *)&client_addr,
                     &client_addr_len);
-        if (client < 0) {
+        if (client_socket < 0) {
             LOG_ERR("Error in accept: %d - continuing", errno);
             k_msleep(100);
             continue;
@@ -171,7 +169,7 @@ void networking_thread(void *p1, void *p2, void *p3) {
 			ssize_t r;
 			uint8_t rx_buf[1024];
 
-			r = recv(client, rx_buf, sizeof(rx_buf), 0);
+			r = recv(client_socket, rx_buf, sizeof(rx_buf), 0);
 			if (r < 0) {
 				if (errno == EAGAIN || errno == EINTR) {
 					continue;
@@ -197,13 +195,38 @@ void networking_thread(void *p1, void *p2, void *p3) {
 		}
 
 		close_client:
-		ret = close(client);
+		ret = close(client_socket);
+		client_socket = -1;
 		if (ret == 0) {
 			LOG_INF("Connection from %s closed\n", addr_str);
 		} else {
 			LOG_ERR("Got error %d while closing the "
 			       "socket\n", errno);
 
+		}
+	}
+}
+
+void sender_thread(void *p1, void *p2, void *p3) {
+	while (true) {
+		surtrpb_SurtrMessage msg;
+		int ret = k_msgq_get(&network_msgq, &msg, K_FOREVER);
+		if (ret == 0) {
+			if (client_socket == -1) {
+				continue;
+			}
+			LOG_INF("Sending msg");
+			uint8_t tx_buf[PROTOCOL_BUFFER_LENGTH];
+			int len = encode_surtr_message(&msg, tx_buf);
+			int sent = 0;
+			while (sent < len) {
+				ret = send(client_socket, tx_buf + sent, len - sent, 0);
+				if (ret <= 0) {
+					break;
+				}
+				sent += ret;
+				k_msleep(1);
+			}
 		}
 	}
 }

@@ -21,4 +21,6 @@ target_sources(app PRIVATE
     src/sensors.c
     src/actuation.c
     src/protocol.c
+    src/steppers.c
+    src/ignition.c
 )
