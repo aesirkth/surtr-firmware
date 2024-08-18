@@ -1,0 +1,24 @@
+config DRV8711
+	bool "DRV8711 stepper driver"
+	default y
+	depends on DT_HAS_TI_DRV8711_ENABLED
+	select SPI
+	help
+		Enable DRV8711 driver.
+
+config DRV8711_DUMMY
+	bool "DRV8711 stepper dummy driver"
+	default y
+	depends on DT_HAS_TI_DRV8711_DUMMY_ENABLED
+	help
+		Enable dummy DRV8711 driver.
+
+config DRV8711_LOG_LEVEL
+    int "Application sensors log level"
+    default 0 if DRV8711_LOG_LEVEL_OFF
+    default 1 if DRV8711_LOG_LEVEL_ERR
+    default 2 if DRV8711_LOG_LEVEL_WRN
+    default 3 if DRV8711_LOG_LEVEL_INF
+    default 4 if DRV8711_LOG_LEVEL_DBG
+    default 2
+    depends on LOG

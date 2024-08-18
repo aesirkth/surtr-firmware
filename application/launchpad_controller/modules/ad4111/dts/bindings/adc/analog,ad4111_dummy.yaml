@@ -1,0 +1,9 @@
+# Bindings for AD4111 Analog to Digital Converter (ADC)
+# SPDX-License-Identifier: MIT
+# Author: Love Mitteregger
+# Date: 2024-06-12
+
+description: Analog to Digital Converter (ADC) driver
+
+compatible: "analog,ad4111-dummy"
+

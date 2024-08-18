@@ -908,7 +908,5 @@ int32_t AD717X_remove(ad717x_dev *dev)
 
 	ret = no_os_spi_remove(dev->spi_desc);
 
-	no_os_free(dev);
-
 	return ret;
 }

@@ -4,6 +4,13 @@
         "pb.h": "c",
         "surtr.pb.h": "c",
         "input.h": "c",
-        "drv8711.h": "c"
+        "drv8711.h": "c",
+        "no_os_spi.h": "c",
+        "ad411x_regs.h": "c",
+        "ad717x.h": "c",
+        "ad4111.h": "c",
+        "ad4111_driver.h": "c",
+        "stdatomic.h": "c",
+        "atomic": "c"
     }
 }

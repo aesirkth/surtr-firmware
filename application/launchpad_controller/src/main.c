@@ -31,12 +31,10 @@ LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL);
 
 int main(void)
 {
-	LOG_INF("SWO logging enabled on STM32!");
-
 	init_actuation(NULL, NULL, NULL);
     init_networking(NULL, NULL, NULL);
-	// while (1) {
-    //     LOG_INF("Logging data...");
-    //     k_sleep(K_MSEC(1000));
-    // }
+	while (1) {
+        LOG_INF("Logging data...");
+        k_sleep(K_MSEC(1000));
+    }
 }

@@ -1,0 +1,4 @@
+description: Analog to Digital Converter (ADC) driver
+
+compatible: "ti,drv8711-dummy"
+

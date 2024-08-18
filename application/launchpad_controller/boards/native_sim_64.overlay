@@ -14,18 +14,29 @@
 	};
 
     ext_adc1: ext_adc1 {
-        compatible = "zephyr,adc-emul";
+        compatible = "analog,ad4111-dummy";
         status = "okay";
-		nchannels = <4>;
-        #io-channel-cells = <1>;
     };
 
     ext_adc2: ext_adc2 {
-        compatible = "zephyr,adc-emul";
+        compatible = "analog,ad4111-dummy";
         status = "okay";
-		nchannels = <4>;
-        #io-channel-cells = <1>;
     };
+
+	motor1: motor1 {
+		compatible = "ti,drv8711-dummy";
+		status = "okay";
+	};
+
+	motor2: motor2 {
+		compatible = "ti,drv8711-dummy";
+		status = "okay";
+	};
+
+	motor3: motor3 {
+		compatible = "ti,drv8711-dummy";
+		status = "okay";
+	};
 
     leds: leds {
 		compatible = "gpio-leds";

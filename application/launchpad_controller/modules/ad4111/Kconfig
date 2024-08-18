@@ -1,0 +1,14 @@
+config AD4111
+	bool "AD4111 ADC"
+	default y
+	depends on DT_HAS_ANALOG_AD4111_ENABLED
+	select SPI
+	help
+		Enable AD4111 ADC driver.
+
+config AD4111_DUMMY
+	bool "AD4111 ADC Dummy driver"
+	default y
+	depends on DT_HAS_ANALOG_AD4111_DUMMY_ENABLED
+	help
+		Enable AD4111 ADC dummy driver.

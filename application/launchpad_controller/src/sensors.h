@@ -1,1 +1,5 @@
-void init_sensors(void *p1, void *p2, void *p3);
+#include <stdatomic.h>
+#include <stdint.h>
+
+extern volatile _Atomic int32_t adc_channels1[12];
+extern volatile _Atomic int32_t adc_channels2[12];

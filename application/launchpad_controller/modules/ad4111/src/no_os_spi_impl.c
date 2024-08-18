@@ -40,8 +40,12 @@
 /***************************** Include Files **********************************/
 /******************************************************************************/
 
-#include "no_os_spi.h"
+#include "no_os/no_os_spi.h"
+#include "no_os/no_os_util.h"
+#include "ad4111.h"
+#include "ad4111_driver.h"
 
+#include <zephyr/drivers/spi.h>
 /******************************************************************************/
 /************************ Functions Definitions *******************************/
 /******************************************************************************/
@@ -52,7 +56,7 @@
  * @param param - The structure that contains the SPI parameters.
  * @return 0 in case of success, -1 otherwise.
  */
-int32_t generic_spi_init(struct no_os_spi_desc **desc,
+int32_t no_os_spi_init(struct no_os_spi_desc **desc,
 			 const struct no_os_spi_init_param *param)
 {
 	NO_OS_UNUSED_PARAM(desc);
@@ -66,7 +70,7 @@ int32_t generic_spi_init(struct no_os_spi_desc **desc,
  * @param desc - The SPI descriptor.
  * @return 0 in case of success, -1 otherwise.
  */
-int32_t generic_spi_remove(struct no_os_spi_desc *desc)
+int32_t no_os_spi_remove(struct no_os_spi_desc *desc)
 {
 	NO_OS_UNUSED_PARAM(desc);
 
@@ -80,22 +84,42 @@ int32_t generic_spi_remove(struct no_os_spi_desc *desc)
  * @param bytes_number - Number of bytes to write/read.
  * @return 0 in case of success, -1 otherwise.
  */
-int32_t generic_spi_write_and_read(struct no_os_spi_desc *desc,
+int32_t no_os_spi_write_and_read(struct no_os_spi_desc *desc,
 				   uint8_t *data,
 				   uint16_t bytes_number)
 {
 	NO_OS_UNUSED_PARAM(desc);
 	NO_OS_UNUSED_PARAM(data);
 	NO_OS_UNUSED_PARAM(bytes_number);
+	const struct device *dev = desc->extra;
+	const struct ad4111_config *conf = dev->config;
 
+
+	uint8_t tx_buf[bytes_number];
+    struct spi_buf spi_tx_buf = {
+        .buf = tx_buf,
+        .len = bytes_number
+    };
+    struct spi_buf_set spi_tx_buf_set = {
+        .buffers = &spi_tx_buf,
+        .count = 1
+    };
+
+	uint8_t rx_buf[bytes_number];
+    struct spi_buf spi_rx_buf = {
+        .buf = rx_buf,
+        .len = bytes_number
+    };
+    struct spi_buf_set spi_rx_buf_set = {
+        .buffers = &spi_rx_buf,
+        .count = 1
+    };
+
+	memcpy(tx_buf, data, bytes_number);
+	int e = spi_transceive_dt(&conf->spi, &spi_tx_buf_set, &spi_rx_buf_set);
+	memcpy(data, rx_buf, bytes_number);
+	if (e) {
+		return -1;
+	}
 	return 0;
 }
-
-/**
- * @brief Generic platform SPI ops
- */
-const struct no_os_spi_platform_ops generic_spi_ops = {
-	.init = &generic_spi_init,
-	.write_and_read = &generic_spi_write_and_read,
-	.remove = &generic_spi_remove
-};
