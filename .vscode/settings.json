@@ -13,6 +13,7 @@
         "stdatomic.h": "c",
         "atomic": "c",
         "gpio.h": "c",
-        "networking.h": "c"
+        "networking.h": "c",
+        "kernel.h": "c"
     }
 }

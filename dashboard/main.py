@@ -95,7 +95,7 @@ status_label.grid(row=0, column=2, padx=5)
 
 time = TimeLastValue(root, "time: ", parser.data["sw1"])
 
-time.grid(row=0, column=0)
+time.grid(row=0, column=0, columnspan=2)
 pressure_panel.grid(row=1, column=0, padx=30, pady=10)
 switch_panel.grid(row=1, column=1, padx=30, pady=10)
 send_panel.grid(row=2, column=0, columnspan=2, pady=20)

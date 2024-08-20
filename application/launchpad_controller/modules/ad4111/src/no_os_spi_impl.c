@@ -59,9 +59,9 @@
 int32_t no_os_spi_init(struct no_os_spi_desc **desc,
 			 const struct no_os_spi_init_param *param)
 {
-	NO_OS_UNUSED_PARAM(desc);
-	NO_OS_UNUSED_PARAM(param);
-
+	struct no_os_spi_desc *bajs = malloc(sizeof(struct no_os_spi_desc));
+	bajs->extra = param->extra;
+	*desc = bajs;
 	return 0;
 }
 
@@ -72,8 +72,7 @@ int32_t no_os_spi_init(struct no_os_spi_desc **desc,
  */
 int32_t no_os_spi_remove(struct no_os_spi_desc *desc)
 {
-	NO_OS_UNUSED_PARAM(desc);
-
+	free(desc);
 	return 0;
 }
 

@@ -31,6 +31,8 @@ LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL);
 
 int main(void)
 {
+    printk("=====================Booting=====================");
+
 	init_actuation(NULL, NULL, NULL);
     init_networking(NULL, NULL, NULL);
 	while (1) {

@@ -52,16 +52,12 @@ int drv8711_driver_set_decay_mode(const struct device* dev, Drv8711DecayMode_t d
 
 struct drv8711_config {
     struct spi_dt_spec spi;
-    struct gpio_dt_spec cs_gpio;
-    uint32_t spi_max_frequency;
 };
 
 // TODO: think about casting address enum to uint8_t
 int drv8711_driver_write_reg(const struct device* dev, Drv8711Reg address, uint16_t value) {
-    const struct drv8711_config* config = dev->config;
-    // const struct drv8711_data* data = dev->data;
+	const struct drv8711_config *conf = dev->config;
 
-    const struct spi_dt_spec drv8711_spi_dt_spec = config->spi;
     // const struct device* spi = drv8711_spi_dt_spec.bus;
     // const struct spi_config* cfg = &(drv8711_spi_dt_spec.config);
 
@@ -79,7 +75,8 @@ int drv8711_driver_write_reg(const struct device* dev, Drv8711Reg address, uint1
     tx_buf[1] = value & 0xFF;
 
     // spi_write(spi, cfg, &spi_tx_buf_set);
-    return spi_write_dt(&drv8711_spi_dt_spec, &spi_tx_buf_set);
+    int ret = spi_transceive_dt(&conf->spi, &spi_tx_buf_set, NULL);
+    return ret;
 }
 
 int drv8711_driver_read_reg(const struct device* dev, Drv8711Reg address, uint16_t *value) {
@@ -127,7 +124,13 @@ int drv8711_driver_read_reg(const struct device* dev, Drv8711Reg address, uint16
 
 int drv8711_driver_init(const struct device* dev) {
     int ret = drv8711_driver_apply_default_settings(dev);
-    drv8711_driver_set_current_limit(dev, 3000); // 3A
+    bool good;
+    ret |= drv8711_driver_verify_settings(dev, &good);
+    ret |= drv8711_driver_set_current_limit(dev, 3000); // 3A
+    if (ret || !good) {
+        LOG_ERR("could not init drv");
+        return -1;
+    }
     return ret;
 }
 
@@ -283,13 +286,11 @@ struct drv8711_driver_api drv8711_api = {
             SPI_OP_MODE_MASTER | SPI_TRANSFER_MSB | SPI_WORD_SET(8),            \
             DRV8711_SPI_CS_HOLD_DELAY                                           \
         ),                                                                      \
-        .cs_gpio = SPI_CS_GPIOS_DT_SPEC_INST_GET(inst),                         \
-        .spi_max_frequency = DT_INST_PROP(inst, spi_max_frequency),             \
     };                                                                          \
                                                                                 \
     DEVICE_DT_INST_DEFINE(                                                      \
         inst,                                                                   \
-        drv8711_driver_init,                                                           \
+        drv8711_driver_init,                                                    \
         NULL,                                                                   \
         &drv8711_data_##inst,                                                   \
         &drv8711_config_##inst,                                                 \

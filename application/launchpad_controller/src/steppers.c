@@ -1,6 +1,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/logging/log.h>
+#include <drv8711.h>
 
 #include "steppers.h"
 
@@ -35,6 +36,14 @@ void steppers_thread(void *p1, void *p2, void *p3) {
         LOG_ERR("Motor2 not initialized");
     }
 
+    drv8711_set_current_limit(motor1, 3000);
+    drv8711_set_current_limit(motor2, 3000);
+
+    drv8711_set_microstep(motor1, MICROSTEP1);
+    drv8711_set_microstep(motor2, MICROSTEP1);
+
+    drv8711_enable(motor1, true);
+    drv8711_enable(motor2, true);
     const struct gpio_dt_spec motor1_dir_dt = GPIO_DT_SPEC_GET(DT_NODELABEL(step1_dir), gpios);
     const struct gpio_dt_spec motor2_dir_dt = GPIO_DT_SPEC_GET(DT_NODELABEL(step2_dir), gpios);
     gpio_pin_configure_dt(&motor1_dir_dt, GPIO_OUTPUT_ACTIVE);

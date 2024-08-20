@@ -5,18 +5,26 @@
 		// led0 = &sw1;
 		// led1 = &nled24_2;
 		led1 = &nled24_1;
-		switch1 = &sw1;
-		switch2 = &sw2;
-		switch3 = &sw3;
-		switch4 = &sw4;
-		switch5 = &sw5;
-		switch6 = &sw6;
-		switch7 = &sw7;
-		switch8 = &sw8;
+		switch1 = &sw4;
+		switch2 = &sw5;
+		switch3 = &sw6;
+		switch4 = &sw7;
+		switch5 = &sw8;
+		switch6 = &sw1;
+		switch7 = &sw3;
+		switch8 = &sw2;
 		xadc1 = &ext_adc1;
 		xadc2 = &ext_adc2;
-		motor1 = &motor1;
-		motor2 = &motor2;
+
+		motor1 = &motor2;
+		motor2 = &motor1;
+		motor3 = &motor3;
+		step1-ctrl = &step2_ctrl;
+		step1-dir = &step2_dir;
+		step2-ctrl = &step1_ctrl;
+		step2-dir = &step1_dir;
+		step3-ctrl = &step3_ctrl;
+		step3-dir = &step3_dir;
 	};
 
     ext_adc1: ext_adc1 {

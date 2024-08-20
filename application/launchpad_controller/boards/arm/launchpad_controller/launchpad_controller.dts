@@ -18,9 +18,7 @@
 	 compatible = "aesir,surtr";
 
 	 chosen {
-		 zephyr,console = &uart9;
-		 zephyr,shell-uart = &uart9;
-		 zephyr,shell = &uart9;
+		 zephyr,console = &usart6;
 		 zephyr,dtcm = &dtcm;
 		 zephyr,sram = &sram0;
 		 zephyr,flash = &flash0;
@@ -113,25 +111,26 @@
 		// led0 = &sw1;
 		// led1 = &nled24_2;
 		led1 = &nled24_1;
-		switch1 = &sw1;
-		switch2 = &sw2;
-		switch3 = &sw3;
-		switch4 = &sw4;
-		switch5 = &sw5;
-		switch6 = &sw6;
-		switch7 = &sw7;
-		switch8 = &sw8;
+		switch1 = &sw4;
+		switch2 = &sw5;
+		switch3 = &sw6;
+		switch4 = &sw7;
+		switch5 = &sw8;
+		switch6 = &sw1;
+		switch7 = &sw3;
+		switch8 = &sw2;
 		xadc1 = &ext_adc1;
 		xadc2 = &ext_adc2;
-		motor1 = &motor1;
-		motor1-step = &step1_ctrl;
-		motor1-dir = &step1_dir;
-		motor2 = &motor2;
-		motor2-step = &step2_ctrl;
-		motor2-dir = &step2_dir;
+
+		motor1 = &motor2;
+		motor2 = &motor1;
 		motor3 = &motor3;
-		motor3-step = &step3_ctrl;
-		motor3-dir = &step3_dir;
+		step1-ctrl = &step2_ctrl;
+		step1-dir = &step2_dir;
+		step2-ctrl = &step1_ctrl;
+		step2-dir = &step1_dir;
+		step3-ctrl = &step3_ctrl;
+		step3-dir = &step3_dir;
 	};
  };
 
@@ -154,65 +153,34 @@
 	 status = "okay";
  };
 
-//  &clk_lse {
-// 	 status = "disabled";
-//  };
-
-// TRACECLK is probably clocked by div-r, so let's set it to 16 MHz
  &pll {
-	 div-m = <32>;
-	 mul-n = <275>;
-	 div-p = <1>;
-	 div-q = <11>;
-	 div-r = <2>; //32 MHz
-	 clocks = <&clk_hsi>;
-	 status = "okay";
+	div-m = <4>;
+	mul-n = <44>;
+	div-p = <1>;
+	div-q = <4>;
+	div-r = <2>;
+	clocks = <&clk_hse>;
+	status = "okay";
  };
-
-//  &pll2 {
-// 	div-m = <32>;
-// 	mul-n = <275>;
-// 	div-p = <4>;
-// 	div-q = <4>;
-// 	div-r = <2>;
-// 	clocks = <&clk_hsi>;
-// 	status = "okay";
-// };
-
-//  &pll3 {
-// 	div-m = <32>;
-// 	mul-n = <250>;
-// 	div-p = <2>;
-// 	div-q = <4>;
-// 	div-r = <2>;
-// 	clocks = <&clk_hsi>;
-// 	status = "okay";
-// };
 
  &rcc {
-	 clocks = <&pll>;
-	 clock-frequency = <DT_FREQ_M(550)>;
-	 d1cpre = <1>;
-	 hpre = <2>;    /* HCLK: 275   MHz */
-	 d1ppre = <4>;  /* APB1: 137.5 MHz */
-	 d2ppre1 = <4>; /* APB2: 137.5 MHz */
-	 d2ppre2 = <4>; /* APB3: 137.5 MHz */
-	 d3ppre = <2>;  /* APB4: 137.5 MHz */
+	clocks = <&pll>;
+	clock-frequency = <DT_FREQ_M(550)>;
+	d1cpre = <1>;
+	hpre = <2>;    /* HCLK: 275   MHz */
+	d1ppre = <2>;  /* APB1: 137.5 MHz */
+	d2ppre1 = <2>; /* APB2: 137.5 MHz */
+	d2ppre2 = <2>; /* APB3: 137.5 MHz */
+	d3ppre = <2>;  /* APB4: 137.5 MHz */
  };
 
- &uart9 {
-	 pinctrl-0 = <&uart9_tx_pd15 &uart9_rx_pd14>;
-	 pinctrl-names = "default";
-	 current-speed = <115200>;
-	 status = "okay";
+ &usart6 {
+	pinctrl-0 = <&usart6_tx_pg14>;
+	pinctrl-names = "default";
+	current-speed = <115200>;
+	fifo-enable;
+	status = "okay";
  };
-
-//  &usart2 {
-// 	 pinctrl-0 = <&usart2_tx_pd5 &usart2_rx_pd6>;
-// 	 pinctrl-names = "default";
-// 	 current-speed = <115200>;
-// 	 status = "disabled";
-//  };
 
 //  &rtc {
 // 	 clocks = <&rcc STM32_CLOCK_BUS_APB4 0x00010000>,
@@ -230,6 +198,7 @@
 	pinctrl-names = "default";
     cs-gpios = <&gpioe 11 GPIO_ACTIVE_LOW>,
                <&gpioe 12 GPIO_ACTIVE_LOW>;
+	clock-frequency = <10000000>;
 
     ext_adc1: ad4111_d@0 {
 		compatible = "analog,ad4111";
@@ -253,13 +222,13 @@
 	cs-gpios = <&gpiod 0 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>,
 	 <&gpiog 2 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>,
 	 <&gpiod 5 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>;
-	 clock-frequency = <500000>;
+	 clock-frequency = <10000000>;
 
 
 	motor1: spi3@0 {
 		status = "okay";
 		compatible = "ti,drv8711";
-		spi-max-frequency = <500000>;
+		spi-max-frequency = <1000000>;
 		// dir-gpios = <&gpiog 6 GPIO_ACTIVE_HIGH>;
 		// step-gpios = <&gpiog 5 GPIO_ACTIVE_HIGH>;
 		reg = <0>;
@@ -267,15 +236,15 @@
 	motor2: spi3@1 {
 		status = "okay";
 		compatible = "ti,drv8711";
-		spi-max-frequency = <500000>;
+		spi-max-frequency = <1000000>;
 		// dir-gpios = <&gpiod 15 GPIO_ACTIVE_HIGH>;
 		// step-gpios = <&gpiod 14 GPIO_ACTIVE_HIGH>;
 		reg = <1>;
 	};
 	motor3: spi3@2 {
-		status = "okay";
+		status = "disabled";
 		compatible = "ti,drv8711";
-		spi-max-frequency = <500000>;
+		spi-max-frequency = <1000000>;
 		// dir-gpios = <&gpiod 4 GPIO_ACTIVE_HIGH>;
 		// step-gpios = <&gpiod 3 GPIO_ACTIVE_HIGH>;
 		reg = <2>;
