@@ -67,7 +67,7 @@
 		};
 
 		sw7: sw_7 {
-			gpios = <&gpiod 10 GPIO_ACTIVE_HIGH>;
+			gpios = <&gpioc 14 GPIO_ACTIVE_HIGH>;
 			label = "Switch 7";
 		};
 
@@ -177,7 +177,7 @@
  &usart6 {
 	pinctrl-0 = <&usart6_tx_pg14>;
 	pinctrl-names = "default";
-	current-speed = <115200>;
+	current-speed = <1000000>;
 	fifo-enable;
 	status = "okay";
  };
@@ -194,24 +194,24 @@
     // compatible = "zephyr,spi-emul-controller";
     // compatible = "spi-device"
     status = "okay";
-	pinctrl-0 = <&spi1_sck_pa5 &spi1_miso_pa6 &spi1_mosi_pa7>;
+	pinctrl-0 = <&spi1_sck_pg11 &spi1_miso_pg9 &spi1_mosi_pd7>;
 	pinctrl-names = "default";
-    cs-gpios = <&gpioe 11 GPIO_ACTIVE_LOW>,
-               <&gpioe 12 GPIO_ACTIVE_LOW>;
+    cs-gpios = <&gpioe 2 GPIO_ACTIVE_LOW>,
+               <&gpioe 4 GPIO_ACTIVE_LOW>;
 	clock-frequency = <10000000>;
 
-    ext_adc1: ad4111_d@0 {
+    ext_adc1: ad4111@0 {
 		compatible = "analog,ad4111";
         status = "okay";
         reg = <0>;
-        spi-max-frequency = <10000000>;
+        spi-max-frequency = <1000000>;
     };
 
-    ext_adc2: ad4111_d@1 {
+    ext_adc2: ad4111@1 {
 		compatible = "analog,ad4111";
         status = "okay";
         reg = <1>;
-        spi-max-frequency = <10000000>;
+        spi-max-frequency = <1000000>;
     };
 };
 
@@ -273,6 +273,13 @@
 	 };
  };
 
+&pinctrl {
+	rcc_mco_1_pa8_fast: rcc_mco_1_pa8_fast {
+		pinmux = <STM32_PINMUX('A', 8, AF0)>;
+		slew-rate = "very-high-speed";
+	};
+};
+
  &mac {
 	// note that we add the MCO clock pin in this pinctrl-0
 	status = "okay";
@@ -283,7 +290,7 @@
 	&eth_tx_en_pb11
 	&eth_txd0_pg13
 	&eth_txd1_pg12
-	&rcc_mco_1_pa8
+	&rcc_mco_1_pa8_fast
 	>;
 	pinctrl-names = "default";
 };

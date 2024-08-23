@@ -43,7 +43,7 @@ static int ad4111_driver_init(const struct device *dev) {
     struct ad717x_channel_map chan_map[channel_count];
 
     for (int i = 0; i < channel_count; i++) {
-        chan_map[i].channel_enable = 1;
+        chan_map[i].channel_enable = 0;
     }
 
     chan_map[0].analog_inputs.analog_input_pairs = VIN0_VINCOM;
@@ -73,24 +73,26 @@ static int ad4111_driver_init(const struct device *dev) {
     chan_map[11].setup_sel = 1;
 
     struct ad717x_channel_setup chan_setup[2];
-    chan_setup[0].bi_unipolar = false; // unipolar
-    chan_setup[0].input_buff = true;
-    chan_setup[0].ref_buff = false;
+    chan_setup[0].bi_unipolar = false;
+    chan_setup[0].input_buff = false;
+    chan_setup[0].ref_buff = true;
+    chan_setup[0].ref_source = INTERNAL_REF;
 
-    chan_setup[1].bi_unipolar = false; // unipolar
+    chan_setup[1].bi_unipolar = false;
     chan_setup[1].input_buff = false;
-    chan_setup[1].ref_buff = false;
+    chan_setup[1].ref_buff = true;
+    chan_setup[1].ref_source = INTERNAL_REF;
 
     uint32_t pga[2] = {0};
 
     struct ad717x_filtcon filter_conf[2];
     filter_conf[0].enhfilten = false;
     filter_conf[0].oder = sinc5_sinc1; // single cycle
-    filter_conf[0].odr = sps_2957;
+    filter_conf[0].odr = sps_200;
 
     filter_conf[1].enhfilten = false;
     filter_conf[1].oder = sinc5_sinc1; // single cycle
-    filter_conf[1].odr = sps_2957;
+    filter_conf[1].odr = sps_200;
 
     struct no_os_spi_init_param spi;
     spi.extra = (void *) dev; // silence const warning
@@ -100,14 +102,14 @@ static int ad4111_driver_init(const struct device *dev) {
         .regs = ad4111_regs,
         .num_regs = 55, // I mean idk
         .active_device = ID_AD4111,
-        .ref_en = true,
+        .ref_en = false,
         .num_channels = channel_count,
         .num_setups = 2,
         .setups = {},
         .chan_map = {},
         .pga = {},
         .filter_configuration = {},
-        .mode = CONTINUOUS
+        .mode = SINGLE
     };
     memcpy(&param.setups, &chan_setup, sizeof(chan_setup));
     memcpy(&param.chan_map, &chan_map, sizeof(chan_map));

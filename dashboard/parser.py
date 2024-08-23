@@ -116,7 +116,7 @@ class SurtrParser:
                 msg = schema.SurtrMessage()
                 msg.ParseFromString(data)
                 time = msg.us_since_boot / 1e6
-                data = json_format.MessageToDict(msg, including_default_value_fields=True)
+                data = json_format.MessageToDict(msg, always_print_fields_with_no_presence=True)
                 if "adcMeasurements" in data.keys():
                     for field in data["adcMeasurements"].keys():
                         if field == "id":

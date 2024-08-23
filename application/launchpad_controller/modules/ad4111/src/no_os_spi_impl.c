@@ -46,6 +46,10 @@
 #include "ad4111_driver.h"
 
 #include <zephyr/drivers/spi.h>
+#include <zephyr/logging/log.h>
+
+LOG_MODULE_REGISTER(ad4111_spi, CONFIG_SENSOR_LOG_LEVEL);
+
 /******************************************************************************/
 /************************ Functions Definitions *******************************/
 /******************************************************************************/
@@ -117,6 +121,7 @@ int32_t no_os_spi_write_and_read(struct no_os_spi_desc *desc,
 	memcpy(tx_buf, data, bytes_number);
 	int e = spi_transceive_dt(&conf->spi, &spi_tx_buf_set, &spi_rx_buf_set);
 	memcpy(data, rx_buf, bytes_number);
+
 	if (e) {
 		return -1;
 	}
