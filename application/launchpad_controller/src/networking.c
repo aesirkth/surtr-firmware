@@ -13,6 +13,8 @@
 #include <zephyr/net/net_context.h>
 #include <zephyr/net/net_mgmt.h>
 
+#include <zephyr/drivers/uart.h>
+
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -28,10 +30,12 @@ LOG_MODULE_REGISTER(networking, CONFIG_APP_LOG_LEVEL);
 
 void networking_thread(void *p1, void *p2, void *p3);
 void sender_thread(void *p1, void *p2, void *p3);
-
+void uart_thread(void *p1, void *p2, void *p3);
 
 K_MSGQ_DEFINE(network_msgq, sizeof(surtrpb_SurtrMessage), 64, 4);
+K_MSGQ_DEFINE(uart_msgq, sizeof(surtrpb_SurtrMessage), 64, 4);
 
+K_THREAD_DEFINE(uart_tid, 4096, uart_thread, NULL, NULL, NULL, 5, 0, 1000);
 K_THREAD_DEFINE(networking_tid, 4096, networking_thread, NULL, NULL, NULL, 5, 0, 1000);
 K_THREAD_DEFINE(sender_tid, 4096, sender_thread, NULL, NULL, NULL, 5, 0, 1000);
 
@@ -77,6 +81,86 @@ static void handler(struct net_mgmt_event_callback *cb,
 						 buf, sizeof(buf)));
 		LOG_INF("Lease time[%d]: %u seconds", net_if_get_by_iface(iface),
 			iface->config.dhcpv4.lease_time);
+	}
+}
+
+
+
+static struct protocol_state uart_ps;
+
+void uart_cb(const struct device *dev, void *user_data) {
+	LOG_INF("I AM THE CHUNG OF BIG");
+	if (!uart_irq_update(dev)) {
+		return;
+	}
+
+	if (!uart_irq_rx_ready(dev)) {
+		return;
+	}
+
+	while (true) {
+		uint8_t fifo_buf[255];
+		int fifo_len = uart_fifo_read(dev, fifo_buf, sizeof(fifo_buf));
+		if (fifo_len <= 0) {
+			break;
+		}
+
+		for (int i = 0; i < fifo_len; i++) {
+			char byte = fifo_buf[i];
+			surtrpb_SurtrMessage msg;
+			int ret = parse_protocol_message(&uart_ps, byte, &msg);
+			if (ret < 0) {
+				LOG_WRN("Got invalid byte uart");
+				reset_protocol_state(&uart_ps);
+			}
+			if (ret > 0) {
+				LOG_INF("received msg uart");
+				handle_message(&msg);
+				reset_protocol_state(&uart_ps);
+			}
+		}
+	}
+}
+
+void uart_thread(void *p1, void *p2, void *p3) {
+	const struct device *const uart_dev = DEVICE_DT_GET(DT_ALIAS(external_uart));
+    if (!device_is_ready(uart_dev)) {
+		LOG_ERR("external uart is not ready");
+		return;
+	}
+    int ret;
+    struct uart_config uart_config = {
+		.baudrate = 115200,
+		.data_bits = UART_CFG_DATA_BITS_8,
+		.flow_ctrl = UART_CFG_FLOW_CTRL_NONE,
+		.parity = UART_CFG_PARITY_NONE,
+		.stop_bits = UART_CFG_STOP_BITS_1
+	};
+	reset_protocol_state(&uart_ps);
+	ret = uart_configure(uart_dev, &uart_config);
+	if (ret) {
+		LOG_ERR("uart_configure failed");
+	}
+	uart_irq_callback_set(uart_dev, uart_cb);
+	if (ret) {
+		LOG_ERR("uart_irq_callback failed");
+	}
+	uart_irq_rx_enable(uart_dev);
+	if (ret) {
+		LOG_ERR("uart_irq_rx_enable failed");
+	}
+
+	while (true) {
+		surtrpb_SurtrMessage msg;
+		int ret = k_msgq_get(&uart_msgq, &msg, K_FOREVER);
+		if (ret == 0) {
+			LOG_DBG("Sending msg uart");
+			uint8_t tx_buf[PROTOCOL_BUFFER_LENGTH];
+			int len = encode_surtr_message(&msg, tx_buf);
+			for (int i = 0; i < len; i++) {
+				uart_poll_out(uart_dev, tx_buf[i]);
+			}
+		}
 	}
 }
 
@@ -235,5 +319,10 @@ void send_msg(surtrpb_SurtrMessage *msg) {
 	int ret = k_msgq_put(&network_msgq, msg, K_NO_WAIT);
 	if (ret) {
 		LOG_WRN("Couldn't put message (code %d)", ret);
+	}
+
+	ret = k_msgq_put(&uart_msgq, msg, K_NO_WAIT);
+	if (ret) {
+		LOG_WRN("Couldn't put message uart (code %d)", ret);
 	}
 }

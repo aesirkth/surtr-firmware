@@ -9,6 +9,7 @@ import os
 from datetime import datetime
 import re
 import traceback
+import serial
 
 # import hvplot.streamz
 # from streamz.dataframe import DataFrame
@@ -19,23 +20,35 @@ CRC_SEED = 0x35
 
 class SurtrParser:
     def __init__(self, arg):
+        self.stream_is_serial = False
+        self.stream_is_tcp = False
+        self.stream_is_file = False
+
         # Check if the argument is an IP address
         if self._is_ip(arg):
             self.stream = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.stream.connect((arg, 1337))  # Assuming port 1337 for example
             self.stream_is_file = False
+            self.stream_is_tcp = True
+            print("Opened socket connection to", arg)
+        else:
+            # Assume it's a file path
+            if arg.startswith("/dev/"):
+                self.stream = serial.Serial(port=arg, baudrate=115200)
+                self.stream_is_serial = True
+                print("Opened serial", arg)
+            else:
+                self.stream = open(arg, "rb")
+                self.stream_is_file = True
+                print("Opened file", arg)
 
-            # Create a backup file with timestamp
+
+        if not self.stream_is_file:
+                # Create a backup file with timestamp
             os.makedirs("data", exist_ok=True)
             now = datetime.now()
             filename = now.strftime("data_%Y_%m_%d_%H_%M_%S.bin")
             self.backup = open("data/" + filename, "wb")
-            print("Opened socket connection to", arg)
-        else:
-            # Assume it's a file path
-            self.stream = open(arg, "rb")
-            self.stream_is_file = True
-            print("Opened file", arg)
 
         # Initialize other attributes
         self.data = defaultdict(lambda: ([], []))
@@ -58,10 +71,12 @@ class SurtrParser:
                 chunk = self.stream.read(size - len(out))
                 if chunk == b'':  # End of file
                     break
-            else:
+            elif self.stream_is_tcp:
                 chunk = self.stream.recv(size - len(out))
                 if not chunk:  # End of stream or connection closed
                     raise IOError("Connection closed or end of stream reached before reading the requested number of bytes")
+            elif self.stream_is_serial:
+                chunk = self.stream.read(size - len(out))
             out.extend(chunk)
         if len(out) != size:
             raise IOError("Could not read the requested number of bytes")
@@ -78,10 +93,14 @@ class SurtrParser:
                 written = self.stream.write(buf[total_written:])
                 if written == 0:  # Handle the case where write does not write any bytes
                     raise IOError("Write operation did not write any bytes")
-            else:
+            elif self.stream_is_tcp:
                 written = self.stream.send(buf[total_written:])
                 if written == 0:  # Handle the case where send does not send any bytes
                     raise IOError("Send operation did not send any bytes")
+            elif self.stream_is_serial:
+                written = self.stream.write(buf[total_written:])
+                if written == 0:  # Handle the case where write does not write any bytes
+                    raise IOError("Write operation did not write any bytes")
             total_written += written
 
     def __del__(self):
@@ -117,12 +136,19 @@ class SurtrParser:
                 msg.ParseFromString(data)
                 time = msg.us_since_boot / 1e6
                 data = json_format.MessageToDict(msg, always_print_fields_with_no_presence=True)
+                # print(data)
                 if "adcMeasurements" in data.keys():
                     for field in data["adcMeasurements"].keys():
                         if field == "id":
                             continue
                         self.data[field + str(data["adcMeasurements"]["id"])][0].append(time)
-                        self.data[field + str(data["adcMeasurements"]["id"])][1].append(data["adcMeasurements"][field])
+                        value = data["adcMeasurements"][field]
+                        if data["adcMeasurements"]["id"] < 8:
+                            converted = value * 2.5 / ( (1 << 24) * 0.1) * 2# why multiply by 2????
+                        else:
+                            converted = value * 2.5 / ( (1 << 24) * 50) * 2 # why multiply by 2????
+
+                        self.data[field + str(data["adcMeasurements"]["id"])][1].append(converted)
 
                 elif "switchStates" in data.keys():
                     for field in data["switchStates"].keys():

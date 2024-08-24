@@ -43,11 +43,11 @@ void sensors_thread(void *p1, void *p2, void *p3) {
             for (int j = 0; j < 12; j++) {
                 ad4111_read_channel(adcs[i], j, &adc_values[j]);
 
-                if (j < 8) {
-                    LOG_INF("Channel %d: %fV (%d)", j, adc_values[j] * 2.5 / ( (1 << 24) * 50), adc_values[j]);
-                } else {
-                    LOG_INF("Channel %d: %fmA (%d)", j, adc_values[j] * 2.5 / ((1 << 24) * 0.1), adc_values[j]);
-                }
+                // if (j < 8) {
+                //     LOG_INF("Channel %d: %fV (%d)", j, adc_values[j] * 2.5 / ( (1 << 24) * 50) * 1000, adc_values[j]);
+                // } else {
+                //     LOG_INF("Channel %d: %fmA (%d)", j, adc_values[j] * 2.5 / ((1 << 24) * 0.1), adc_values[j]);
+                // }
             }
             msg.command.adc_measurements.id = i;
             msg.command.adc_measurements.value0 = adc_values[0];
@@ -64,7 +64,7 @@ void sensors_thread(void *p1, void *p2, void *p3) {
             msg.command.adc_measurements.value11 = adc_values[11];
 
             send_msg(&msg);
-            k_msleep(1000);
+            k_msleep(20);
         }
 
 

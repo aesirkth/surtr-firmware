@@ -125,6 +125,9 @@
 		motor1 = &motor2;
 		motor2 = &motor1;
 		motor3 = &motor3;
+
+		external-uart = &uart4;
+
 		step1-ctrl = &step2_ctrl;
 		step1-dir = &step2_dir;
 		step2-ctrl = &step1_ctrl;
@@ -182,6 +185,14 @@
 	status = "okay";
  };
 
+ &uart4 {
+	pinctrl-0 = <&uart4_rx_pd0 &uart4_tx_pd1>;
+	pinctrl-names = "default";
+	current-speed = <115200>;
+	fifo-enable;
+	status = "okay";
+ };
+
 //  &rtc {
 // 	 clocks = <&rcc STM32_CLOCK_BUS_APB4 0x00010000>,
 // 		  <&rcc STM32_SRC_LSI RTC_SEL(2)>;
@@ -219,14 +230,15 @@
 	status = "okay";
 	pinctrl-0 = <&spi3_sck_pc10 &spi3_miso_pc11 &spi3_mosi_pc12>;
 	pinctrl-names = "default";
-	cs-gpios = <&gpiod 0 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>,
-	 <&gpiog 2 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>,
-	 <&gpiod 5 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>;
+	cs-gpios = //<&gpiod 0 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>,
+	 	<&gpiog 2 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>,
+	 	<&gpiog 2 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>,
+		<&gpiod 5 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>;
 	 clock-frequency = <10000000>;
 
 
 	motor1: spi3@0 {
-		status = "okay";
+		status = "disabled";
 		compatible = "ti,drv8711";
 		spi-max-frequency = <1000000>;
 		// dir-gpios = <&gpiog 6 GPIO_ACTIVE_HIGH>;

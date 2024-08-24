@@ -102,7 +102,7 @@ static int ad4111_driver_init(const struct device *dev) {
         .regs = ad4111_regs,
         .num_regs = 55, // I mean idk
         .active_device = ID_AD4111,
-        .ref_en = false,
+        .ref_en = true,
         .num_channels = channel_count,
         .num_setups = 2,
         .setups = {},

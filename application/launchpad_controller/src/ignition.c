@@ -23,7 +23,7 @@ K_THREAD_DEFINE(ignition_tid, 4096, ignition_thread, NULL, NULL, NULL, 2, 0, 200
 volatile bool should_start_ignition_sequence;
 
 void start_ignition_sequence() {
-    // LOG_WRN("Starting ignition!");
+    LOG_WRN("Starting ignition!");
     should_start_ignition_sequence = true;
 }
 
@@ -36,6 +36,7 @@ void ignition_thread(void *p1, void *p2, void *p3) {
         should_start_ignition_sequence = false;
 
         target_motor1 += VALVE1_PARTIAL_OPENING;
+        k_msleep(300);
         target_motor2 += VALVE2_PARTIAL_OPENING;
         LOG_INF("motor1 partial opening");
         LOG_INF("motor2 partial opening");

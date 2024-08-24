@@ -51,6 +51,7 @@ int parse_protocol_message(struct protocol_state *ps, uint8_t byte, surtrpb_Surt
                 ps->state = PROT_STATE_LENGTH;
             } else {
                 LOG_WRN("Invalid alignment byte %d", byte);
+                return -1;
             }
             break;
         case PROT_STATE_LENGTH:
