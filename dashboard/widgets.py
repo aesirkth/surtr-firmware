@@ -53,12 +53,13 @@ class GenericGraph():
 #text - displayed before the value
 #value - the TimeSeries that the value will be taken from
 class TextLastValue(tk.Label):
-    def __init__(self, root, text, value, **kwargs):
+    def __init__(self, root, text, value, conversion = lambda x: x, **kwargs):
         self.text = text
         self.stringVar = tk.StringVar()
         self.stringVar.set(text)
         self.value = value
         self.root = root
+        self.conversion = conversion
         self.update()
         super().__init__(root, textvariable = self.stringVar, **kwargs)
 
@@ -67,9 +68,9 @@ class TextLastValue(tk.Label):
         if len(self.value[0]) == 0:
             return
         if type(self.value[1][-1]) == float:
-            self.stringVar.set(self.text + '%.6f' % self.value[1][-1])
+            self.stringVar.set(self.text + '%.6f' % self.conversion(self.value[1][-1]))
         else:
-            self.stringVar.set(self.text + '%s' % self.value[1][-1])
+            self.stringVar.set(self.text + '%s' % self.conversion(self.value[1][-1]))
 
 class TimeLastValue(tk.Label):
     def __init__(self, root, text, value, **kwargs):

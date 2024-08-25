@@ -79,6 +79,7 @@ class SurtrParser:
                 chunk = self.stream.read(size - len(out))
             out.extend(chunk)
         if len(out) != size:
+            time.sleep(1)
             raise IOError("Could not read the requested number of bytes")
 
         if not self.stream_is_file:
@@ -90,9 +91,10 @@ class SurtrParser:
         buf_len = len(buf)
         while total_written < buf_len:
             if self.stream_is_file:
-                written = self.stream.write(buf[total_written:])
-                if written == 0:  # Handle the case where write does not write any bytes
-                    raise IOError("Write operation did not write any bytes")
+                pass
+                # written = self.stream.write(buf[total_written:])
+                # if written == 0:  # Handle the case where write does not write any bytes
+                #     raise IOError("Write operation did not write any bytes")
             elif self.stream_is_tcp:
                 written = self.stream.send(buf[total_written:])
                 if written == 0:  # Handle the case where send does not send any bytes
