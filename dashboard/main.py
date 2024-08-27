@@ -33,14 +33,15 @@ pt1 = TextLastValue(pressure_panel, "pt1: ", parser.data["value40"])
 v_start = 0.9
 v_end = 4.5
 c_start = 4
-c_end = 24
+c_end = 20
 m2 = TextLastValue(pressure_panel, "m2: ", parser.data["value50"], conversion = lambda x: 69 * (x - v_start) / (v_end - v_start))
 m1 = TextLastValue(pressure_panel, "m1: ", parser.data["value60"], conversion = lambda x : 69 * (x - v_start) / (v_end - v_start))
 m3 = TextLastValue(pressure_panel, "m3: ", parser.data["value70"], conversion = lambda x : 69 * (x - v_start) / (v_end - v_start))
+
 e2 = TextLastValue(pressure_panel, "e2: ", parser.data["value80"], conversion = lambda x : 250 * (x - c_start) / (c_end - c_start))
 e1 = TextLastValue(pressure_panel, "e1: ", parser.data["value90"], conversion = lambda x : 250 * (x - c_start) / (c_end - c_start))
-e3 = TextLastValue(pressure_panel, "e3: ", parser.data["value100"], conversion = lambda x : 250 * (x - c_start) / (c_end - c_start))
-e4 = TextLastValue(pressure_panel, "e4: ", parser.data["value110"], conversion = lambda x : 250 * (x - c_start) / (c_end - c_start))
+e3 = TextLastValue(pressure_panel, "e3: ", parser.data["value100"], conversion = lambda x : 100 * (x - c_start) / (c_end - c_start))
+e4 = TextLastValue(pressure_panel, "e4: ", parser.data["value110"], conversion = lambda x : 100 * (x - c_start) / (c_end - c_start))
 
 # m2 = TextLastValue(pressure_panel, "m2: ", parser.data["value50"], conversion = lambda x: x)
 # m1 = TextLastValue(pressure_panel, "m1: ", parser.data["value60"], conversion = lambda x : x)
@@ -113,4 +114,8 @@ pressure_panel.grid(row=1, column=0, padx=30, pady=10)
 switch_panel.grid(row=1, column=1, padx=30, pady=10)
 send_panel.grid(row=2, column=0, columnspan=2, pady=20)
 
-root.mainloop()
+# root.mainloop()
+
+
+time.sleep(3)
+

@@ -23,6 +23,7 @@ class SurtrParser:
         self.stream_is_serial = False
         self.stream_is_tcp = False
         self.stream_is_file = False
+        self.is_finished = False
 
         # Check if the argument is an IP address
         if self._is_ip(arg):
@@ -92,9 +93,6 @@ class SurtrParser:
         while total_written < buf_len:
             if self.stream_is_file:
                 pass
-                # written = self.stream.write(buf[total_written:])
-                # if written == 0:  # Handle the case where write does not write any bytes
-                #     raise IOError("Write operation did not write any bytes")
             elif self.stream_is_tcp:
                 written = self.stream.send(buf[total_written:])
                 if written == 0:  # Handle the case where send does not send any bytes
@@ -156,9 +154,13 @@ class SurtrParser:
                     for field in data["switchStates"].keys():
                         self.data[field][0].append(time)
                         self.data[field][1].append(data["switchStates"][field])
+            except IOError as e:
+                self.is_finished = True
+                break
             except Exception as e:
                 traceback.print_exc()
                 print("shit's fucked yo", e)
+
 
     def _crc16(self, poly, seed, buf):
         crc = seed
@@ -170,6 +172,9 @@ class SurtrParser:
                 else:
                     crc = crc << 1
         return crc & 0xFFFF
+
+    def stopped(self):
+        return self.is_finished
 
     def ignite(self, password):
         msg = schema.SurtrMessage()
