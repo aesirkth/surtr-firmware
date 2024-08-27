@@ -25,22 +25,6 @@
                         "encoding": "utf8",
                         "showOnStartup": true
                     },
-
-                    {
-                        "type": "console",
-                        "label": "ITM1",
-                        "port": 1,
-                        "encoding": "utf8",
-                        "showOnStartup": true
-                    },
-
-                    {
-                        "type": "console",
-                        "label": "ITM24",
-                        "port": 24,
-                        "encoding": "utf8",
-                        "showOnStartup": true
-                    }
                 ]
             },
             // "overrideLaunchCommands": [

@@ -1,4 +1,5 @@
 {
+    // TODO: Disable this selectively on MacOS, which uses arm-none-eabi-gdb instead
     "cortex-debug.gdbPath": "gdb-multiarch",
     "files.associations": {
         "pb.h": "c",
@@ -15,6 +16,7 @@
         "gpio.h": "c",
         "networking.h": "c",
         "kernel.h": "c",
-        "log.h": "c"
+        "log.h": "c",
+        "protocol.h": "c"
     }
 }
