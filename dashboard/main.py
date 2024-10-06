@@ -114,8 +114,8 @@ pressure_panel.grid(row=1, column=0, padx=30, pady=10)
 switch_panel.grid(row=1, column=1, padx=30, pady=10)
 send_panel.grid(row=2, column=0, columnspan=2, pady=20)
 
-# root.mainloop()
+root.mainloop()
 
 
-time.sleep(3)
+# time.sleep(3)
 

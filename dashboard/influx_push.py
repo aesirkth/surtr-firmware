@@ -11,10 +11,10 @@ from tqdm import tqdm
 # Configuration
 timestamp = '2024-08-25 19:25:00'
 url = "http://localhost:8086"
-bucket = "Eitr_HT1"
+bucket = "Eitr_HT2"
 org = "aesir"
 token = os.getenv('INFLUX_TOKEN')  # Ensure this environment variable is set
-
+print(token)
 # init parser
 parser = SurtrParser(arg=sys.argv[1])
 
@@ -56,14 +56,42 @@ base_time = parsed_datetime.timestamp()
 
 bar = tqdm(total=len(parser.data.keys()), desc="Uploading to influx")
 
+v_start = 0.9
+v_end = 4.5
+c_start = 4
+c_end = 20
+
+field_to_name = {
+    "value50": "m2",
+    "value60": "m1",
+    "value70": "m3",
+
+    "value80": "e2",
+    "value90": "e1",
+    "value100": "e3",
+    "value110": "e4",
+}
+
 # Write data to InfluxDB
 for field in parser.data.keys():
     points = []
+    if field in ["value50", "value60", "value70"]:
+        convert = lambda x: 69 * (x - v_start) / (v_end - v_start)
+    elif field in ["value80", "value90"]:
+        convert = lambda x: 250 * (x - c_start) / (c_end - c_start)
+    elif field in ["value100", "value110"]:
+        convert = lambda x: 100 * (x - c_start) / (c_end - c_start)
+    else:
+        convert = lambda x: x
     for i, value in enumerate(parser.data[field][1]):
         time = base_time + parser.data[field][0][i]
-        point = Point(field).field("value", value).time(int(time * 1e9), WritePrecision.NS)
+        new_value = convert(value)
+        new_field = field
+        if field in field_to_name:
+            new_field = field_to_name[field]
+        point = Point(new_field).field("value", new_value).time(int(time * 1e9), WritePrecision.NS)
         points.append(point)
-        print(i)
+        # print(i)
     write_api.write(bucket=bucket, org=org, record=points)
     bar.update(1)
 
