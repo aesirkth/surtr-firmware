@@ -9,9 +9,9 @@ import progressbar
 from tqdm import tqdm
 
 # Configuration
-timestamp = '2024-08-25 19:25:00'
+timestamp = '2024-10-6 16:50:00'
 url = "http://localhost:8086"
-bucket = "Eitr_HT2"
+bucket = "Eitr_HT3"
 org = "aesir"
 token = os.getenv('INFLUX_TOKEN')  # Ensure this environment variable is set
 print(token)
@@ -91,6 +91,11 @@ for field in parser.data.keys():
             new_field = field_to_name[field]
         point = Point(new_field).field("value", new_value).time(int(time * 1e9), WritePrecision.NS)
         points.append(point)
+
+        if new_value != value:
+            point = Point(new_field + "_raw").field("value", value).time(int(time * 1e9), WritePrecision.NS)
+            print(new_field + "_raw")
+            points.append(point)
         # print(i)
     write_api.write(bucket=bucket, org=org, record=points)
     bar.update(1)
