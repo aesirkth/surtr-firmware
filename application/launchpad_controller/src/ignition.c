@@ -44,8 +44,8 @@ void ignition_thread(void *p1, void *p2, void *p3) {
         toggle_switch(PYRO_SWITCH, true);
         LOG_WRN("enabling pyro");
         k_msleep(2500 + 2000 + 1000);
-        target_motor1 += VALVE1_FULL_OPENING - VALVE1_PARTIAL_OPENING;
-        target_motor2 += VALVE2_FULL_OPENING - VALVE2_PARTIAL_OPENING;
+        // target_motor1 += VALVE1_FULL_OPENING - VALVE1_PARTIAL_OPENING;
+        // target_motor2 += VALVE2_FULL_OPENING - VALVE2_PARTIAL_OPENING;
         LOG_INF("Valves fully opening");
         k_msleep(2000);
         toggle_switch(PYRO_SWITCH, false);

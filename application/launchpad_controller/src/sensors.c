@@ -64,7 +64,7 @@ void sensors_thread(void *p1, void *p2, void *p3) {
             msg.command.adc_measurements.value11 = adc_values[11];
 
             send_msg(&msg);
-            k_msleep(20);
+            k_msleep(10);
         }
 
 
