@@ -34,7 +34,7 @@ class SurtrParser:
             print("Opened socket connection to", arg)
         else:
             # Assume it's a file path
-            if arg.startswith("/dev/"):
+            if arg.startswith("/dev/") or arg.startswith("COM"):
                 self.stream = serial.Serial(port=arg, baudrate=115200)
                 self.stream_is_serial = True
                 print("Opened serial", arg)
