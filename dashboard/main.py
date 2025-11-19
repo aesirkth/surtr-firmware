@@ -5,10 +5,26 @@ from widgets import TextLastValue, TimeLastValue
 import tkinter as tk
 from tkinter import font
 import traceback
-parser = SurtrParser(sys.argv[1])
+
+#! The labels should be based on a sensor config file in the future!
+
+#! Right, so this is where we send the messages, which get picked up and decoded by Surtr.
+#! Ideally, we would want a nicer GUI for this, but also an automatic sequence
+#! It looks like the scaffolding is here, so I should be able to easily buld upon it.
+#! Maybe the first test could simply be to call "send_message" from a new button click.
+#! Then, I can try to get that button to trigger a sequence.
+#! Lastly, I can incorporate multiple outputs into this sequence.
+#! The final thing would be to receive messages form the GCS. But honestly, we don't need brage for that (I think)
+#! because there is a transceiver already in the plastic box. But the transceiver should send to GCS, not som laptop (unless we are debugging).
+
+# Initialize the parser with the COM port as an argument.
+if len(sys.argv) > 1: # sys.argv[0] is the path
+    parser = SurtrParser(sys.argv[1])
+else:
+    parser = SurtrParser(None)
 
 root = tk.Tk()
-large_font = font.Font(size=20)
+large_font = font.Font(size=14)
 root.option_add("*Font", large_font)
 
 switch_panel = tk.Frame(root)
@@ -16,105 +32,156 @@ pressure_panel = tk.Frame(root)
 send_panel = tk.Frame(root)
 
 
-switch1 = TextLastValue(switch_panel, "sw1: ", parser.data["sw1"], padx=30, pady=10)
-switch2 = TextLastValue(switch_panel, "sw2: ", parser.data["sw2"], padx=30, pady=10)
-switch3 = TextLastValue(switch_panel, "sw3: ", parser.data["sw3"], padx=30, pady=10)
-switch4 = TextLastValue(switch_panel, "sw4: ", parser.data["sw4"], padx=30, pady=10)
-step1 = TextLastValue(switch_panel, "step1: ", parser.data["step1"], padx=30, pady=10)
-step2 = TextLastValue(switch_panel, "step2: ", parser.data["step2"], padx=30, pady=10)
 
-switch1.grid(row=0,column=0)
-switch2.grid(row=0,column=1)
-switch3.grid(row=1,column=0)
-switch4.grid(row=1,column=1)
-step1.grid(row=2, column=0, columnspan=2)
-step2.grid(row=3, column=0, columnspan=2)
-pt1 = TextLastValue(pressure_panel, "pt1: ", parser.data["value40"])
+# SENSORS
+
+# Wrapper that can handle an unconnected parser
+def get_display_data(parser, id_str, conversion=lambda x: x, unconnected_value = "-"):
+    if parser.connected:
+        try:
+            return conversion(parser.data[id_str][1][-1]) # Take the latest value #! Why the [1] in the middle?
+        except:
+            pass
+    return unconnected_value
+
+# What is "v" and "c" in the following code?
 v_start = 0.9
 v_end = 4.5
 c_start = 4
 c_end = 20
-m2 = TextLastValue(pressure_panel, "m2: ", parser.data["value50"], conversion = lambda x: 69 * (x - v_start) / (v_end - v_start))
-m1 = TextLastValue(pressure_panel, "m1: ", parser.data["value60"], conversion = lambda x : 69 * (x - v_start) / (v_end - v_start))
-m3 = TextLastValue(pressure_panel, "m3: ", parser.data["value70"], conversion = lambda x : 69 * (x - v_start) / (v_end - v_start))
 
-e2 = TextLastValue(pressure_panel, "e2: ", parser.data["value80"], conversion = lambda x : 250 * (x - c_start) / (c_end - c_start))
-e1 = TextLastValue(pressure_panel, "e1: ", parser.data["value90"], conversion = lambda x : 250 * (x - c_start) / (c_end - c_start))
-e3 = TextLastValue(pressure_panel, "e3: ", parser.data["value100"], conversion = lambda x : 100 * (x - c_start) / (c_end - c_start))
-e4 = TextLastValue(pressure_panel, "e4: ", parser.data["value110"], conversion = lambda x : 100 * (x - c_start) / (c_end - c_start))
+status_label = tk.Label(root, text="")
+status_label.grid(row=0, column=2, padx=5, sticky="ew")
 
-# m2 = TextLastValue(pressure_panel, "m2: ", parser.data["value50"], conversion = lambda x: x)
-# m1 = TextLastValue(pressure_panel, "m1: ", parser.data["value60"], conversion = lambda x : x)
-# m3 = TextLastValue(pressure_panel, "m3: ", parser.data["value70"], conversion = lambda x : x)
-# e2 = TextLastValue(pressure_panel, "e2: ", parser.data["value80"], conversion = lambda x : x)
-# e1 = TextLastValue(pressure_panel, "e1: ", parser.data["value90"], conversion = lambda x : x)
-# e3 = TextLastValue(pressure_panel, "e3: ", parser.data["value100"], conversion = lambda x : x)
-# e4 = TextLastValue(pressure_panel, "e4: ", parser.data["value110"], conversion = lambda x : x)
+ADC_label = tk.Label(pressure_panel, text="ADC readings")
+ADC_label.grid(row=0, column=0, columnspan=2, padx=20, pady=10)
+
+ADC1 = TextLastValue(pressure_panel, "1: ", get_display_data(parser, "value10"))
+ADC2 = TextLastValue(pressure_panel, "2: ", get_display_data(parser, "value20"))
+ADC3 = TextLastValue(pressure_panel, "3: ", get_display_data(parser, "value30"))
+ADC4 = TextLastValue(pressure_panel, "4: ", get_display_data(parser, "value40"))
+ADC5 = TextLastValue(pressure_panel, "5: ", get_display_data(parser, "value50", lambda x: 69 * (x - v_start) / (v_end - v_start)))
+ADC6 = TextLastValue(pressure_panel, "6: ", get_display_data(parser, "value60", lambda x : 69 * (x - v_start) / (v_end - v_start)))
+ADC7 = TextLastValue(pressure_panel, "7: ", get_display_data(parser, "value70", lambda x : 69 * (x - v_start) / (v_end - v_start)))
+ADC8 = TextLastValue(pressure_panel, "8: ", get_display_data(parser, "value80", lambda x : 250 * (x - c_start) / (c_end - c_start)))
+ADC9 = TextLastValue(pressure_panel, "9: ", get_display_data(parser, "value90", lambda x : 250 * (x - c_start) / (c_end - c_start)))
+ADC10 = TextLastValue(pressure_panel, "10: ", get_display_data(parser, "value100", lambda x : 100 * (x - c_start) / (c_end - c_start)))
+ADC11 = TextLastValue(pressure_panel, "11: ", get_display_data(parser, "value110", lambda x : 100 * (x - c_start) / (c_end - c_start)))
+
+ADC1.grid(row=1,column=0, padx=20, pady=10, sticky="w")
+ADC2.grid(row=1,column=1, padx=20, pady=10, sticky="w")
+ADC3.grid(row=2,column=0, padx=20, pady=10, sticky="w")
+ADC4.grid(row=2,column=1, padx=20, pady=10, sticky="w")
+ADC5.grid(row=3,column=0, padx=20, pady=10, sticky="w")
+ADC6.grid(row=3,column=1, padx=20, pady=10, sticky="w")
+ADC7.grid(row=4,column=0, padx=20, pady=10, sticky="w")
+ADC8.grid(row=4,column=1, padx=20, pady=10, sticky="w")
+ADC9.grid(row=5,column=0, padx=20, pady=10, sticky="w")
+ADC10.grid(row=5,column=1, padx=20, pady=10, sticky="w")
+ADC11.grid(row=6,column=0, padx=20, pady=10, sticky="w")
+
+# Switch status indicators
+switch_status_frame = tk.LabelFrame(switch_panel, text="Switch States")
+num_switch_status = 8
+for switch_id in range(1, num_switch_status + 1):
+    row = (switch_id - 1) // 2
+    col = (switch_id - 1) % 2
+    label = TextLastValue(
+        switch_status_frame,
+        f"sw{switch_id}: ",
+        get_display_data(parser, f"sw{switch_id}"),
+        padx=20,
+        pady=10
+    )
+    label.grid(row=row, column=col, sticky="w")
+switch_status_frame.grid(row=0, column=0, columnspan=2, sticky="ew")
+
+# Stepper status indicators
+step_status_frame = tk.LabelFrame(switch_panel, text="Stepper States")
+num_step_status = 3
+for step_id in range(1, num_step_status + 1):
+    row = (step_id - 1) // 2
+    col = (step_id - 1) % 2
+    label = TextLastValue(
+        step_status_frame,
+        f"step{step_id}: ",
+        get_display_data(parser, f"step{step_id}"),
+        padx=20,
+        pady=10
+    )
+    label.grid(row=row, column=col, sticky="w")
+step_status_frame.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(10, 0))
 
 
-# pt1.grid(row=0,column=0, padx=20, pady=10)
-m1.grid(row=0,column=0, padx=20, pady=10)
-m2.grid(row=0,column=1, padx=20, pady=10)
-m3.grid(row=1,column=0, padx=20, pady=10)
-e1.grid(row=3,column=0, padx=20, pady=10)
-e2.grid(row=3,column=1, padx=20, pady=10)
-e3.grid(row=4,column=0, padx=20, pady=10)
-e4.grid(row=4,column=1, padx=20, pady=10)
 
-def send_message():
-    user_input = input_field.get()
-    error = False
+# ACTUATION
+
+# Parser command wrapper with error handling
+def execute_parser_command(action):
+    if not parser.connected:
+        status_label.config(text="not connected")
+        return
     try:
-        args = user_input.split(" ")
-        if args[0] == "sw":
-            id = int(args[1])
-            state = False
-            if args[2] == "on":
-                state = True
-            elif args[2] == "off":
-                state = False
-            else:
-                raise Exception()
-            parser.toggle_switch(id, state)
-
-        elif args[0] == "ignition":
-            key = int(args[1])
-            parser.ignite(key)
-
-        elif args[0] == "step":
-            id = int(args[1])
-            delta = int(args[2])
-            parser.motor_step(id, delta)
-        else:
-            error = True
+        action()
     except Exception as e:
         traceback.print_exc()
         print(e)
-        error = True
-
-    if error:
         status_label.config(text="error")
     else:
         status_label.config(text="ok")
-    input_field.delete(0, tk.END)  # Clear the input field after sending
 
-input_field = tk.Entry(send_panel)
-input_field.bind("<Return>", lambda event: send_message())
-send_button = tk.Button(send_panel, text="Send", command=send_message)
-status_label = tk.Label(send_panel, text="")
+def send_switch_command(switch_id, state):
+    execute_parser_command(lambda: parser.toggle_switch(switch_id, state))
 
-input_field.grid(row=0, column=0, padx=5)
-send_button.grid(row=0, column=1, padx=5)
-status_label.grid(row=0, column=2, padx=5)
+def send_ignition_command():
+    # The ignition password is currently hardcoded to 0.
+    execute_parser_command(lambda: parser.ignite(0))
 
-time = TimeLastValue(root, "time: ", parser.data["sw1"])
+def send_step_command(stepper_id, delta):
+    execute_parser_command(lambda: parser.motor_step(stepper_id, int(delta)))
 
-time.grid(row=0, column=0, columnspan=2)
+send_panel.grid_columnconfigure(0, weight=1)
+send_panel.grid_columnconfigure(1, weight=1)
+
+# Switches
+switch_frame = tk.LabelFrame(send_panel, text="Switches")
+num_switches = 8
+switches_per_column = 4
+for switch_id in range(1, num_switches + 1):
+    row = (switch_id - 1) % switches_per_column
+    col = (switch_id - 1) // switches_per_column
+    tk.Label(switch_frame, text=f"SW {switch_id}").grid(row=row, column=col*3+0, padx=5, pady=2, sticky="w")
+    tk.Button(switch_frame, text="On", command=lambda i=switch_id: send_switch_command(i, True)).grid(row=row, column=col*3+1, padx=5, pady=2, sticky="ew")
+    tk.Button(switch_frame, text="Off", command=lambda i=switch_id: send_switch_command(i, False)).grid(row=row, column=col*3+2, padx=5, pady=2, sticky="ew")
+switch_frame.grid(row=0, column=0, sticky="nsew", padx=5, pady=(10, 0))
+
+# Steppers
+step_frame = tk.LabelFrame(send_panel, text="Steppers")
+for step_id in range(1, 4):
+    row = step_id - 1
+    tk.Label(step_frame, text=f"Stepper {step_id}").grid(row=row, column=0, padx=5, pady=4, sticky="w")
+    entry = tk.Entry(step_frame, width=8)
+    entry.grid(row=row, column=1, padx=5, pady=4, sticky="ew")
+    tk.Button(step_frame, text="Send", command=lambda i=step_id, e=entry: send_step_command(i, e.get())).grid(row=row, column=2, padx=5, pady=4, sticky="ew")
+step_frame.grid(row=0, column=1, sticky="nsew", padx=5, pady=(10, 0))
+
+# Ignition
+ignition_frame = tk.LabelFrame(send_panel, text="Ignition")
+tk.Button(ignition_frame, text="Ignite", command=send_ignition_command).pack(fill="x", padx=10, pady=5)
+ignition_frame.grid(row=1, column=0, columnspan=2, sticky="nsew", padx=30, pady=10)
+
+
+
+# MISC
+
+time = TimeLastValue(root, "time: ", get_display_data(parser, "us_since_boot", lambda x: x / 1e6))
+time.grid(row=0, column=0)
+
 pressure_panel.grid(row=1, column=0, padx=30, pady=10)
 switch_panel.grid(row=1, column=1, padx=30, pady=10)
 send_panel.grid(row=2, column=0, columnspan=2, pady=20)
 
-root.mainloop()
+root.mainloop() # GUI main loop.
 
 
 # time.sleep(3)

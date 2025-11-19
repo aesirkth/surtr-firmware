@@ -28,10 +28,17 @@
 
 LOG_MODULE_REGISTER(networking, CONFIG_APP_LOG_LEVEL);
 
+// Define three separate threads for networking.
+// The networking thread is used to receive messages from the UI application.
+// The sender thread is used to send messages to the UI application.
+// The uart thread is used to send messages to the external UART. (!WHY?)
 void networking_thread(void *p1, void *p2, void *p3);
 void sender_thread(void *p1, void *p2, void *p3);
 void uart_thread(void *p1, void *p2, void *p3);
 
+// Define kernel message queues for the threads.
+// This is used for inter-thread communication.
+// It stored the messages sent with protobuf.
 K_MSGQ_DEFINE(network_msgq, sizeof(surtrpb_SurtrMessage), 64, 4);
 K_MSGQ_DEFINE(uart_msgq, sizeof(surtrpb_SurtrMessage), 64, 4);
 
@@ -175,8 +182,6 @@ static void option_handler(struct net_dhcpv4_option_callback *cb,
 		net_addr_ntop(AF_INET, cb->data, buf, sizeof(buf)));
 }
 
-
-
 static void start_dhcpv4_client(struct net_if *iface, void *user_data)
 {
 	ARG_UNUSED(user_data);
@@ -186,44 +191,28 @@ static void start_dhcpv4_client(struct net_if *iface, void *user_data)
 	net_dhcpv4_start(iface);
 }
 
-void init_networking(void *p1, void *p2, void *p3) {
-	LOG_INF("init networking");
-	net_mgmt_init_event_callback(&mgmt_cb, handler,
-				     NET_EVENT_IPV4_ADDR_ADD);
-	net_mgmt_add_event_callback(&mgmt_cb);
-
-	net_dhcpv4_init_option_callback(&dhcp_cb, option_handler,
-					DHCP_OPTION_NTP, ntp_server,
-					sizeof(ntp_server));
-
-	int e = net_dhcpv4_add_option_callback(&dhcp_cb);
-	if (e) {
-		LOG_ERR("add option failed with %d", e);
-	}
-	net_if_foreach(start_dhcpv4_client, NULL);
-}
-
+// Main networking thread, containing the read loop.
 void networking_thread(void *p1, void *p2, void *p3) {
     LOG_INF("Hello networking!");
 
+	// Define a socket for Surtr, the server.
 	int serv, ret;
 	struct sockaddr_in bind_addr = {
 		.sin_family = AF_INET,
 		.sin_addr = { .s_addr = htonl(INADDR_ANY) },
 		.sin_port = htons(BIND_PORT),
 	};
-
 	serv = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (serv < 0) {
 		LOG_ERR("error: socket: %d\n", errno);
 		return;
 	}
-
+	// Bind the socket to the address and port.
 	if (bind(serv, (struct sockaddr *)&bind_addr, sizeof(bind_addr)) < 0) {
 		LOG_ERR("error: bind: %d\n", errno);
 		return;
 	}
-
+	// Start listening for connections.
 	if (listen(serv, 5) < 0) {
 		LOG_ERR("error: listen: %d\n", errno);
 		return;
@@ -231,6 +220,7 @@ void networking_thread(void *p1, void *p2, void *p3) {
 
 	LOG_INF("Waiting for connection on port %d...", BIND_PORT);
 
+	// Connection loop
     while(true) {
         struct sockaddr_in client_addr;
         socklen_t client_addr_len = sizeof(client_addr);
@@ -243,16 +233,23 @@ void networking_thread(void *p1, void *p2, void *p3) {
             k_msleep(100);
             continue;
         }
+
+		// If you reached this part of the code, a client has connected.
+
         inet_ntop(client_addr.sin_family, &client_addr.sin_addr,
             addr_str, sizeof(addr_str));
         LOG_INF("Connection from %s", addr_str);
 
+		// Define a protocol state for the client.
 		struct protocol_state protocol_state;
 		reset_protocol_state(&protocol_state);
+
+		// Main loop for connected client. Just receives messages.
         while (1) {
 			ssize_t r;
 			uint8_t rx_buf[1024];
 
+			// Receive msg using 'recv' into rx_buf, returning the number of bytes received.
 			r = recv(client_socket, rx_buf, sizeof(rx_buf), 0);
 			LOG_DBG("recv returned %d", r);
 			if (r < 0) {
@@ -264,6 +261,7 @@ void networking_thread(void *p1, void *p2, void *p3) {
 				goto close_client;
 			}
 
+			// Parse the received message by looping through the received bytes.
 			for (int i = 0; i < r; i++) {
 				surtrpb_SurtrMessage msg;
 				int ret = parse_protocol_message(&protocol_state, rx_buf[i], &msg);
@@ -279,6 +277,7 @@ void networking_thread(void *p1, void *p2, void *p3) {
 			}
 		}
 
+		// If the client loop exists, close the connection.
 		close_client:
 		ret = close(client_socket);
 		client_socket = -1;
@@ -292,17 +291,28 @@ void networking_thread(void *p1, void *p2, void *p3) {
 	}
 }
 
+// This thread is an infinity loop, sending messages to the client.
+// It gets the messages from the kernel message queue 'network_msgq', and then sends them to the client.
+// This means that other parts of the code can simply put a message on the queue, and
+// the sender thread will take care of sending it to the client.
+// The p:s are optional parameters, part of Zephyr's thread API.
 void sender_thread(void *p1, void *p2, void *p3) {
 	while (true) {
+		// Get a message from the kernel message queue.
 		surtrpb_SurtrMessage msg;
 		int ret = k_msgq_get(&network_msgq, &msg, K_FOREVER);
+
 		if (ret == 0) {
 			if (client_socket == -1) {
 				continue;
 			}
 			LOG_DBG("Sending msg");
+
+			// Encode the message into a buffer.
 			uint8_t tx_buf[PROTOCOL_BUFFER_LENGTH];
 			int len = encode_surtr_message(&msg, tx_buf);
+			
+			// Send the message to the client carefully, handling partial sends.
 			int sent = 0;
 			while (sent < len) {
 				ret = send(client_socket, tx_buf + sent, len - sent, 0);
@@ -315,6 +325,8 @@ void sender_thread(void *p1, void *p2, void *p3) {
 	}
 }
 
+// Put messages on the kernel message queue.
+// This is, for instance, called by the sensors.c and actuation.c files.
 void send_msg(surtrpb_SurtrMessage *msg) {
 	int ret = k_msgq_put(&network_msgq, msg, K_NO_WAIT);
 	if (ret) {
@@ -325,4 +337,26 @@ void send_msg(surtrpb_SurtrMessage *msg) {
 	if (ret) {
 		LOG_WRN("Couldn't put message uart (code %d)", ret);
 	}
+}
+
+// Setup the networking to use Zephyr's network management API.
+void init_networking(void *p1, void *p2, void *p3) {
+	LOG_INF("init networking");
+	// Setup handler callback for network events.
+	net_mgmt_init_event_callback(&mgmt_cb, handler,
+				     NET_EVENT_IPV4_ADDR_ADD);
+	net_mgmt_add_event_callback(&mgmt_cb); // Register the "handler" function to the network management API.
+
+	// Setup option callback for DHCP.
+	// The options are used to configure the network.
+	net_dhcpv4_init_option_callback(&dhcp_cb, option_handler,
+					DHCP_OPTION_NTP, ntp_server,
+					sizeof(ntp_server));
+	int e = net_dhcpv4_add_option_callback(&dhcp_cb);
+	if (e) {
+		LOG_ERR("add option failed with %d", e);
+	}
+
+	// Start the DHCP client on each network interface.
+	net_if_foreach(start_dhcpv4_client, NULL);
 }

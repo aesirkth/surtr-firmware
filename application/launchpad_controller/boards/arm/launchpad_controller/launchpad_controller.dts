@@ -47,12 +47,12 @@
 		};
 
 		sw3: sw_3 {
-			gpios = <&gpioc 14 GPIO_ACTIVE_HIGH>;
+			gpios = <&gpioc 14 GPIO_ACTIVE_HIGH>; /* DUPLICATE */
 			label = "Switch 3";
 		};
 
 		sw4: sw_4 {
-			gpios = <&gpioc 15 GPIO_ACTIVE_HIGH>;
+			gpios = <&gpioc 15 GPIO_ACTIVE_HIGH>; 
 			label = "Switch 4";
 		};
 
@@ -67,7 +67,7 @@
 		};
 
 		sw7: sw_7 {
-			gpios = <&gpioc 14 GPIO_ACTIVE_HIGH>;
+			gpios = <&gpioc 14 GPIO_ACTIVE_HIGH>; /* DUPLICATE */
 			label = "Switch 7";
 		};
 

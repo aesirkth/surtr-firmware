@@ -53,24 +53,21 @@ class GenericGraph():
 #text - displayed before the value
 #value - the TimeSeries that the value will be taken from
 class TextLastValue(tk.Label):
-    def __init__(self, root, text, value, conversion = lambda x: x, **kwargs):
+    def __init__(self, root, text, value, **kwargs):
         self.text = text
         self.stringVar = tk.StringVar()
         self.stringVar.set(text)
         self.value = value
         self.root = root
-        self.conversion = conversion
         self.update()
         super().__init__(root, textvariable = self.stringVar, **kwargs)
 
     def update(self):
         self.root.after(REFRESH, self.update)
-        if len(self.value[0]) == 0:
-            return
-        if type(self.value[1][-1]) == float:
-            self.stringVar.set(self.text + '%.6f' % self.conversion(self.value[1][-1]))
+        if type(self.value) == float:
+            self.stringVar.set(self.text + '%.6f' % self.value)
         else:
-            self.stringVar.set(self.text + '%s' % self.conversion(self.value[1][-1]))
+            self.stringVar.set(self.text + '%s' % self.value)
 
 class TimeLastValue(tk.Label):
     def __init__(self, root, text, value, **kwargs):
@@ -84,9 +81,10 @@ class TimeLastValue(tk.Label):
 
     def update(self):
         self.root.after(REFRESH, self.update)
-        if len(self.value[0]) == 0:
-            return
-        self.stringVar.set(self.text + '%.2f' % self.value[0][-1])
+        if type(self.value) == float:
+            self.stringVar.set(self.text + '%.2f' % self.value)
+        else:
+            self.stringVar.set(self.text + '%s' % self.value)
 
 
 class ButtonFile(tk.Button):
@@ -122,13 +120,11 @@ class FlashUsed(tk.Label):
         self.stringVar = tk.StringVar()
         self.stringVar.set("flash used:")
         self.root = root
-        self.value = gw.data["flashAddress"]
+        self.value = gw.data["flashAddress"][1][-1]
         self.update()
         super().__init__(root, textvariable = self.stringVar)
 
     def update(self):
         self.root.after(REFRESH, self.update)
-        if len(self.value[1]) == 0:
-            return
         # 128MiBit
-        self.stringVar.set('flash used: %.2f' % (100 * self.value[1][-1] /  16777216) + "%")
+        self.stringVar.set('flash used: %.2f' % (100 * self.value /  16777216) + "%")

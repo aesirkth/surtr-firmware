@@ -10,6 +10,7 @@ from datetime import datetime
 import re
 import traceback
 import serial
+from warnings import warn
 
 # import hvplot.streamz
 # from streamz.dataframe import DataFrame
@@ -20,20 +21,25 @@ CRC_SEED = 0x35
 
 class SurtrParser:
     def __init__(self, arg):
+        self.connected = False
         self.stream_is_serial = False
         self.stream_is_tcp = False
         self.stream_is_file = False
         self.is_finished = False
 
-        # Check if the argument is an IP address
-        if self._is_ip(arg):
+        
+        if not arg:
+           self.stream = None
+           warn("No IP or serial port specified. Was this intentional?")
+           return
+        elif self._is_ip(arg): # Check if the argument is an IP address
             self.stream = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.stream.connect((arg, 1337))  # Assuming port 1337 for example
             self.stream_is_file = False
             self.stream_is_tcp = True
+            self.connected = True
             print("Opened socket connection to", arg)
-        else:
-            # Assume it's a file path
+        else: # Assume it's a file path (or COM port)
             if arg.startswith("/dev/") or arg.startswith("COM"):
                 self.stream = serial.Serial(port=arg, baudrate=115200)
                 self.stream_is_serial = True
@@ -42,10 +48,11 @@ class SurtrParser:
                 self.stream = open(arg, "rb")
                 self.stream_is_file = True
                 print("Opened file", arg)
+            self.connected = True
 
 
         if not self.stream_is_file:
-                # Create a backup file with timestamp
+            # Create a backup file with timestamp
             os.makedirs("data", exist_ok=True)
             now = datetime.now()
             filename = now.strftime("data_%Y_%m_%d_%H_%M_%S.bin")
@@ -115,6 +122,8 @@ class SurtrParser:
         output_buf += bytes([crc & 0x00ff, (crc >> 8) & 0x00ff ])
         self._write(output_buf)
 
+    # Yeah, this reading is not very well implemented.
+    # It assumes a very specific format and can't handle failure
     def _reader_thread(self):
         while True:
             try:

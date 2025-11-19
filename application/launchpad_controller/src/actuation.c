@@ -23,7 +23,7 @@ static const struct gpio_dt_spec switches[] = {
     GPIO_DT_SPEC_GET(DT_ALIAS(switch5), gpios),
     GPIO_DT_SPEC_GET(DT_ALIAS(switch6), gpios),
     GPIO_DT_SPEC_GET(DT_ALIAS(switch7), gpios),
-    GPIO_DT_SPEC_GET(DT_ALIAS(switch8), gpios),
+    GPIO_DT_SPEC_GET(DT_ALIAS(switch8), gpios), // This connects to port 3 on the board, for some reason
 };
 #define NUM_SWITCHES (sizeof(switches) / sizeof(switches[0]))
 
@@ -62,8 +62,10 @@ void init_actuation(void *p1, void *p2, void *p3) {
 
 }
 
+// This toggles one of the switches.
+// Called from protocol.c when the appropriate message is received.
 void toggle_switch(int id, bool on) {
-    if (id >= NUM_SWITCHES) {
+    if (id > NUM_SWITCHES) {
         LOG_WRN("tried to toggle invalid switch");
         return;
     }
@@ -71,6 +73,7 @@ void toggle_switch(int id, bool on) {
     switch_states[id - 1] = on;
 }
 
+// Blinker thread that runs in the background
 void blinker_thread(void *p1, void *p2, void *p3) {
     bool ping = false;
     while (true) {

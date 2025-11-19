@@ -31,7 +31,7 @@ LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL);
 
 int main(void)
 {
-
+    // Start actuation and networking threads. Sensors are started when module is linked.
 	init_actuation(NULL, NULL, NULL);
     init_networking(NULL, NULL, NULL);
 	while (1) {

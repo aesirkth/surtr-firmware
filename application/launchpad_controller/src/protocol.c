@@ -110,7 +110,10 @@ int get_encoded_message_length(uint8_t *buf) {
     return buf[1] + PROTOCOL_FOOTER_SIZE + PROTOCOL_FOOTER_SIZE;
 }
 
+// Connects actuations to the received messages, if they are valid.
 void handle_message(surtrpb_SurtrMessage *msg) {
+    // Switch based on msg "which_command" tag. This is why "which_command" is useful: 
+    // It is needed to convert the message into the correct action!
     switch (msg->which_command) {
         case surtrpb_SurtrMessage_sw_ctrl_tag:
             LOG_INF("Handling switch control msg");
