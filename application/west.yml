@@ -12,7 +12,7 @@ manifest:
     - name: zephyr
       remote: zephyrproject
       # TODO: consider update to f9e3b65d3a9794ee2233aa88172346f887b48d04, will need to change some POSIX API config though.
-      revision: v3.7.0
+      revision: v4.3.0
       import:
         path-prefix: deps
 
