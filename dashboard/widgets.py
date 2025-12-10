@@ -64,10 +64,10 @@ class TextLastValue(tk.Label):
 
     def update(self):
         self.root.after(REFRESH, self.update)
-        if type(self.value) == float:
-            self.stringVar.set(self.text + '%.6f' % self.value)
+        if type(self.value()) == float:
+            self.stringVar.set(self.text + '%.6f' % self.value())
         else:
-            self.stringVar.set(self.text + '%s' % self.value)
+            self.stringVar.set(self.text + '%s' % self.value())
 
 class TimeLastValue(tk.Label):
     def __init__(self, root, text, value, **kwargs):
@@ -81,10 +81,10 @@ class TimeLastValue(tk.Label):
 
     def update(self):
         self.root.after(REFRESH, self.update)
-        if type(self.value) == float:
-            self.stringVar.set(self.text + '%.2f' % self.value)
+        if type(self.value()) == float:
+            self.stringVar.set(self.text + '%.2f' % self.value())
         else:
-            self.stringVar.set(self.text + '%s' % self.value)
+            self.stringVar.set(self.text + '%s' % self.value())
 
 
 class ButtonFile(tk.Button):

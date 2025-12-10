@@ -35,9 +35,9 @@ void sensors_thread(void *p1, void *p2, void *p3) {
     const struct device *adcs[2] = {ext_adc1, ext_adc2};
     while (true) {
         // Loop through the ADCs (only two a.t.m.)
-        for (int i = 0; i < 1; i++) {
+        for (int i = 0; i < 2; i++) {
             if (i == 1) {
-                continue;
+                //continue;
             }
             int32_t adc_values[12];
 

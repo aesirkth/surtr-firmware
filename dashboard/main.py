@@ -28,7 +28,8 @@ large_font = font.Font(size=14)
 root.option_add("*Font", large_font)
 
 switch_panel = tk.Frame(root)
-pressure_panel = tk.Frame(root)
+ADC0_panel = tk.Frame(root)
+ADC1_panel = tk.Frame(root)
 send_panel = tk.Frame(root)
 
 
@@ -53,32 +54,60 @@ c_end = 20
 status_label = tk.Label(root, text="")
 status_label.grid(row=0, column=2, padx=5, sticky="ew")
 
-ADC_label = tk.Label(pressure_panel, text="ADC readings")
-ADC_label.grid(row=0, column=0, columnspan=2, padx=20, pady=10)
+ADC0_label = tk.Label(ADC0_panel, text="ADC readings 1")
+ADC0_label.grid(row=0, column=0, columnspan=2, padx=20, pady=10)
+ADC1_label = tk.Label(ADC1_panel, text="ADC readings 2")
+ADC1_label.grid(row=0, column=0, columnspan=2, padx=20, pady=10)
 
-ADC1 = TextLastValue(pressure_panel, "1: ", get_display_data(parser, "value10"))
-ADC2 = TextLastValue(pressure_panel, "2: ", get_display_data(parser, "value20"))
-ADC3 = TextLastValue(pressure_panel, "3: ", get_display_data(parser, "value30"))
-ADC4 = TextLastValue(pressure_panel, "4: ", get_display_data(parser, "value40"))
-ADC5 = TextLastValue(pressure_panel, "5: ", get_display_data(parser, "value50", lambda x: 69 * (x - v_start) / (v_end - v_start)))
-ADC6 = TextLastValue(pressure_panel, "6: ", get_display_data(parser, "value60", lambda x : 69 * (x - v_start) / (v_end - v_start)))
-ADC7 = TextLastValue(pressure_panel, "7: ", get_display_data(parser, "value70", lambda x : 69 * (x - v_start) / (v_end - v_start)))
-ADC8 = TextLastValue(pressure_panel, "8: ", get_display_data(parser, "value80", lambda x : 250 * (x - c_start) / (c_end - c_start)))
-ADC9 = TextLastValue(pressure_panel, "9: ", get_display_data(parser, "value90", lambda x : 250 * (x - c_start) / (c_end - c_start)))
-ADC10 = TextLastValue(pressure_panel, "10: ", get_display_data(parser, "value100", lambda x : 100 * (x - c_start) / (c_end - c_start)))
-ADC11 = TextLastValue(pressure_panel, "11: ", get_display_data(parser, "value110", lambda x : 100 * (x - c_start) / (c_end - c_start)))
+# First ADC #! What about the zeroth channel?
+ADC10 = TextLastValue(ADC0_panel, "1: ", lambda: get_display_data(parser, "value10", lambda x: 69 * (x - v_start) / (v_end - v_start))) #! I'm guessing these are for the thermocouples
+ADC20 = TextLastValue(ADC0_panel, "2: ", lambda: get_display_data(parser, "value20", lambda x: 69 * (x - v_start) / (v_end - v_start))) #! I'm guessing these are for the thermocouples
+ADC30 = TextLastValue(ADC0_panel, "3: ", lambda: get_display_data(parser, "value30", lambda x: 69 * (x - v_start) / (v_end - v_start))) #! I'm guessing these are for the thermocouples
+ADC40 = TextLastValue(ADC0_panel, "4: ", lambda: get_display_data(parser, "value40", lambda x: 69 * (x - v_start) / (v_end - v_start))) #! I'm guessing these are for the thermocouples
+ADC50 = TextLastValue(ADC0_panel, "5: ", lambda: get_display_data(parser, "value50", lambda x: 69 * (x - v_start) / (v_end - v_start)))
+ADC60 = TextLastValue(ADC0_panel, "6: ", lambda: get_display_data(parser, "value60", lambda x: x))
+ADC70 = TextLastValue(ADC0_panel, "7: ", lambda: get_display_data(parser, "value70", lambda x: 69 * (x - v_start) / (v_end - v_start)))
+ADC80 = TextLastValue(ADC0_panel, "8: ", lambda: get_display_data(parser, "value80", lambda x: 250 * (x - c_start) / (c_end - c_start)))
+ADC90 = TextLastValue(ADC0_panel, "9: ", lambda: get_display_data(parser, "value90", lambda x: 250 * (x - c_start) / (c_end - c_start)))
+ADC100 = TextLastValue(ADC0_panel, "10: ", lambda: get_display_data(parser, "value100", lambda x: 100 * (x - c_start) / (c_end - c_start)))
+ADC110 = TextLastValue(ADC0_panel, "11: ", lambda: get_display_data(parser, "value110", lambda x: 100 * (x - c_start) / (c_end - c_start)))
 
-ADC1.grid(row=1,column=0, padx=20, pady=10, sticky="w")
-ADC2.grid(row=1,column=1, padx=20, pady=10, sticky="w")
-ADC3.grid(row=2,column=0, padx=20, pady=10, sticky="w")
-ADC4.grid(row=2,column=1, padx=20, pady=10, sticky="w")
-ADC5.grid(row=3,column=0, padx=20, pady=10, sticky="w")
-ADC6.grid(row=3,column=1, padx=20, pady=10, sticky="w")
-ADC7.grid(row=4,column=0, padx=20, pady=10, sticky="w")
-ADC8.grid(row=4,column=1, padx=20, pady=10, sticky="w")
-ADC9.grid(row=5,column=0, padx=20, pady=10, sticky="w")
-ADC10.grid(row=5,column=1, padx=20, pady=10, sticky="w")
-ADC11.grid(row=6,column=0, padx=20, pady=10, sticky="w")
+# Second ADC
+ADC11 = TextLastValue(ADC1_panel, "1: ", lambda: get_display_data(parser, "value11", lambda x: 200 * (x - v_start) / (v_end - v_start))) #! I'm guessing these are for the thermocouples
+ADC21 = TextLastValue(ADC1_panel, "2: ", lambda: get_display_data(parser, "value21", lambda x: 200* (x - v_start) / (v_end - v_start))) #! I'm guessing these are for the thermocouples
+ADC31 = TextLastValue(ADC1_panel, "3: ", lambda: get_display_data(parser, "value31", lambda x: 200* (x - v_start) / (v_end - v_start))) #! I'm guessing these are for the thermocouples
+ADC41 = TextLastValue(ADC1_panel, "4: ", lambda: get_display_data(parser, "value41", lambda x: 200* (x - v_start) / (v_end - v_start))) #! I'm guessing these are for the thermocouples
+ADC51 = TextLastValue(ADC1_panel, "5: ", lambda: get_display_data(parser, "value51", lambda x: 69 * (x - v_start) / (v_end - v_start)))
+ADC61 = TextLastValue(ADC1_panel, "6: ", lambda: get_display_data(parser, "value61", lambda x: 69 * (x - v_start) / (v_end - v_start)))
+ADC71 = TextLastValue(ADC1_panel, "7: ", lambda: get_display_data(parser, "value71", lambda x: 69 * (x - v_start) / (v_end - v_start)))
+ADC81 = TextLastValue(ADC1_panel, "8: ", lambda: get_display_data(parser, "value81", lambda x: 250 * (x - c_start) / (c_end - c_start)))
+ADC91 = TextLastValue(ADC1_panel, "9: ", lambda: get_display_data(parser, "value91", lambda x: 250 * (x - c_start) / (c_end - c_start)))
+ADC101 = TextLastValue(ADC1_panel, "10: ", lambda: get_display_data(parser, "value101", lambda x: 100 * (x - c_start) / (c_end - c_start)))
+ADC111 = TextLastValue(ADC1_panel, "11: ", lambda: get_display_data(parser, "value111", lambda x: 100 * (x - c_start) / (c_end - c_start)))
+
+ADC10.grid(row=1,column=0, padx=20, pady=10, sticky="w")
+ADC20.grid(row=1,column=1, padx=20, pady=10, sticky="w")
+ADC30.grid(row=2,column=0, padx=20, pady=10, sticky="w")
+ADC40.grid(row=2,column=1, padx=20, pady=10, sticky="w")
+ADC50.grid(row=3,column=0, padx=20, pady=10, sticky="w")
+ADC60.grid(row=3,column=1, padx=20, pady=10, sticky="w")
+ADC70.grid(row=4,column=0, padx=20, pady=10, sticky="w")
+ADC80.grid(row=4,column=1, padx=20, pady=10, sticky="w")
+ADC90.grid(row=5,column=0, padx=20, pady=10, sticky="w")
+ADC100.grid(row=5,column=1, padx=20, pady=10, sticky="w")
+ADC110.grid(row=6,column=0, padx=20, pady=10, sticky="w")
+
+ADC11.grid(row=1,column=0, padx=20, pady=10, sticky="w")
+ADC21.grid(row=1,column=1, padx=20, pady=10, sticky="w")
+ADC31.grid(row=2,column=0, padx=20, pady=10, sticky="w")
+ADC41.grid(row=2,column=1, padx=20, pady=10, sticky="w")
+ADC51.grid(row=3,column=0, padx=20, pady=10, sticky="w")
+ADC61.grid(row=3,column=1, padx=20, pady=10, sticky="w")
+ADC71.grid(row=4,column=0, padx=20, pady=10, sticky="w")
+ADC81.grid(row=4,column=1, padx=20, pady=10, sticky="w")
+ADC91.grid(row=5,column=0, padx=20, pady=10, sticky="w")
+ADC101.grid(row=5,column=1, padx=20, pady=10, sticky="w")
+ADC111.grid(row=6,column=0, padx=20, pady=10, sticky="w")
 
 # Switch status indicators
 switch_status_frame = tk.LabelFrame(switch_panel, text="Switch States")
@@ -89,7 +118,7 @@ for switch_id in range(1, num_switch_status + 1):
     label = TextLastValue(
         switch_status_frame,
         f"sw{switch_id}: ",
-        get_display_data(parser, f"sw{switch_id}"),
+        lambda: get_display_data(parser, f"sw{switch_id}"),
         padx=20,
         pady=10
     )
@@ -105,7 +134,7 @@ for step_id in range(1, num_step_status + 1):
     label = TextLastValue(
         step_status_frame,
         f"step{step_id}: ",
-        get_display_data(parser, f"step{step_id}"),
+        lambda: get_display_data(parser, f"step{step_id}"),
         padx=20,
         pady=10
     )
@@ -170,19 +199,14 @@ ignition_frame = tk.LabelFrame(send_panel, text="Ignition")
 tk.Button(ignition_frame, text="Ignite", command=send_ignition_command).pack(fill="x", padx=10, pady=5)
 ignition_frame.grid(row=1, column=0, columnspan=2, sticky="nsew", padx=30, pady=10)
 
-
-
-# MISC
-
-time = TimeLastValue(root, "time: ", get_display_data(parser, "us_since_boot", lambda x: x / 1e6))
+time = TimeLastValue(root, "time: ", lambda: get_display_data(parser, "us_since_boot", lambda x: x / 1e6))
 time.grid(row=0, column=0)
 
-pressure_panel.grid(row=1, column=0, padx=30, pady=10)
-switch_panel.grid(row=1, column=1, padx=30, pady=10)
+ADC0_panel.grid(row=1, column=0, padx=30, pady=10)
+ADC1_panel.grid(row=1, column=1, padx=30, pady=10)
+switch_panel.grid(row=1, column=2, padx=30, pady=10)
 send_panel.grid(row=2, column=0, columnspan=2, pady=20)
-
 root.mainloop() # GUI main loop.
 
 
 # time.sleep(3)
-
