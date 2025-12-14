@@ -53,7 +53,7 @@ if 'value110' in data:
     
     time_series = data['value110'][0]
     raw_data = data['value110'][1]
-    data_series = [69 * (x - c_start) / (c_end - c_start) for x in raw_data]
+    data_series = [100 * (x - c_start) / (c_end - c_start) for x in raw_data]
     
     plt.plot(time_series, data_series)
     plt.title('value110', fontsize=16)
