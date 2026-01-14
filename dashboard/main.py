@@ -60,30 +60,30 @@ ADC1_label = tk.Label(ADC1_panel, text="ADC readings 2")
 ADC1_label.grid(row=0, column=0, columnspan=2, padx=20, pady=10)
 
 # First ADC #! What about the zeroth channel?
-ADC10 = TextLastValue(ADC0_panel, "1: ", lambda: get_display_data(parser, "value10", lambda x: 69 * (x - v_start) / (v_end - v_start))) #! I'm guessing these are for the thermocouples
-ADC20 = TextLastValue(ADC0_panel, "2: ", lambda: get_display_data(parser, "value20", lambda x: 69 * (x - v_start) / (v_end - v_start))) #! I'm guessing these are for the thermocouples
-ADC30 = TextLastValue(ADC0_panel, "3: ", lambda: get_display_data(parser, "value30", lambda x: 69 * (x - v_start) / (v_end - v_start))) #! I'm guessing these are for the thermocouples
-ADC40 = TextLastValue(ADC0_panel, "4: ", lambda: get_display_data(parser, "value40", lambda x: 69 * (x - v_start) / (v_end - v_start))) #! I'm guessing these are for the thermocouples
-ADC50 = TextLastValue(ADC0_panel, "5: ", lambda: get_display_data(parser, "value50", lambda x: 69 * (x - v_start) / (v_end - v_start)))
-ADC60 = TextLastValue(ADC0_panel, "6: ", lambda: get_display_data(parser, "value60", lambda x: x))
-ADC70 = TextLastValue(ADC0_panel, "7: ", lambda: get_display_data(parser, "value70", lambda x: 69 * (x - v_start) / (v_end - v_start)))
-ADC80 = TextLastValue(ADC0_panel, "8: ", lambda: get_display_data(parser, "value80", lambda x: 250 * (x - c_start) / (c_end - c_start)))
-ADC90 = TextLastValue(ADC0_panel, "9: ", lambda: get_display_data(parser, "value90", lambda x: 250 * (x - c_start) / (c_end - c_start)))
-ADC100 = TextLastValue(ADC0_panel, "10: ", lambda: get_display_data(parser, "value100", lambda x: 100 * (x - c_start) / (c_end - c_start)))
-ADC110 = TextLastValue(ADC0_panel, "11: ", lambda: get_display_data(parser, "value110", lambda x: 100 * (x - c_start) / (c_end - c_start)))
+ADC10 = TextLastValue(ADC0_panel, "1: ", lambda: get_display_data(parser, "value10", lambda x: 1 * (x - v_start) / (v_end - v_start))) #! I'm guessing these are for the thermocouples
+ADC20 = TextLastValue(ADC0_panel, "2: ", lambda: get_display_data(parser, "value20", lambda x: 1 * (x - v_start) / (v_end - v_start))) #! I'm guessing these are for the thermocouples
+ADC30 = TextLastValue(ADC0_panel, "3: ", lambda: get_display_data(parser, "value30", lambda x: 1 * (x - v_start) / (v_end - v_start))) #! I'm guessing these are for the thermocouples
+ADC40 = TextLastValue(ADC0_panel, "4: ", lambda: get_display_data(parser, "value40", lambda x: 1 * (x - v_start) / (v_end - v_start))) #! I'm guessing these are for the thermocouples
+ADC50 = TextLastValue(ADC0_panel, "5: ", lambda: get_display_data(parser, "value50", lambda x: 1 * (x - v_start) / (v_end - v_start)))
+ADC60 = TextLastValue(ADC0_panel, "6: ", lambda: get_display_data(parser, "value60", lambda x: 1 * (x - v_start) / (v_end - v_start)))
+ADC70 = TextLastValue(ADC0_panel, "7: ", lambda: get_display_data(parser, "value70", lambda x: 1 * (x - v_start) / (v_end - v_start)))
+ADC80 = TextLastValue(ADC0_panel, "8. PT-2 [bar]: ", lambda: get_display_data(parser, "value80", lambda x: 250 * (x - c_start) / (c_end - c_start)))
+ADC90 = TextLastValue(ADC0_panel, "9. PT-1 [bar]: ", lambda: get_display_data(parser, "value90", lambda x: 250 * (x - c_start) / (c_end - c_start)))
+ADC100 = TextLastValue(ADC0_panel, "10. PT-3 [bar]: ", lambda: get_display_data(parser, "value100", lambda x: 100 * (x - c_start) / (c_end - c_start)))
+ADC110 = TextLastValue(ADC0_panel, "11. PT-4 [bar]: ", lambda: get_display_data(parser, "value110", lambda x: 100 * (x - c_start) / (c_end - c_start)))
 
 # Second ADC
-ADC11 = TextLastValue(ADC1_panel, "1: ", lambda: get_display_data(parser, "value11", lambda x: 200 * (x - v_start) / (v_end - v_start))) #! I'm guessing these are for the thermocouples
-ADC21 = TextLastValue(ADC1_panel, "2: ", lambda: get_display_data(parser, "value21", lambda x: 200* (x - v_start) / (v_end - v_start))) #! I'm guessing these are for the thermocouples
-ADC31 = TextLastValue(ADC1_panel, "3: ", lambda: get_display_data(parser, "value31", lambda x: 200* (x - v_start) / (v_end - v_start))) #! I'm guessing these are for the thermocouples
-ADC41 = TextLastValue(ADC1_panel, "4: ", lambda: get_display_data(parser, "value41", lambda x: 200* (x - v_start) / (v_end - v_start))) #! I'm guessing these are for the thermocouples
-ADC51 = TextLastValue(ADC1_panel, "5: ", lambda: get_display_data(parser, "value51", lambda x: 69 * (x - v_start) / (v_end - v_start)))
-ADC61 = TextLastValue(ADC1_panel, "6: ", lambda: get_display_data(parser, "value61", lambda x: 69 * (x - v_start) / (v_end - v_start)))
-ADC71 = TextLastValue(ADC1_panel, "7: ", lambda: get_display_data(parser, "value71", lambda x: 69 * (x - v_start) / (v_end - v_start)))
-ADC81 = TextLastValue(ADC1_panel, "8: ", lambda: get_display_data(parser, "value81", lambda x: 250 * (x - c_start) / (c_end - c_start)))
-ADC91 = TextLastValue(ADC1_panel, "9: ", lambda: get_display_data(parser, "value91", lambda x: 250 * (x - c_start) / (c_end - c_start)))
-ADC101 = TextLastValue(ADC1_panel, "10: ", lambda: get_display_data(parser, "value101", lambda x: 100 * (x - c_start) / (c_end - c_start)))
-ADC111 = TextLastValue(ADC1_panel, "11: ", lambda: get_display_data(parser, "value111", lambda x: 100 * (x - c_start) / (c_end - c_start)))
+ADC11 = TextLastValue(ADC1_panel, "1: ", lambda: get_display_data(parser, "value11", lambda x: 1 * (x - v_start) / (v_end - v_start))) #! I'm guessing these are for the thermocouples
+ADC21 = TextLastValue(ADC1_panel, "2: ", lambda: get_display_data(parser, "value21", lambda x: 1 * (x - v_start) / (v_end - v_start))) #! I'm guessing these are for the thermocouples
+ADC31 = TextLastValue(ADC1_panel, "3: ", lambda: get_display_data(parser, "value31", lambda x: 1* (x - v_start) / (v_end - v_start))) #! I'm guessing these are for the thermocouples
+ADC41 = TextLastValue(ADC1_panel, "4: ", lambda: get_display_data(parser, "value41", lambda x: 1 * (x - v_start) / (v_end - v_start))) #! I'm guessing these are for the thermocouples
+ADC51 = TextLastValue(ADC1_panel, "5: ", lambda: get_display_data(parser, "value51", lambda x: 1 * (x - v_start) / (v_end - v_start)))
+ADC61 = TextLastValue(ADC1_panel, "6: ", lambda: get_display_data(parser, "value61", lambda x: 1 * (x - v_start) / (v_end - v_start)))
+ADC71 = TextLastValue(ADC1_panel, "7: ", lambda: get_display_data(parser, "value71", lambda x: 1 * (x - v_start) / (v_end - v_start)))
+ADC81 = TextLastValue(ADC1_panel, "8. LC-T [kg]: ", lambda: get_display_data(parser, "value81", lambda x: 817.14 * (x - c_start) / (c_end - c_start)))
+ADC91 = TextLastValue(ADC1_panel, "9. LC-Z [kg]: ", lambda: get_display_data(parser, "value91", lambda x: 81.7 * (x - c_start) / (c_end - c_start)))
+ADC101 = TextLastValue(ADC1_panel, "10: ", lambda: get_display_data(parser, "value101", lambda x: 1 * (x - c_start) / (c_end - c_start)))
+ADC111 = TextLastValue(ADC1_panel, "11: ", lambda: get_display_data(parser, "value111", lambda x: 1 * (x - c_start) / (c_end - c_start)))
 
 ADC10.grid(row=1,column=0, padx=20, pady=10, sticky="w")
 ADC20.grid(row=1,column=1, padx=20, pady=10, sticky="w")
@@ -97,6 +97,10 @@ ADC90.grid(row=5,column=0, padx=20, pady=10, sticky="w")
 ADC100.grid(row=5,column=1, padx=20, pady=10, sticky="w")
 ADC110.grid(row=6,column=0, padx=20, pady=10, sticky="w")
 
+# Pressure transducer range labels
+PT_range_label0 = tk.Label(ADC0_panel, text="PT1-2: 250 bar, PT3-4: 100 bar")
+PT_range_label0.grid(row=7, column=0, columnspan=2, padx=20, pady=10)
+
 ADC11.grid(row=1,column=0, padx=20, pady=10, sticky="w")
 ADC21.grid(row=1,column=1, padx=20, pady=10, sticky="w")
 ADC31.grid(row=2,column=0, padx=20, pady=10, sticky="w")
@@ -108,6 +112,10 @@ ADC81.grid(row=4,column=1, padx=20, pady=10, sticky="w")
 ADC91.grid(row=5,column=0, padx=20, pady=10, sticky="w")
 ADC101.grid(row=5,column=1, padx=20, pady=10, sticky="w")
 ADC111.grid(row=6,column=0, padx=20, pady=10, sticky="w")
+
+# Pressure transducer range labels
+PT_range_label1 = tk.Label(ADC1_panel, text="PT1-2: 250 bar, PT3-4: 100 bar")
+PT_range_label1.grid(row=7, column=0, columnspan=2, padx=20, pady=10)
 
 # Switch status indicators
 switch_status_frame = tk.LabelFrame(switch_panel, text="Switch States")
