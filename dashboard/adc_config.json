@@ -1,0 +1,32 @@
+{
+  "ADC0": {
+    "channel1": {"scale": 1.0, "label": ""},
+    "channel2": {"scale": 1.0, "label": ""},
+    "channel3": {"scale": 1.0, "label": ""},
+    "channel4": {"scale": 1.0, "label": ""},
+    "channel5": {"scale": 1.0, "label": ""},
+    "channel6": {"scale": 1.0, "label": ""},
+    "channel7": {"scale": 1.0, "label": ""},
+    "channel8": {"scale": 250.0, "label": "PT-2 [bar]"},
+    "channel9": {"scale": 250.0, "label": "PT-1 [bar]"},
+    "channel10": {"scale": 100.0, "label": "PT-3 [bar]"},
+    "channel11": {"scale": 100.0, "label": "PT-4 [bar]"},
+    "channel12": {"scale": 1.0, "label": ""},
+    "range_label": "CONTEXT"
+  },
+  "ADC1": {
+    "channel1": {"scale": 1.0, "label": ""},
+    "channel2": {"scale": 1.0, "label": ""},
+    "channel3": {"scale": 1.0, "label": ""},
+    "channel4": {"scale": 1.0, "label": ""},
+    "channel5": {"scale": 1.0, "label": ""},
+    "channel6": {"scale": 1.0, "label": ""},
+    "channel7": {"scale": 1.0, "label": ""},
+    "channel8": {"scale": 817.14, "label": "LC-T [kg]"},
+    "channel9": {"scale": 81.7, "label": "LC-Z [kg]"},
+    "channel10": {"scale": 1.0, "label": ""},
+    "channel11": {"scale": 1.0, "label": ""},
+    "channel12": {"scale": 1.0, "label": ""},
+    "range_label": "CONTEXT"
+  }
+}

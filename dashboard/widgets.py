@@ -1,4 +1,5 @@
 import tkinter as tk
+import customtkinter as ctk
 from tkinter.filedialog import askopenfilename
 from matplotlib import pyplot as plt
 from matplotlib import animation
@@ -52,15 +53,15 @@ class GenericGraph():
 #root - tkinter root
 #text - displayed before the value
 #value - the TimeSeries that the value will be taken from
-class TextLastValue(tk.Label):
-    def __init__(self, root, text, value, **kwargs):
+class TextLastValue(ctk.CTkLabel):
+    def __init__(self, root, text, value, font=None, **kwargs):
         self.text = text
         self.stringVar = tk.StringVar()
         self.stringVar.set(text)
         self.value = value
         self.root = root
         self.update()
-        super().__init__(root, textvariable = self.stringVar, **kwargs)
+        super().__init__(root, textvariable=self.stringVar, font=font, **kwargs)
 
     def update(self):
         self.root.after(REFRESH, self.update)
@@ -69,15 +70,15 @@ class TextLastValue(tk.Label):
         else:
             self.stringVar.set(self.text + '%s' % self.value())
 
-class TimeLastValue(tk.Label):
-    def __init__(self, root, text, value, **kwargs):
+class TimeLastValue(ctk.CTkLabel):
+    def __init__(self, root, text, value, font=None, **kwargs):
         self.text = text
         self.stringVar = tk.StringVar()
         self.stringVar.set(text)
         self.value = value
         self.root = root
         self.update()
-        super().__init__(root, textvariable = self.stringVar, **kwargs)
+        super().__init__(root, textvariable=self.stringVar, font=font, **kwargs)
 
     def update(self):
         self.root.after(REFRESH, self.update)
@@ -87,7 +88,7 @@ class TimeLastValue(tk.Label):
             self.stringVar.set(self.text + '%s' % self.value())
 
 
-class ButtonFile(tk.Button):
+class ButtonFile(ctk.CTkButton):
     def __init__(self, root, **kwargs):
         self.on_click = kwargs["command"]
         kwargs["command"] = self.on_click2
@@ -115,14 +116,14 @@ class AccelGraph(GenericGraph):
         self.ax.set_ylim(-50, 200)
         self.ax.set_title("Acceleration - m/s2")
 
-class FlashUsed(tk.Label):
-    def __init__(self, root, gw, **kwargs):
+class FlashUsed(ctk.CTkLabel):
+    def __init__(self, root, gw, font=None, **kwargs):
         self.stringVar = tk.StringVar()
         self.stringVar.set("flash used:")
         self.root = root
         self.value = gw.data["flashAddress"][1][-1]
         self.update()
-        super().__init__(root, textvariable = self.stringVar)
+        super().__init__(root, textvariable=self.stringVar, font=font)
 
     def update(self):
         self.root.after(REFRESH, self.update)
