@@ -9,16 +9,7 @@ import customtkinter as ctk
 from tkinter import filedialog
 import traceback
 
-#! The labels should be based on a sensor config file in the future!
-
-#! Right, so this is where we send the messages, which get picked up and decoded by Surtr.
-#! Ideally, we would want a nicer GUI for this, but also an automatic sequence
-#! It looks like the scaffolding is here, so I should be able to easily buld upon it.
-#! Maybe the first test could simply be to call "send_message" from a new button click.
-#! Then, I can try to get that button to trigger a sequence.
-#! Lastly, I can incorporate multiple outputs into this sequence.
-#! The final thing would be to receive messages form the GCS. But honestly, we don't need brage for that (I think)
-#! because there is a transceiver already in the plastic box. But the transceiver should send to GCS, not som laptop (unless we are debugging).
+# Excuse the vibe coding. Please don't judge me.
 
 # Initialize the parser with the COM port as an argument.
 if len(sys.argv) > 1: # sys.argv[0] is the path
@@ -46,9 +37,9 @@ ADC1_panel = ctk.CTkFrame(root, border_width=1)
 send_panel = ctk.CTkFrame(root, border_width=1)
 
 # ADC panel titles
-ADC0_title = ctk.CTkLabel(ADC0_panel, text="ADC readings 1", font=(font_name, 14, "bold"))
+ADC0_title = ctk.CTkLabel(ADC0_panel, text="ADC0 readings", font=(font_name, 14, "bold"))
 ADC0_title.grid(row=0, column=0, columnspan=4, padx=16, pady=8)
-ADC1_title = ctk.CTkLabel(ADC1_panel, text="ADC readings 2", font=(font_name, 14, "bold"))
+ADC1_title = ctk.CTkLabel(ADC1_panel, text="ADC1 readings", font=(font_name, 14, "bold"))
 ADC1_title.grid(row=0, column=0, columnspan=4, padx=16, pady=8)
 
 # SENSORS
@@ -68,7 +59,7 @@ v_end = 4.5
 c_start = 4
 c_end = 20
 
-# Config manager class to avoid global variables
+# Config manager class
 class ConfigManager:
     def __init__(self, initial_path):
         self._path = initial_path
@@ -226,10 +217,10 @@ ADC41_label, ADC41_value = create_adc_widget(ADC1_panel, 4, "ADC1", "value41") #
 ADC51_label, ADC51_value = create_adc_widget(ADC1_panel, 5, "ADC1", "value51")
 ADC61_label, ADC61_value = create_adc_widget(ADC1_panel, 6, "ADC1", "value61")
 ADC71_label, ADC71_value = create_adc_widget(ADC1_panel, 7, "ADC1", "value71")
-ADC81_label, ADC81_value = create_adc_widget(ADC1_panel, 8, "ADC1", "value81", use_c_start=True) # Current sensing
-ADC91_label, ADC91_value = create_adc_widget(ADC1_panel, 9, "ADC1", "value91", use_c_start=True) # Current sensing
-ADC101_label, ADC101_value = create_adc_widget(ADC1_panel, 10, "ADC1", "value101", use_c_start=True) # Current sensing
-ADC111_label, ADC111_value = create_adc_widget(ADC1_panel, 11, "ADC1", "value111", use_c_start=True) # Current sensing
+ADC81_label, ADC81_value = create_adc_widget(ADC1_panel, 8, "ADC1", "value91", use_c_start=True) # Current sensing. OBS: Flipped from 81 to 91 due to weird board wiring
+ADC91_label, ADC91_value = create_adc_widget(ADC1_panel, 9, "ADC1", "value81", use_c_start=True) # Current sensing. OBS: Flipped from 91 to 81 due to weird board wiring
+ADC101_label, ADC101_value = create_adc_widget(ADC1_panel, 10, "ADC1", "value101", use_c_start=True) # Current sensing. 
+ADC111_label, ADC111_value = create_adc_widget(ADC1_panel, 11, "ADC1", "value111", use_c_start=True) # Current sensing. 
 
 # Grid layout: label | value | label | value (2 channels per row, 4 columns per row)
 # ADC0
