@@ -1,0 +1,32 @@
+{
+  "ADC0": {
+    "channel1": {"scale": 1.0, "label": ""},
+    "channel2": {"scale": 1.0, "label": ""},
+    "channel3": {"scale": 1.0, "label": ""},
+    "channel4": {"scale": 1.0, "label": ""},
+    "channel5": {"scale": 1.0, "label": ""},
+    "channel6": {"scale": 1.0, "label": ""},
+    "channel7": {"scale": 1.0, "label": ""},
+    "channel8": {"scale": 100.0, "label": "PT-100 [bar]"},
+    "channel9": {"scale": 1.0, "label": ""},
+    "channel10": {"scale": 1.0, "label": ""},
+    "channel11": {"scale": 1.0, "label": ""},
+    "channel12": {"scale": 1.0, "label": ""},
+    "context_label": "PT-100: 100 bar"
+  },
+  "ADC1": {
+    "channel1": {"scale": 1.0, "label": ""},
+    "channel2": {"scale": 1.0, "label": ""},
+    "channel3": {"scale": 1.0, "label": ""},
+    "channel4": {"scale": 1.0, "label": ""},
+    "channel5": {"scale": 1.0, "label": ""},
+    "channel6": {"scale": 1.0, "label": ""},
+    "channel7": {"scale": 1.0, "label": ""},
+    "channel8": {"scale": 1.0, "label": ""},
+    "channel9": {"scale": 1.0, "label": ""},
+    "channel10": {"scale": 1.0, "label": ""},
+    "channel11": {"scale": 1.0, "label": ""},
+    "channel12": {"scale": 1.0, "label": ""},
+    "context_label": ""
+  }
+}
