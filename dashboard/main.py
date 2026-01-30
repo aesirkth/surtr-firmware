@@ -204,8 +204,8 @@ ADC40_label, ADC40_value = create_adc_widget(ADC0_panel, 4, "ADC0", "value40") #
 ADC50_label, ADC50_value = create_adc_widget(ADC0_panel, 5, "ADC0", "value50")
 ADC60_label, ADC60_value = create_adc_widget(ADC0_panel, 6, "ADC0", "value60")
 ADC70_label, ADC70_value = create_adc_widget(ADC0_panel, 7, "ADC0", "value70")
-ADC80_label, ADC80_value = create_adc_widget(ADC0_panel, 8, "ADC0", "value80", use_c_start=True) # Current sensing
-ADC90_label, ADC90_value = create_adc_widget(ADC0_panel, 9, "ADC0", "value90", use_c_start=True) # Current sensing
+ADC80_label, ADC80_value = create_adc_widget(ADC0_panel, 8, "ADC0", "value90", use_c_start=True) # Current sensing
+ADC90_label, ADC90_value = create_adc_widget(ADC0_panel, 9, "ADC0", "value80", use_c_start=True) # Current sensing
 ADC100_label, ADC100_value = create_adc_widget(ADC0_panel, 10, "ADC0", "value100", use_c_start=True) # Current sensing
 ADC110_label, ADC110_value = create_adc_widget(ADC0_panel, 11, "ADC0", "value110", use_c_start=True) # Current sensing
 
