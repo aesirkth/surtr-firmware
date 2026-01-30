@@ -12,7 +12,7 @@
     "channel10": {"scale": 1.0, "label": ""},
     "channel11": {"scale": 1.0, "label": ""},
     "channel12": {"scale": 1.0, "label": ""},
-    "context_label": "PT-100: 100 bar"
+    "range_label": "PT-100: 100 bar"
   },
   "ADC1": {
     "channel1": {"scale": 1.0, "label": ""},
@@ -27,6 +27,6 @@
     "channel10": {"scale": 1.0, "label": ""},
     "channel11": {"scale": 1.0, "label": ""},
     "channel12": {"scale": 1.0, "label": ""},
-    "context_label": ""
+    "range_label": ""
   }
 }
