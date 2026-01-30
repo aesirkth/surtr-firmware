@@ -7,12 +7,12 @@
     "channel5": {"scale": 1.0, "label": ""},
     "channel6": {"scale": 1.0, "label": ""},
     "channel7": {"scale": 1.0, "label": ""},
-    "channel8": {"scale": 400.0, "label": "PT-400a [bar]"},
-    "channel9": {"scale": 400.0, "label": "PT-400b [bar]"},
-    "channel10": {"scale": 100.0, "label": "PT-100a [bar]"},
-    "channel11": {"scale": 100.0, "label": "PT-100b [bar]"},
+    "channel8": {"scale": 100.0, "label": "PT-100 [bar]"},
+    "channel9": {"scale": 1.0, "label": ""},
+    "channel10": {"scale": 1.0, "label": ""},
+    "channel11": {"scale": 1.0, "label": ""},
     "channel12": {"scale": 1.0, "label": ""},
-    "context_label": "PT-400: 400 bar, PT-100: 100 bar"
+    "context_label": "PT-100: 100 bar"
   },
   "ADC1": {
     "channel1": {"scale": 1.0, "label": ""},
@@ -22,11 +22,11 @@
     "channel5": {"scale": 1.0, "label": ""},
     "channel6": {"scale": 1.0, "label": ""},
     "channel7": {"scale": 1.0, "label": ""},
-    "channel8": {"scale": 817.14, "label": "LC-ENG [kg]"},
-    "channel9": {"scale": 81.7, "label": "LC-TNK [kg]"},
-    "channel10": {"scale": 100.0, "label": "PT-100c [bar]"},
-    "channel11": {"scale": 400.0, "label": "PT-400c [bar]"},
+    "channel8": {"scale": 1.0, "label": ""},
+    "channel9": {"scale": 1.0, "label": ""},
+    "channel10": {"scale": 1.0, "label": ""},
+    "channel11": {"scale": 1.0, "label": ""},
     "channel12": {"scale": 1.0, "label": ""},
-    "context_label": "LC-ENG: 1 TON, LC-TNK: 100 KG, \n PT-100: 100 bar, PT-400: 400 bar"
+    "context_label": ""
   }
 }
