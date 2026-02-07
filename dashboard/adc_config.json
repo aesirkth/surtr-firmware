@@ -26,7 +26,7 @@
     "channel9": {"scale": 1.0, "label": "ADC1:1"},
     "channel10": {"scale": 1.0, "label": "ADC1:2"},
     "channel11": {"scale": 1.0, "label": "ADC1:3"},
-    "channel22": {"scale": 1.0, "label": "ADC1:4"},
+    "channel12": {"scale": 1.0, "label": "ADC1:4"},
     "range_label": "CONTEXT"
   }
 }
