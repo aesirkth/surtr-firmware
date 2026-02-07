@@ -7,11 +7,11 @@
     "channel5": {"scale": 1.0, "label": ""},
     "channel6": {"scale": 1.0, "label": ""},
     "channel7": {"scale": 1.0, "label": ""},
-    "channel8": {"scale": 1.0, "label": "ADC0:1"},
-    "channel9": {"scale": 1.0, "label": "ADC0:2"},
-    "channel10": {"scale": 1.0, "label": "ADC0:3"},
-    "channel11": {"scale": 1.0, "label": "ADC0:4"},
-    "channel12": {"scale": 1.0, "label": ""},
+    "channel8": {"scale": 1.0, "label": ""},
+    "channel9": {"scale": 1.0, "label": "ADC0:1"},
+    "channel10": {"scale": 1.0, "label": "ADC0:2"},
+    "channel11": {"scale": 1.0, "label": "ADC0:3"},
+    "channel12": {"scale": 1.0, "label": "ADC0:4"},
     "range_label": "CONTEXT"
   },
   "ADC1": {
@@ -22,11 +22,11 @@
     "channel5": {"scale": 1.0, "label": ""},
     "channel6": {"scale": 1.0, "label": ""},
     "channel7": {"scale": 1.0, "label": ""},
-    "channel8": {"scale": 1.0, "label": "ADC1:1"},
-    "channel9": {"scale": 1.0, "label": "ADC1:2"},
-    "channel10": {"scale": 1.0, "label": "ADC1:3"},
-    "channel11": {"scale": 1.0, "label": "ADC1:4"},
-    "channel12": {"scale": 1.0, "label": ""},
+    "channel8": {"scale": 1.0, "label": ""},
+    "channel9": {"scale": 1.0, "label": "ADC1:1"},
+    "channel10": {"scale": 1.0, "label": "ADC1:2"},
+    "channel11": {"scale": 1.0, "label": "ADC1:3"},
+    "channel22": {"scale": 1.0, "label": "ADC1:4"},
     "range_label": "CONTEXT"
   }
 }
