@@ -10,17 +10,17 @@ list(APPEND ZEPHYR_EXTRA_MODULES
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(launchpad_controller)
 
-list(APPEND CMAKE_MODULE_PATH ${ZEPHYR_BASE}/modules/nanopb)
-include(nanopb)
+#list(APPEND CMAKE_MODULE_PATH ${ZEPHYR_BASE}/modules/nanopb)
+#include(nanopb)
 
-zephyr_nanopb_sources(app src/surtr.proto)
+# zephyr_nanopb_sources(app src/surtr.proto)
 
 target_sources(app PRIVATE
     src/main.c
-    src/networking.c
-    src/sensors.c
     src/actuation.c
-    src/protocol.c
-    src/steppers.c
-    src/ignition.c
+    src/collect.c
+    src/dhcp.c
+    src/in.c
+    src/packet.c
+    src/server.c
 )

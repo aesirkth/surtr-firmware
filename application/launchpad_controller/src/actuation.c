@@ -1,103 +1,96 @@
-#include <zephyr/kernel.h>
-#include <zephyr/drivers/gpio.h>
-#include <zephyr/logging/log.h>
-#include <drv8711.h>
-
-#include "protocol.h"
-#include "networking.h"
-#include "steppers.h"
+#include "actuation.h"
 
 LOG_MODULE_REGISTER(actuation, CONFIG_APP_LOG_LEVEL);
 
-static const struct gpio_dt_spec leds[] = {
-    GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios),
-    GPIO_DT_SPEC_GET(DT_ALIAS(led1), gpios),
-};
-#define NUM_LEDS sizeof(leds) / sizeof(leds[0])
-
-static const struct gpio_dt_spec switches[] = {
-    GPIO_DT_SPEC_GET(DT_ALIAS(switch1), gpios),
-    GPIO_DT_SPEC_GET(DT_ALIAS(switch2), gpios),
-    GPIO_DT_SPEC_GET(DT_ALIAS(switch3), gpios),
-    GPIO_DT_SPEC_GET(DT_ALIAS(switch4), gpios),
-    GPIO_DT_SPEC_GET(DT_ALIAS(switch5), gpios),
-    GPIO_DT_SPEC_GET(DT_ALIAS(switch6), gpios),
-    GPIO_DT_SPEC_GET(DT_ALIAS(switch7), gpios),
-    GPIO_DT_SPEC_GET(DT_ALIAS(switch8), gpios), // This connects to port 3 on the board, for some reason
-};
-#define NUM_SWITCHES (sizeof(switches) / sizeof(switches[0]))
-
-void blinker_thread(void *p1, void *p2, void *p3);
-
-K_THREAD_DEFINE(blinker_tid, 2048, blinker_thread, NULL, NULL, NULL, 5, 0, 1000);
-
-volatile bool switch_states[NUM_SWITCHES] = {0};
-
-void init_actuation(void *p1, void *p2, void *p3) {
-    // initialize switches
-    int ret;
-    for(int i = 0; i < NUM_SWITCHES; i++) {
-        if (!gpio_is_ready_dt(&switches[i])) {
-            LOG_ERR("switch gpio is not ready");
-        }
-
-        ret = gpio_pin_configure_dt(&switches[i], GPIO_OUTPUT_INACTIVE);
-        if (ret < 0) {
-            LOG_ERR("switch gpio couldn't be configured");
-        }
-    }
-
-
-    // initialize LEDs
-    for (int i = 0; i < NUM_LEDS; i++) {
-        if (!gpio_is_ready_dt(&leds[i])) {
-            LOG_ERR("led gpio is not ready");
-        }
-
-        ret = gpio_pin_configure_dt(&leds[i], GPIO_OUTPUT_INACTIVE);
-        if (ret < 0) {
-            LOG_ERR("led gpio couldn't be configured");
-        }
-    }
-
+/**
+ * toggle_switch():
+ *      Both gpio_pin_set_dt() and switch_states has to be updated.
+ *      Toggles a single switch.
+ */
+void toggle_switch(int id, uint8_t state) 
+{
+    gpio_pin_set_dt(&switches[id - 1], state);
+    sw[id - 1] = state;
 }
 
-// This toggles one of the switches.
-// Called from protocol.c when the appropriate message is received.
-void toggle_switch(int id, bool on) {
-    if (id > NUM_SWITCHES) {
-        LOG_WRN("tried to toggle invalid switch");
-        return;
-    }
-    gpio_pin_set_dt(&switches[id - 1], on);
-    switch_states[id - 1] = on;
+/**
+ * toggle_led(): 
+ *      Toggles a single LED by configuring gpio and saving new state led data.
+ */
+void toggle_led(int id, uint8_t state) 
+{
+    gpio_pin_set_dt(&leds[id], state);
+    led[id] = state;
 }
 
-// Blinker thread that runs in the background
-void blinker_thread(void *p1, void *p2, void *p3) {
-    bool ping = false;
-    while (true) {
-        for (int i = 0; i < NUM_LEDS; i++) {
-            gpio_pin_set_dt(&leds[i], ping);
+/**
+ * blink_leds(): 
+ *      Toggles all LEDs by iterating in loop.
+ */
+void blink_leds(uint8_t state)
+{
+    for(int i = 0; i < NUM_LEDS; i++)
+    {
+        toggle_led(i, state);
+    }
+}
+
+/**
+ * read_adc():
+ *      Collects first 12 adc values into adc[0-11] (ADC0)
+ *      Then collects the last 12 adc values into adc[12-23] (ADC1)
+ */
+int read_adc(uint32_t *adc_val)
+{
+    for (int i = 0; i < NUM_CHANNELS_PER_ADC; i++) {
+        if(ad4111_read_channel(adcs[ADC0_TAG], i, &adc_val[i]) != 0)
+        {
+            LOG_ERR("Error when reading ADC0");
+            return 0;
         }
-        ping = !ping;
-        k_msleep(100);
+    }
 
-        surtrpb_SurtrMessage msg;
-        msg.has_us_since_boot = true;
-        msg.us_since_boot = k_uptime_get() * 1000; // epic
-        msg.which_command = surtrpb_SurtrMessage_switch_states_tag;
-        msg.command.switch_states.sw1 = switch_states[0];
-        msg.command.switch_states.sw2 = switch_states[1];
-        msg.command.switch_states.sw3 = switch_states[2];
-        msg.command.switch_states.sw4 = switch_states[3];
-        msg.command.switch_states.sw5 = switch_states[4];
-        msg.command.switch_states.sw6 = switch_states[5];
-        msg.command.switch_states.sw7 = switch_states[6];
-        msg.command.switch_states.sw8 = switch_states[7];
-        msg.command.switch_states.step1 = current_motor1;
-        msg.command.switch_states.step2 = current_motor2;
+    for (int i = 0; i < NUM_CHANNELS_PER_ADC; i++) {
+        if(ad4111_read_channel(adcs[ADC1_TAG], i, &adc_val[i+NUM_CHANNELS_PER_ADC]) != 0)
+        {
+            LOG_ERR("Error when reading ADC1");
+            return 0;
+        }
+    }
 
-        send_msg(&msg);
+    return 1;
+}
+
+/**
+ * update_stepper_motor():
+ *      Delta is not performing the function a "delta" it is intead a TARGET VALUE...
+ *      If current motor is lower than target then move forward.
+ *      If current motor is higher than target then move backwards.
+ *      Iterate until motor has stepped to target.
+ *      Sleep 20 us between iteration to let motor breathe? not sure why?
+ */
+void update_stepper_motor(const int id, const uint32_t delta)
+{
+    while(1)
+    {
+        if(motor_dir_state[id] < delta)
+        {
+            gpio_pin_set_dt(&motor_dir_dt[id], 1);
+            gpio_pin_set_dt(&motor_step_dt[id], 1);
+            motor_dir_state[id] += FORWARD;
+        }
+        else if (motor_dir_state[id] > delta)
+        {
+            gpio_pin_set_dt(&motor_dir_dt[id], 0);
+            gpio_pin_set_dt(&motor_step_dt[id], 1);
+            motor_dir_state[id] += BACKWARD;
+        }
+        else 
+        {
+            // motor is equal to target.
+            break;
+        }
+
+        k_usleep(MOTOR_PULSE_LENGTH_US);
     }
 }
