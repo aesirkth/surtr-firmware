@@ -42,6 +42,14 @@
 #define STATE_NO_CONNECTION 	0
 #define STATE_CONNECTION		1
 
+
+/* https://www.cs.yale.edu/homes/aspnes/pinewiki/C(2f)Macros.html */
+#define FATALERROR(...) \
+	do { \
+		LOG_ERR(__VA_ARGS__); \
+		kernel_exit(); \
+	} while (0)
+
 LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL);
 
 /* ========================================================== */
@@ -291,67 +299,41 @@ int main()
 	// Initializes ADC devices.
 	for(int i = 0; i < NUM_EXT_ADC; i++)
 		if (!device_is_ready(adcs[i]))
-		{
-			LOG_ERR("External ADC device ready failed.");
-			kernel_exit();
-		}
+			FATALERROR("External ADC device ready failed.");
 	
 	for(int i = 0; i < NUM_STEPPERS; i++)
 		if (!device_is_ready(steppers[i]))
-		{
-			LOG_ERR("Steppers device ready failed.");
-			kernel_exit();
-		}
-
+		FATALERROR("Steppers device ready failed.");
 
 	// Initializes LED GPIOs as outputs with initial state 0.
 	for(int i = 0; i < NUM_LEDS; i++)
 	{
 		if(!gpio_is_ready_dt(&leds[i]))
-		{
-			LOG_ERR("LED GPIO ready failed.");
-			kernel_exit();
-		}
+			FATALERROR("LED GPIO ready failed.");
 
 		if (gpio_pin_configure_dt(&switches[i], GPIO_OUTPUT_INACTIVE) < 0)
-		{
-			LOG_ERR("Switch GPIO configure failed.");
-			kernel_exit();
-		}
+			FATALERROR("Switch GPIO configure failed.");
 	}
 
 	// Initializes Switch GPIOs as outputs with initial state 0.
     for(int i = 0; i < NUM_SWITCHES; i++)
     {
 		if (!gpio_is_ready_dt(&switches[i]))
-		{
-			LOG_ERR("Switch GPIO ready failed.");
-			kernel_exit();
-		}
+			FATALERROR("Switch GPIO ready failed.");
 		
 		if (gpio_pin_configure_dt(&switches[i], GPIO_OUTPUT_INACTIVE) < 0)
-		{
-			LOG_ERR("Switch GPIO configure failed.");
-			kernel_exit();
-		}
+			FATALERROR("Switch GPIO configure failed.");
     }
     
 	/* INITIALIZE MOTOR */
 	/* MICROSTEP1 = 0b0000, */
 	for(int i = 0; i < NUM_STEPPERS; i++)
 		if(gpio_pin_configure_dt(&motor_dir_dt[i], GPIO_OUTPUT) < 0)
-		{
-			LOG_ERR("Stepper Motor Dir configure failed.");
-			kernel_exit();
-		}
-
+			FATALERROR("Stepper Motor Dir configure failed.");
 	
 	for(int i = 0; i < NUM_STEPPERS; i++)
     	if(gpio_pin_configure_dt(&motor_step_dt[i], GPIO_OUTPUT) < 0)
-		{
-			LOG_ERR("Stepper Motor Step configure failed.");
-			kernel_exit();
-		}
+			FATALERROR("Stepper Motor Step configure failed.");
 
     drv8711_set_current_limit(steppers[MOTOR1_INDEX], MOTOR_CURRENT_I_LIMIT);
     drv8711_set_microstep(steppers[MOTOR1_INDEX], MICROSTEP1);
@@ -359,19 +341,13 @@ int main()
 
 	/* INITIALIZE DCHP */
 	if(initialize_dchp() != 0)
-	{
-		LOG_ERR("Switch GPIO configure failed.");
-		kernel_exit();
-	}
+		FATALERROR("Initialized DCHP failed.");
 
 	// AF_INET = IPV4
 	// SOCK_STREAM = TCP
 	if(!server_constructor(&server, AF_INET, 
 		SOCK_STREAM, IP, INADDR_ANY, PORT, BACKLOG))
-	{
-		LOG_ERR("Server failed to initialize.");
-		kernel_exit();
-	}
+		FATALERROR("Server failed to initialize.");
 	
 	/* INITIALIZE SEMAPHORES */
 	// initial = 0, count = 2 (2 threads);
@@ -379,7 +355,7 @@ int main()
 	k_sem_init(&sem_connection_fail, 0, 1);
 	
 	/* Initialize adc[], sw[], led[] with zeroes */
-	memset(motor_dir_state, 0, sizeof(motor_dir_state));;
+	memset(motor_dir_state, 0, sizeof(motor_dir_state));
 	memset(adc, 0, sizeof(adc));
 	memset(sw, 0, sizeof(sw));
 	memset(led, 0, sizeof(led));
