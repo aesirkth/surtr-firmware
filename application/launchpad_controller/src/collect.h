@@ -26,6 +26,6 @@ int collect_adc(uint32_t *adc_val, Msg *msg);
  *      Creates msg with current SW states.
  *      Should also read motor1 and motor2 states.
  */
-int collect_sw(uint32_t *sw, Msg *msg);
+int collect_sw(uint8_t *sw, Msg *msg);
 
 #endif

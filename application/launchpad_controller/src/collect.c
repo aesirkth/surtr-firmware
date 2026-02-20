@@ -32,9 +32,9 @@ int collect_adc(uint32_t *adc_val, Msg *msg)
  *      Creates msg with current SW states.
  *      Should also read motor1 and motor2 states.
  */
-int collect_sw(uint32_t *sw, Msg *msg)
+int collect_sw(uint8_t *sw, Msg *msg)
 {
-    *msg = msg_construct_with_time(sizeof(sw), (uint8_t*) sw);
+    *msg = msg_construct_with_time(sizeof(sw), sw);
     // Motor1 -> 0x00000000 
     // Motor2 -> 0x00000000
     if(k_msgq_put(&write_msgq, msg->data, K_NO_WAIT) != 0)
