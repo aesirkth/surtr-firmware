@@ -1,5 +1,7 @@
 import os, sys
-import serial.tools.list_ports
+#import serial.tools.list_ports
+#Cannot have dependencies in installer.
+# Install and probe usb have to be separate scripts.
 
 WINDOWS = "nt"
 
