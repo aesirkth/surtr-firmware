@@ -69,7 +69,16 @@ def plot_adc_graph_live(filepath, configfile):
     # Read first row with labels
 	if file.readline() == EOF:
 		return
+	# Place file pointer to start of row 2.
 	filepos = file.tell()
+	
+	# if row 2 is emppty then invalid graph.
+	if file.readline() == EOF:
+		return
+
+	# Go back to row2 if graph was valid.
+	file.seek(filepos)
+
 	init_plot()
 	
 	while(True):
