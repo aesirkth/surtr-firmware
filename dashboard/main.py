@@ -65,13 +65,14 @@ class Dashboard(ctk.CTk):
 			self,
 			lambda: plot_adc_graph_live(self.SAVEFILE, self.CONFIG.filepath)
 		)
+		self.SIDEBAR = ctk.CTkFrame(self, fg_color="transparent")
 		self.CONNECTION = self.Connection(
-			self,
+			self.SIDEBAR,
 			lambda: self.reconnect_serial(self.CONNECTION.port_var.get()),
 			initial_port_arg
 		)
 
-		self.TIME = self.Time(self, "-", time.time())
+		self.TIME = self.Time(self.SIDEBAR, "-", time.time())
 		self.adc_temp_buffer = [0]*NUM_CHANNELS_TOTAL
 		self.serial_connection = None
 		self.serial_stop_event = None
@@ -212,8 +213,9 @@ class Dashboard(ctk.CTk):
 	# ==========================================================================
 	class Time:
 		def __init__(self, parent, value, start_time):
-				self.label_pgt = ctk.CTkLabel(parent, text=value, font=DEFAULT_FONT)
-				self.label_srt = ctk.CTkLabel(parent, text=value, font=DEFAULT_FONT)
+				self.panel = ctk.CTkFrame(parent, border_width=1)
+				self.label_pgt = ctk.CTkLabel(self.panel, text=value, font=("IBM Plex Mono", 12))
+				self.label_srt = ctk.CTkLabel(self.panel, text=value, font=("IBM Plex Mono", 12))
 				self.start_time = start_time
 				self.time_srt = None
 				self.time_pgt = None
@@ -226,8 +228,8 @@ class Dashboard(ctk.CTk):
 		def update_time(self, val):
 				self.time_pgt = math.ceil(time.time() - self.start_time)
 				self.time_srt = math.ceil(val)
-				self.label_pgt.configure(True, text=f"Time (program sinceBoot): " + self.convert_to_min_sec(self.time_pgt))
-				self.label_srt.configure(True, text=f"Time (Surtr sinceBoot): " + self.convert_to_min_sec(self.time_srt))
+				self.label_pgt.configure(True, text=f"Time (program): " + self.convert_to_min_sec(self.time_pgt))
+				self.label_srt.configure(True, text=f"Time (Surtr): " + self.convert_to_min_sec(self.time_srt))
 # =============================================================================
 
 
@@ -563,7 +565,7 @@ def setup_dashboard(root: Dashboard):
 	ctk.set_default_color_theme("dark-blue")
 
 	root.title("Surtr Dashboard")
-	root.minsize(1500, 800)
+	root.minsize(1500, 600)
 
 	root.grid_columnconfigure(0, weight=1)
 	root.grid_columnconfigure(1, weight=1)
@@ -574,13 +576,13 @@ def setup_dashboard(root: Dashboard):
 	root.ADC1.panel.grid_columnconfigure(1, minsize=160, weight=1)
 	root.ADC1.panel.grid_columnconfigure(3, minsize=160, weight=1)
 
-	root.ACTUATION.panel.grid_columnconfigure(0, weight=1)  # Switches - don't expand
-	root.ACTUATION.panel.grid_columnconfigure(1, weight=1)  # Steppers - don't expand
-	root.ACTUATION.panel.grid_columnconfigure(2, weight=1)  # Ignition - fill remaining space
+	root.ACTUATION.panel.grid_columnconfigure(0, weight=0)
+	root.ACTUATION.panel.grid_columnconfigure(1, weight=0)
+	root.ACTUATION.panel.grid_columnconfigure(2, weight=0)
 
-	root.ADC0.panel.grid(row=2, column=0, padx=(24, 12), pady=8, sticky="nsew")
-	root.ADC1.panel.grid(row=2, column=1, padx=(12, 24), pady=8, sticky="nsew")
-	root.ACTUATION.panel.grid(row=3, column=0, columnspan=2, pady=16, padx=24, sticky="nsew")
+	root.ADC0.panel.grid(row=1, column=0, padx=(16, 8), pady=8, sticky="nsew")
+	root.ADC1.panel.grid(row=1, column=1, padx=(8, 16), pady=8, sticky="nsew")
+	root.ACTUATION.panel.grid(row=2, column=0, columnspan=2, pady=8, padx=(16, 16), sticky="ew")
 
 	# ADC panel titles
 	root.ADC0.title.grid(row=0, column=0, columnspan=4, padx=16, pady=8)
@@ -601,47 +603,50 @@ def setup_dashboard(root: Dashboard):
 	root.ADC1.PT_range_label.grid(row=7, column=0, columnspan=4, padx=16, pady=8)
 	
 	root.ACTUATION.switch.title.grid(row=0, column=0, columnspan=6, pady=4)
-	root.ACTUATION.switch.panel.grid(row=0, column=0, sticky="nsew", padx=12, pady=12)
+	root.ACTUATION.switch.panel.grid(row=0, column=0, sticky="nw", padx=6, pady=6)
 
 	SW_PER_COL = 4
 	for i in range(NUM_SWITCHES):
 		row = (i) % SW_PER_COL + 1  # +1 to account for title
 		col = (i) // SW_PER_COL
-		root.ACTUATION.switch.button[i].label.grid(row=row, column=col*3+0, padx=4, pady=2, sticky="ew")
-		root.ACTUATION.switch.button[i].on.grid(row=row, column=col*3+1, padx=4, pady=2, sticky="ew")
-		root.ACTUATION.switch.button[i].off.grid(row=row, column=col*3+2, padx=4, pady=2, sticky="ew")
+		root.ACTUATION.switch.button[i].label.grid(row=row, column=col*3+0, padx=2, pady=1, sticky="w")
+		root.ACTUATION.switch.button[i].on.grid(row=row, column=col*3+1, padx=2, pady=1, sticky="w")
+		root.ACTUATION.switch.button[i].off.grid(row=row, column=col*3+2, padx=2, pady=1, sticky="w")
 	
 	root.ACTUATION.stepper.title.grid(row=0, column=0, columnspan=3, pady=4)
-	root.ACTUATION.stepper.panel.grid(row=0, column=1, sticky="nsew", padx=12, pady=12)
+	root.ACTUATION.stepper.panel.grid(row=0, column=1, sticky="nw", padx=6, pady=6)
 
 	for i in range(0, NUM_STEPPERS):
-		root.ACTUATION.stepper.motor[i].label.grid(row=i+1, column=0, padx=4, pady=3, sticky="ew")
-		root.ACTUATION.stepper.motor[i].entry.grid(row=i+1, column=1, padx=4, pady=3, sticky="ew")
-		root.ACTUATION.stepper.motor[i].button.grid(row=i+1, column=2, padx=4, pady=3, sticky="ew")
+		root.ACTUATION.stepper.motor[i].label.grid(row=i+1, column=0, padx=2, pady=1, sticky="w")
+		root.ACTUATION.stepper.motor[i].entry.grid(row=i+1, column=1, padx=2, pady=1, sticky="w")
+		root.ACTUATION.stepper.motor[i].button.grid(row=i+1, column=2, padx=2, pady=1, sticky="w")
 	
-	root.ACTUATION.ignition.panel.grid(row=0, column=2, sticky="nsew", padx=12, pady=12)
+	root.ACTUATION.ignition.panel.grid(row=0, column=2, sticky="nw", padx=6, pady=6)
 	
 	root.ACTUATION.ignition.panel.grid_columnconfigure(0, weight=1)
 	root.ACTUATION.ignition.title.grid(row=0, column=0, pady=4, sticky="n")
-	root.ACTUATION.ignition.button.grid(row=1, column=0, padx=24, pady=6, sticky="ew")
-
-	root.TIME.label_pgt.grid(row=1, column=0, padx=4, pady=4, sticky="ew")
-	root.TIME.label_srt.grid(row=1, column=1, padx=4, pady=4, sticky="ew")
+	root.ACTUATION.ignition.button.grid(row=1, column=0, padx=6, pady=3, sticky="w")
 
 	root.CONFIG.path_entry.grid(row=0, column=1, padx=4, pady=4, sticky="ew")
 	root.CONFIG.panel.grid_columnconfigure(1, weight=1)
 	root.CONFIG.panel.grid(row=0, column=0, columnspan=2, sticky="ew", padx=8, pady=4)
 	root.CONFIG.import_button.grid(row=0, column=0, padx=4, pady=4)
 	
-	root.GRAPH.panel.grid(row=0, column=2, sticky="nsew", padx=12, pady=12)
+	root.GRAPH.panel.grid(row=0, column=2, sticky="nw", padx=6, pady=6)
 	root.GRAPH.title.grid(row=0, column=0, pady=4)
-	root.GRAPH.button.grid(row=1, column=0, padx=24, pady=6, sticky="ew")
+	root.GRAPH.button.grid(row=1, column=0, padx=6, pady=3, sticky="w")
 
-	root.CONNECTION.panel.grid(row=1, column=2, sticky="nsew", padx=12, pady=4)
+	root.SIDEBAR.grid(row=1, column=2, sticky="nw", padx=6, pady=3)
+
+	root.CONNECTION.panel.grid(row=0, column=0, sticky="nw", padx=0, pady=0)
 	root.CONNECTION.title.grid(row=0, column=0, pady=4)
-	root.CONNECTION.port_entry.grid(row=1, column=0, padx=24, pady=6, sticky="ew")
-	root.CONNECTION.reconnect_button.grid(row=2, column=0, padx=24, pady=6, sticky="ew")
-	root.CONNECTION.status_label.grid(row=3, column=0, padx=24, pady=(0, 6), sticky="w")
+	root.CONNECTION.port_entry.grid(row=1, column=0, padx=6, pady=3, sticky="w")
+	root.CONNECTION.reconnect_button.grid(row=2, column=0, padx=6, pady=3, sticky="w")
+	root.CONNECTION.status_label.grid(row=3, column=0, padx=6, pady=(0, 3), sticky="w")
+
+	root.TIME.panel.grid(row=1, column=0, padx=0, pady=(4, 0), sticky="nw")
+	root.TIME.label_pgt.grid(row=0, column=0, padx=6, pady=(3, 1), sticky="w")
+	root.TIME.label_srt.grid(row=1, column=0, padx=6, pady=(0, 3), sticky="w")
 
 
 def get_logfile_name():
