@@ -63,8 +63,11 @@ class Dashboard(ctk.CTk):
 
 		self.GRAPH = self.Graph(
 			self,
-			lambda: plot_adc_graph_live(self.SAVEFILE, self.CONFIG.filepath),
-			lambda: self.reconnect_serial(self.GRAPH.port_var.get()),
+			lambda: plot_adc_graph_live(self.SAVEFILE, self.CONFIG.filepath)
+		)
+		self.CONNECTION = self.Connection(
+			self,
+			lambda: self.reconnect_serial(self.CONNECTION.port_var.get()),
 			initial_port_arg
 		)
 
@@ -74,6 +77,7 @@ class Dashboard(ctk.CTk):
 		self.serial_stop_event = None
 		self.reading_thread = None
 		self.writing_thread = None
+		self.update_connection_status(False)
 	
 		
 	# config_apply_labels():
@@ -119,6 +123,7 @@ class Dashboard(ctk.CTk):
 			ser_con = serial.Serial(port, BAUDRATE, timeout=0.25)
 		except serial.SerialException as exc:
 			print(f"Reconnect failed for port '{port}': {exc}")
+			self.update_connection_status(False)
 			return
 
 		self.serial_connection = ser_con
@@ -128,6 +133,7 @@ class Dashboard(ctk.CTk):
 		self.reading_thread.start()
 		self.writing_thread.start()
 		print(f"Connected to Surtr on {ser_con.port}.")
+		self.update_connection_status(True, ser_con.port)
 
 	def disconnect_serial(self):
 		if self.serial_stop_event is not None:
@@ -148,16 +154,33 @@ class Dashboard(ctk.CTk):
 		self.serial_stop_event = None
 		self.reading_thread = None
 		self.writing_thread = None
+		self.update_connection_status(False)
+
+	def update_connection_status(self, connected, port=None):
+		if connected:
+			status_text = f"Connected ({port})" if port else "Connected"
+			status_color = ("gray35", "gray70")
+		else:
+			status_text = "Not connected"
+			status_color = ("gray50", "gray60")
+		self.CONNECTION.status_label.configure(text=status_text, text_color=status_color)
 
 	# ==========================================================================
 	class Graph:
-		def __init__(self, parent, func_plot, func_reconnect, initial_port_arg):
+		def __init__(self, parent, func_plot):
 			self.panel = ctk.CTkFrame(parent)
-			self.title = ctk.CTkLabel(self.panel, text="Graph", font=DEFAULT_FONT)		
+			self.title = ctk.CTkLabel(self.panel, text="Plot", font=DEFAULT_FONT)		
 			self.button = ctk.CTkButton(self.panel, text="Plot Graph", command=func_plot, width=150, font=DEFAULT_FONT, corner_radius=0)
+
+	# ==========================================================================
+	class Connection:
+		def __init__(self, parent, func_reconnect, initial_port_arg):
+			self.panel = ctk.CTkFrame(parent)
+			self.title = ctk.CTkLabel(self.panel, text="Connection", font=DEFAULT_FONT)
 			self.port_var = ctk.StringVar(value="" if initial_port_arg is None else str(initial_port_arg))
 			self.port_entry = ctk.CTkEntry(self.panel, textvariable=self.port_var, width=150, font=DEFAULT_FONT, corner_radius=0)
 			self.reconnect_button = ctk.CTkButton(self.panel, text="Reconnect", command=func_reconnect, width=150, font=DEFAULT_FONT, corner_radius=0)
+			self.status_label = ctk.CTkLabel(self.panel, text="Not connected", font=("IBM Plex Mono", 12))
 	# ==========================================================================
 	class Time:
 		def __init__(self, parent, value, start_time):
@@ -500,6 +523,7 @@ def setup_dashboard(root: Dashboard):
 
 	root.grid_columnconfigure(0, weight=1)
 	root.grid_columnconfigure(1, weight=1)
+	root.grid_columnconfigure(2, weight=0)
 
 	root.ADC0.panel.grid_columnconfigure(1, minsize=160, weight=1)
 	root.ADC0.panel.grid_columnconfigure(3, minsize=160, weight=1)
@@ -568,8 +592,12 @@ def setup_dashboard(root: Dashboard):
 	root.GRAPH.panel.grid(row=0, column=2, sticky="nsew", padx=12, pady=12)
 	root.GRAPH.title.grid(row=0, column=0, pady=4)
 	root.GRAPH.button.grid(row=1, column=0, padx=24, pady=6, sticky="ew")
-	root.GRAPH.port_entry.grid(row=2, column=0, padx=24, pady=6, sticky="ew")
-	root.GRAPH.reconnect_button.grid(row=3, column=0, padx=24, pady=6, sticky="ew")
+
+	root.CONNECTION.panel.grid(row=1, column=2, sticky="nsew", padx=12, pady=4)
+	root.CONNECTION.title.grid(row=0, column=0, pady=4)
+	root.CONNECTION.port_entry.grid(row=1, column=0, padx=24, pady=6, sticky="ew")
+	root.CONNECTION.reconnect_button.grid(row=2, column=0, padx=24, pady=6, sticky="ew")
+	root.CONNECTION.status_label.grid(row=3, column=0, padx=24, pady=(0, 6), sticky="w")
 
 
 def get_logfile_name():
