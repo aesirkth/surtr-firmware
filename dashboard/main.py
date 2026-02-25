@@ -115,6 +115,9 @@ class Dashboard(ctk.CTk):
 			stepper_motor.update_label(self.CONFIG.get_stepper_label(stepper_id))
 			stepper_motor.set_disabled(self.CONFIG.get_stepper_disabled(stepper_id))
 
+		self.ACTUATION.ignition.update_label(self.CONFIG.get_ignition_label())
+		self.ACTUATION.ignition.set_disabled(self.CONFIG.get_ignition_disabled())
+
 	def _normalize_port_arg(self, raw_port):
 		if raw_port is None:
 			return None

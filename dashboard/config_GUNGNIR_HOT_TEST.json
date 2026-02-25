@@ -34,6 +34,10 @@
     "stepper2": {"label": "STEP 2", "disabled": false},
     "stepper3": {"label": "STEP 3", "disabled": false}
   },
+  "IGNITION": {
+    "label": "Ignite",
+    "disabled": false
+  },
   "SWITCHES": {
     "switch1": {"label": "SW 1", "on_label": "On", "off_label": "Off", "disabled": false},
     "switch2": {"label": "SW 2", "on_label": "On", "off_label": "Off", "disabled": false},

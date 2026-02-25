@@ -34,6 +34,10 @@
     "stepper2": {"label": "N/C", "disabled": true},
     "stepper3": {"label": "N/C", "disabled": true}
   },
+  "IGNITION": {
+    "label": "Ignite",
+    "disabled": true
+  },
   "SWITCHES": {
     "switch1": {"label": "N2O vent", "on_label": "O", "off_label": "C", "disabled": false},
     "switch2": {"label": "N/C", "on_label": "On", "off_label": "Off", "disabled": true},

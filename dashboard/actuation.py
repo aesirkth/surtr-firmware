@@ -132,3 +132,12 @@ class Actuation:
                     width=150, 
                     font=DEFAULT_FONT, 
                     corner_radius=0)
+                self.disabled = False
+
+            def update_label(self, label):
+                self.button.configure(text=label)
+
+            def set_disabled(self, disabled):
+                self.disabled = disabled
+                state = "disabled" if disabled else "normal"
+                self.button.configure(state=state)
