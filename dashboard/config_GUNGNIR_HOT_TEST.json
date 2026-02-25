@@ -1,0 +1,42 @@
+{
+  "ADC0": {
+    "channel1": {"scale": 1.0, "label": "", "disabled": false},
+    "channel2": {"scale": 1.0, "label": "", "disabled": false},
+    "channel3": {"scale": 1.0, "label": "", "disabled": false},
+    "channel4": {"scale": 1.0, "label": "", "disabled": false},
+    "channel5": {"scale": 1.0, "label": "", "disabled": false},
+    "channel6": {"scale": 1.0, "label": "", "disabled": false},
+    "channel7": {"scale": 1.0, "label": "", "disabled": false},
+    "channel8": {"scale": 1.0, "label": "", "disabled": false},
+    "channel9": {"scale": 100.0, "label": "PT-100a [bar]", "disabled": false},
+    "channel10": {"scale": 100.0, "label": "PT-100b [bar]", "disabled": false},
+    "channel11": {"scale": 100.0, "label": "PT-100c [bar]", "disabled": false},
+    "channel12": {"scale": 1.0, "label": "", "disabled": false},
+    "range_label": "PT-100: 100 bar"
+  },
+  "ADC1": {
+    "channel1": {"scale": 1.0, "label": "", "disabled": false},
+    "channel2": {"scale": 1.0, "label": "", "disabled": false},
+    "channel3": {"scale": 1.0, "label": "", "disabled": false},
+    "channel4": {"scale": 1.0, "label": "", "disabled": false},
+    "channel5": {"scale": 1.0, "label": "", "disabled": false},
+    "channel6": {"scale": 1.0, "label": "", "disabled": false},
+    "channel7": {"scale": 1.0, "label": "", "disabled": false},
+    "channel8": {"scale": 1.0, "label": "", "disabled": false},
+    "channel9": {"scale": 817.14, "label": "LC [kg]", "disabled": false},
+    "channel10": {"scale": 1.0, "label": "", "disabled": false},
+    "channel11": {"scale": 1.0, "label": "", "disabled": false},
+    "channel12": {"scale": 1.0, "label": "", "disabled": false},
+    "range_label": "LC: 1000 KG"
+  },
+  "SWITCHES": {
+    "switch1": {"label": "SW 1", "on_label": "On", "off_label": "Off", "disabled": false},
+    "switch2": {"label": "SW 2", "on_label": "On", "off_label": "Off", "disabled": false},
+    "switch3": {"label": "SW 3", "on_label": "On", "off_label": "Off", "disabled": false},
+    "switch4": {"label": "SW 4", "on_label": "On", "off_label": "Off", "disabled": false},
+    "switch5": {"label": "SW 5", "on_label": "On", "off_label": "Off", "disabled": false},
+    "switch6": {"label": "SW 6", "on_label": "On", "off_label": "Off", "disabled": false},
+    "switch7": {"label": "SW 7", "on_label": "On", "off_label": "Off", "disabled": false},
+    "switch8": {"label": "SW 8", "on_label": "On", "off_label": "Off", "disabled": false}
+  }
+}
