@@ -77,6 +77,7 @@ class Dashboard(ctk.CTk):
 		self.serial_stop_event = None
 		self.reading_thread = None
 		self.writing_thread = None
+		self.connection_lock = threading.Lock()
 		self.update_connection_status(False)
 	
 		
@@ -136,25 +137,31 @@ class Dashboard(ctk.CTk):
 		self.update_connection_status(True, ser_con.port)
 
 	def disconnect_serial(self):
-		if self.serial_stop_event is not None:
-			self.serial_stop_event.set()
-
-		if self.serial_connection is not None and self.serial_connection.is_open:
-			try:
-				self.serial_connection.close()
-			except serial.SerialException:
-				pass
-
-		if self.reading_thread is not None and self.reading_thread.is_alive():
-			self.reading_thread.join(timeout=0.5)
-		if self.writing_thread is not None and self.writing_thread.is_alive():
-			self.writing_thread.join(timeout=0.5)
-
-		self.serial_connection = None
-		self.serial_stop_event = None
-		self.reading_thread = None
-		self.writing_thread = None
+		self._mark_connection_lost()
 		self.update_connection_status(False)
+
+	def handle_connection_loss(self, reason):
+		if self.serial_stop_event is None or self.serial_stop_event.is_set():
+			return
+		print(f"Serial connection lost: {reason}")
+		self._mark_connection_lost()
+		self.update_connection_status(False)
+
+	def _mark_connection_lost(self):
+		with self.connection_lock:
+			if self.serial_stop_event is not None:
+				self.serial_stop_event.set()
+
+			if self.serial_connection is not None and self.serial_connection.is_open:
+				try:
+					self.serial_connection.close()
+				except serial.SerialException:
+					pass
+
+			self.serial_connection = None
+			self.serial_stop_event = None
+			self.reading_thread = None
+			self.writing_thread = None
 
 	def update_connection_status(self, connected, port=None):
 		if connected:
@@ -207,6 +214,7 @@ class Dashboard(ctk.CTk):
 # GLOBALS
 # ===============================================================
 write_queue = queue.Queue()
+CONNECTION_LOST_TIMEOUT_S = 2.0
 
 # ===============================================================
 # MAIN FUNCTION
@@ -233,24 +241,38 @@ def main():
 # 	se_con.read(1)[0] where [0] converts byte to integer.
 def serial_connection_read(ser_con: serial.Serial, root: Dashboard, stop_event: threading.Event):
 	try:
+		last_rx_time = time.monotonic()
 		while not stop_event.is_set():
 			align_byte = ser_con.read(1)
 			if len(align_byte) != 1:
+				if time.monotonic() - last_rx_time > CONNECTION_LOST_TIMEOUT_S:
+					root.handle_connection_loss("no incoming data")
+					return
 				continue
+			last_rx_time = time.monotonic()
 			if align_byte[0] != ALIGNMENT_BYTE:
 				continue
 
 			length_byte = ser_con.read(1)
 			if len(length_byte) != 1:
+				if time.monotonic() - last_rx_time > CONNECTION_LOST_TIMEOUT_S:
+					root.handle_connection_loss("incomplete packet header")
+					return
 				continue
 
 			length = length_byte[0]
 			data = ser_con.read(length)
 			if len(data) != length:
+				if time.monotonic() - last_rx_time > CONNECTION_LOST_TIMEOUT_S:
+					root.handle_connection_loss("incomplete packet payload")
+					return
 				continue
 
 			crc_bytes = ser_con.read(2)
 			if len(crc_bytes) != 2:
+				if time.monotonic() - last_rx_time > CONNECTION_LOST_TIMEOUT_S:
+					root.handle_connection_loss("incomplete packet checksum")
+					return
 				continue
 			crc = crc_bytes[0] + (crc_bytes[1] << 8)
 			packet = bytes([ALIGNMENT_BYTE, length]) + data
@@ -262,7 +284,7 @@ def serial_connection_read(ser_con: serial.Serial, root: Dashboard, stop_event: 
 
 	except serial.SerialException as exc:
 		if not stop_event.is_set():
-			print(f"Serial read failed: {exc}")
+			root.handle_connection_loss(str(exc))
 		return
 	
 # serial_connection_write():
@@ -292,7 +314,7 @@ def serial_connection_write(ser_con: serial.Serial, root: Dashboard, stop_event:
 
 	except serial.SerialException as exc:
 		if not stop_event.is_set():
-			print(f"Serial write failed: {exc}")
+			root.handle_connection_loss(str(exc))
 		return
 	
 
