@@ -68,9 +68,19 @@ class Config:
     def get_switch_disabled(self, switch_id):
         return self._get_switch_cfg(switch_id).get("disabled", False)
 
+    def get_stepper_label(self, stepper_id):
+        return self._get_stepper_cfg(stepper_id).get("label", f"STEP {stepper_id}")
+
+    def get_stepper_disabled(self, stepper_id):
+        return self._get_stepper_cfg(stepper_id).get("disabled", False)
+
     def _get_switch_cfg(self, switch_id):
         switches = self.config.get("SWITCHES", {})
         return switches.get(f"switch{switch_id}", {})
+
+    def _get_stepper_cfg(self, stepper_id):
+        steppers = self.config.get("STEPPERS", {})
+        return steppers.get(f"stepper{stepper_id}", {})
 
 
 # config_loadfile():

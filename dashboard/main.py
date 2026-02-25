@@ -109,6 +109,12 @@ class Dashboard(ctk.CTk):
 			)
 			switch_button.set_disabled(self.CONFIG.get_switch_disabled(switch_id))
 
+		for i in range(NUM_STEPPERS):
+			stepper_id = i + 1
+			stepper_motor = self.ACTUATION.stepper.motor[i]
+			stepper_motor.update_label(self.CONFIG.get_stepper_label(stepper_id))
+			stepper_motor.set_disabled(self.CONFIG.get_stepper_disabled(stepper_id))
+
 	def _normalize_port_arg(self, raw_port):
 		if raw_port is None:
 			return None

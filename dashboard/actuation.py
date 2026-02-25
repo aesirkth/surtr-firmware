@@ -106,6 +106,19 @@ class Actuation:
                 self.label 	= ctk.CTkLabel(parent, text=label, font=DEFAULT_FONT)
                 self.entry  = ctk.CTkEntry(parent, width=60, font=DEFAULT_FONT)
                 self.button = ctk.CTkButton(parent, text="Send", command=func, width=60, font=DEFAULT_FONT, corner_radius=0)
+                self.disabled = False
+
+            def update_label(self, label):
+                self.label.configure(True, text=label)
+
+            def set_disabled(self, disabled):
+                self.disabled = disabled
+                text_color = ("gray60", "gray45") if disabled else ("gray10", "gray90")
+                entry_state = "disabled" if disabled else "normal"
+                button_state = "disabled" if disabled else "normal"
+                self.label.configure(text_color=text_color)
+                self.entry.configure(state=entry_state)
+                self.button.configure(state=button_state)
 
     # =====================================================================
     class Ignition:

@@ -29,6 +29,11 @@
     "channel12": {"scale": 100.0, "label": "PT-100d [bar]", "disabled": false},
     "range_label": "LC-ENG: 2 TON, LC-TNK: 100 KG, \n PT-100: 100 bar"
   },
+  "STEPPERS": {
+    "stepper1": {"label": "N/C", "disabled": true},
+    "stepper2": {"label": "N/C", "disabled": true},
+    "stepper3": {"label": "N/C", "disabled": true}
+  },
   "SWITCHES": {
     "switch1": {"label": "N2O vent", "on_label": "O", "off_label": "C", "disabled": false},
     "switch2": {"label": "N/C", "on_label": "On", "off_label": "Off", "disabled": true},

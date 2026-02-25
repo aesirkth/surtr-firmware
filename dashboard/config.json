@@ -29,6 +29,11 @@
     "channel12": {"scale": 1.0, "label": "ADC1:4", "disabled": false},
     "range_label": "CONTEXT"
   },
+  "STEPPERS": {
+    "stepper1": {"label": "STEP 1", "disabled": false},
+    "stepper2": {"label": "STEP 2", "disabled": false},
+    "stepper3": {"label": "STEP 3", "disabled": false}
+  },
   "SWITCHES": {
     "switch1": {"label": "SW 1", "on_label": "On", "off_label": "Off", "disabled": false},
     "switch2": {"label": "SW 2", "on_label": "On", "off_label": "Off", "disabled": false},
