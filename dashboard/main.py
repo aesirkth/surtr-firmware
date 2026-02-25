@@ -78,6 +78,7 @@ class Dashboard(ctk.CTk):
 		self.reading_thread = None
 		self.writing_thread = None
 		self.connection_lock = threading.Lock()
+		self.ui_alive = True
 		self.update_connection_status(False)
 	
 		
@@ -145,9 +146,10 @@ class Dashboard(ctk.CTk):
 		print(f"Connected to Surtr on {ser_con.port}.")
 		self.update_connection_status(True, ser_con.port)
 
-	def disconnect_serial(self):
+	def disconnect_serial(self, update_ui=True):
 		self._mark_connection_lost()
-		self.update_connection_status(False)
+		if update_ui:
+			self.update_connection_status(False)
 
 	def handle_connection_loss(self, reason):
 		if self.serial_stop_event is None or self.serial_stop_event.is_set():
@@ -173,13 +175,23 @@ class Dashboard(ctk.CTk):
 			self.writing_thread = None
 
 	def update_connection_status(self, connected, port=None):
+		if not self.ui_alive:
+			return
+
 		if connected:
 			status_text = f"Connected ({port})" if port else "Connected"
 			status_color = ("gray35", "gray70")
 		else:
 			status_text = "Not connected"
 			status_color = ("gray50", "gray60")
-		self.CONNECTION.status_label.configure(text=status_text, text_color=status_color)
+		try:
+			if not self.winfo_exists():
+				self.ui_alive = False
+				return
+			self.CONNECTION.status_label.configure(text=status_text, text_color=status_color)
+		except Exception:
+			# Window or label may already be destroyed during shutdown.
+			self.ui_alive = False
 
 	# ==========================================================================
 	class Graph:
@@ -237,7 +249,8 @@ def main():
 	root.reconnect_serial(port)
 
 	root.mainloop()
-	root.disconnect_serial()
+	root.ui_alive = False
+	root.disconnect_serial(update_ui=False)
 
 
 # ===============================================================
