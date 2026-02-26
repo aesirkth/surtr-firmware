@@ -31,10 +31,20 @@ class ADC:
         def __init__(self, parent, label, value):
             self.label = ctk.CTkLabel(parent, text=label, font=DEFAULT_FONT)
             self.value = ctk.CTkLabel(parent, text=value, font=DEFAULT_FONT)
+            self.disabled = False
 
         def update_val(self, val):
+            if self.disabled:
+                self.value.configure(True, text="-")
+                return
             self.value.configure(True, text=f"{val:8.3f}")
         
         def update_label(self, label):
             self.label.configure(True, text=label)
+
+        def set_disabled(self, disabled):
+            self.disabled = disabled
+            text_color = ("gray60", "gray45") if disabled else ("gray10", "gray90")
+            self.label.configure(text_color=text_color)
+            self.value.configure(text_color=text_color)
     
