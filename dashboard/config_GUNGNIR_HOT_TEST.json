@@ -38,6 +38,12 @@
     "label": "Ignite",
     "disabled": false
   },
+  "CAN_SWITCHES": {
+    "switch1": {"label": "CAN 1", "disabled": false},
+    "switch2": {"label": "CAN 2", "disabled": false},
+    "switch3": {"label": "CAN 3", "disabled": false},
+    "switch4": {"label": "CAN 4", "disabled": false}
+  },
   "SWITCHES": {
     "switch1": {"label": "SW 1", "on_label": "On", "off_label": "Off", "disabled": false},
     "switch2": {"label": "SW 2", "on_label": "On", "off_label": "Off", "disabled": false},

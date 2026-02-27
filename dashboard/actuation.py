@@ -159,6 +159,7 @@ class Actuation:
             def __init__(self, parent, switch_id, label, func):
                 self.id = switch_id
                 self.label = ctk.CTkLabel(parent, text=label, font=DEFAULT_FONT)
+                self.disabled = False
                 self.on = ctk.CTkButton(
                     parent,
                     text="On",
@@ -179,11 +180,30 @@ class Actuation:
                 self.set_state(False)
 
             def _set_and_send(self, func, state: bool):
+                if self.disabled:
+                    return
                 self.set_state(state)
                 func(self.id, state)
 
+            def update_label(self, label):
+                self.label.configure(True, text=label)
+
+            def set_disabled(self, disabled):
+                self.disabled = disabled
+                state = "disabled" if disabled else "normal"
+                text_color = ("gray60", "gray45") if disabled else ("gray10", "gray90")
+                self.label.configure(text_color=text_color)
+                self.on.configure(state=state)
+                self.off.configure(state=state)
+                self.set_state(self.current_state)
+
             def set_state(self, state: bool):
                 self.current_state = state
+                if self.disabled:
+                    disabled_color = "#4a4a4a"
+                    self.on.configure(fg_color=disabled_color)
+                    self.off.configure(fg_color=disabled_color)
+                    return
                 active_color = "#1f6aa5"
                 inactive_color = "#3a3a3a"
                 if state:

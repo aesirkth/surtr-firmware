@@ -8,6 +8,7 @@ try:
 	from gs_usb.gs_usb import GsUsb
 	from gs_usb.gs_usb_frame import GsUsbFrame
 	from gs_usb.constants import CAN_EFF_FLAG
+	import usb.util
 	_GS_USB_AVAILABLE = True
 except Exception:
 	_GS_USB_AVAILABLE = False
@@ -87,6 +88,10 @@ class Dashboard(ctk.CTk):
 			self.SIDEBAR,
 			lambda: self.send_can_command(self.CAN_COMMAND.can_id_entry.get(), self.CAN_COMMAND.message_entry.get())
 		)
+		self.CAN_RECOVERY = self.CanRecovery(
+			self.SIDEBAR,
+			self.recover_can_connection
+		)
 
 		self.TIME = self.Time(self.SIDEBAR, "-", time.time())
 		self.adc_temp_buffer = [0]*NUM_CHANNELS_TOTAL
@@ -95,6 +100,7 @@ class Dashboard(ctk.CTk):
 		self.reading_thread = None
 		self.writing_thread = None
 		self.connection_lock = threading.Lock()
+		self.can_lock = threading.Lock()
 		self.ui_alive = True
 		self.can_device = None
 		self.can_bitrate = 500000
@@ -137,6 +143,12 @@ class Dashboard(ctk.CTk):
 
 		self.ACTUATION.ignition.update_label(self.CONFIG.get_ignition_label())
 		self.ACTUATION.ignition.set_disabled(self.CONFIG.get_ignition_disabled())
+
+		for i in range(4):
+			can_switch_id = i + 1
+			can_switch_button = self.ACTUATION.can_switch.button[i]
+			can_switch_button.update_label(self.CONFIG.get_can_switch_label(can_switch_id))
+			can_switch_button.set_disabled(self.CONFIG.get_can_switch_disabled(can_switch_id))
 
 	def _normalize_port_arg(self, raw_port):
 		if raw_port is None:
@@ -269,7 +281,55 @@ class Dashboard(ctk.CTk):
 				self.can_device.stop()
 			except Exception:
 				pass
+			try:
+				usb.util.dispose_resources(self.can_device.gs_usb)
+			except Exception:
+				pass
 			self.can_device = None
+			time.sleep(0.1)
+
+	def _simulate_usb_replug_locked(self, raw_usb_dev=None):
+		# Best-effort software equivalent of unplug/replug: USB device reset + re-enumeration delay.
+		usb_dev = raw_usb_dev
+		if usb_dev is None:
+			try:
+				devs = GsUsb.scan()
+				if len(devs) > 0:
+					usb_dev = devs[0].gs_usb
+			except Exception:
+				usb_dev = None
+
+		if usb_dev is None:
+			return
+
+		try:
+			usb_dev.reset()
+			print("Issued USB reset cycle for usb2can device.")
+		except Exception as exc:
+			print(f"USB reset cycle failed: {exc}")
+		time.sleep(1.0)
+
+	def _recover_can_connection_locked(self, max_attempts=3):
+		raw_usb_dev = self.can_device.gs_usb if self.can_device is not None else None
+		self.close_can_bus()
+		self._simulate_usb_replug_locked(raw_usb_dev)
+		last_exc = None
+		for attempt in range(max_attempts):
+			try:
+				self._get_can_device()
+				return True
+			except Exception as exc:
+				last_exc = exc
+				time.sleep(0.2 * (attempt + 1))
+		print(f"CAN recovery failed: {last_exc}")
+		return False
+
+	def recover_can_connection(self):
+		with self.can_lock:
+			print("Recovering CAN backend...")
+			if self._recover_can_connection_locked():
+				print("CAN recovery successful.")
+			return
 
 	def _is_recoverable_can_error(self, exc: Exception):
 		msg = str(exc).lower()
@@ -278,6 +338,8 @@ class Dashboard(ctk.CTk):
 			or "_usb_reap_async" in msg
 			or "no backend available" in msg
 			or "device not found" in msg
+			or "resource is in use" in msg
+			or "could not claim interface" in msg
 		)
 
 	def _send_can_payload(self, can_id: int, payload: bytes, context: str):
@@ -287,23 +349,24 @@ class Dashboard(ctk.CTk):
 		frame_can_id = can_id | CAN_EFF_FLAG if can_id > 0x7FF else can_id
 		frame = GsUsbFrame(can_id=frame_can_id, data=payload)
 
-		for attempt in range(2):
-			try:
-				dev = self._get_can_device()
-				if dev.send(frame):
-					print(f"{context} -> CAN ID 0x{can_id:X}: {payload.hex(' ').upper()}")
-					return True
-				print(f"{context} failed: device did not accept frame.")
-				return False
-			except Exception as exc:
-				if attempt == 0 and self._is_recoverable_can_error(exc):
-					print(f"{context}: CAN backend timeout/error, reinitializing and retrying once...")
-					self.close_can_bus()
-					continue
-				print(f"{context} failed: {exc}")
-				return False
+		with self.can_lock:
+			for attempt in range(2):
+				try:
+					dev = self._get_can_device()
+					if dev.send(frame):
+						print(f"{context} -> CAN ID 0x{can_id:X}: {payload.hex(' ').upper()}")
+						return True
+					print(f"{context} failed: device did not accept frame.")
+					return False
+				except Exception as exc:
+					if attempt == 0 and self._is_recoverable_can_error(exc):
+						print(f"{context}: CAN backend timeout/error, trying recovery and retry...")
+						if self._recover_can_connection_locked():
+							continue
+					print(f"{context} failed: {exc}")
+					return False
 
-		return False
+			return False
 
 	def send_can_command(self, can_id_text: str, message_text: str):
 		try:
@@ -402,6 +465,20 @@ class Dashboard(ctk.CTk):
 				return True
 
 			return re.fullmatch(r"(0[xX])?[0-9a-fA-F]{0,4}", proposed) is not None
+
+	# ==========================================================================
+	class CanRecovery:
+		def __init__(self, parent, func_recover):
+			self.panel = ctk.CTkFrame(parent)
+			self.title = ctk.CTkLabel(self.panel, text="CAN Recovery", font=DEFAULT_FONT)
+			self.button = ctk.CTkButton(
+				self.panel,
+				text="Recover CAN",
+				command=func_recover,
+				width=150,
+				font=DEFAULT_FONT,
+				corner_radius=0
+			)
 
 	# ==========================================================================
 	class Time:
@@ -852,7 +929,11 @@ def setup_dashboard(root: Dashboard):
 	root.CAN_COMMAND.message_entry.grid(row=2, column=0, padx=6, pady=3, sticky="w")
 	root.CAN_COMMAND.send_button.grid(row=3, column=0, padx=6, pady=3, sticky="w")
 
-	root.TIME.panel.grid(row=2, column=0, padx=0, pady=(4, 0), sticky="nw")
+	root.CAN_RECOVERY.panel.grid(row=2, column=0, sticky="nw", padx=0, pady=(4, 0))
+	root.CAN_RECOVERY.title.grid(row=0, column=0, pady=4)
+	root.CAN_RECOVERY.button.grid(row=1, column=0, padx=6, pady=3, sticky="w")
+
+	root.TIME.panel.grid(row=3, column=0, padx=0, pady=(4, 0), sticky="nw")
 	root.TIME.label_pgt.grid(row=0, column=0, padx=6, pady=(3, 1), sticky="w")
 	root.TIME.label_srt.grid(row=1, column=0, padx=6, pady=(0, 3), sticky="w")
 
