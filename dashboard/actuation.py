@@ -132,7 +132,9 @@ class Actuation:
                     command=func, 
                     width=150, 
                     font=DEFAULT_FONT, 
-                    corner_radius=0)
+                    corner_radius=0,
+                    fg_color="#b22222",
+                    hover_color="#8b1a1a")
                 self.disabled = False
 
             def update_label(self, label):
