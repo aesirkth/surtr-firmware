@@ -77,6 +77,12 @@ class Config:
     def get_can_switch_label(self, switch_id):
         return self._get_can_switch_cfg(switch_id).get("label", f"CAN {switch_id}")
 
+    def get_can_switch_on_label(self, switch_id):
+        return self._get_can_switch_cfg(switch_id).get("on_label", "On")
+
+    def get_can_switch_off_label(self, switch_id):
+        return self._get_can_switch_cfg(switch_id).get("off_label", "Off")
+
     def get_can_switch_disabled(self, switch_id):
         return self._get_can_switch_cfg(switch_id).get("disabled", False)
 

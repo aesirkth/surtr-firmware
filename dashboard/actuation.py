@@ -112,6 +112,10 @@ class Actuation:
             def update_label(self, label):
                 self.label.configure(True, text=label)
 
+            def update_state_labels(self, on_label, off_label):
+                self.on.configure(text=on_label)
+                self.off.configure(text=off_label)
+
             def set_disabled(self, disabled):
                 self.disabled = disabled
                 text_color = ("gray60", "gray45") if disabled else ("gray10", "gray90")
@@ -187,6 +191,10 @@ class Actuation:
 
             def update_label(self, label):
                 self.label.configure(True, text=label)
+
+            def update_state_labels(self, on_label, off_label):
+                self.on.configure(text=on_label)
+                self.off.configure(text=off_label)
 
             def set_disabled(self, disabled):
                 self.disabled = disabled

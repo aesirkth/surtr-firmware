@@ -148,6 +148,10 @@ class Dashboard(ctk.CTk):
 			can_switch_id = i + 1
 			can_switch_button = self.ACTUATION.can_switch.button[i]
 			can_switch_button.update_label(self.CONFIG.get_can_switch_label(can_switch_id))
+			can_switch_button.update_state_labels(
+				self.CONFIG.get_can_switch_on_label(can_switch_id),
+				self.CONFIG.get_can_switch_off_label(can_switch_id)
+			)
 			can_switch_button.set_disabled(self.CONFIG.get_can_switch_disabled(can_switch_id))
 
 	def _normalize_port_arg(self, raw_port):

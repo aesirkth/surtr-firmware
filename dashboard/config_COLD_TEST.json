@@ -39,10 +39,10 @@
     "disabled": true
   },
   "CAN_SWITCHES": {
-    "switch1": {"label": "Extra", "disabled": true},
-    "switch2": {"label": "BV", "disabled": false},
-    "switch3": {"label": "PV", "disabled": false},
-    "switch4": {"label": "CV", "disabled": false}
+    "switch1": {"label": "Extra", "on_label": "O", "off_label": "C", "disabled": true},
+    "switch2": {"label": "BV", "on_label": "O", "off_label": "C", "disabled": false},
+    "switch3": {"label": "PV", "on_label": "O", "off_label": "C", "disabled": false},
+    "switch4": {"label": "CV", "on_label": "O", "off_label": "C", "disabled": false}
   },
   "SWITCHES": {
     "switch1": {"label": "N2O vent", "on_label": "O", "off_label": "C", "disabled": false},
