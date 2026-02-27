@@ -3,6 +3,15 @@ from config import Config
 from constants import *
 from actuation import Actuation
 from graph import plot_adc_graph_live
+try:
+	from gs_usb.gs_usb import GsUsb
+	from gs_usb.gs_usb_frame import GsUsbFrame
+	from gs_usb.constants import CAN_EFF_FLAG
+	_GS_USB_AVAILABLE = True
+except Exception:
+	_GS_USB_AVAILABLE = False
+
+GS_CAN_MODE_NORMAL = 0
 
 
 # ===============================================================
@@ -21,6 +30,7 @@ from graph import plot_adc_graph_live
 #		Stepper:
 #			motor[3]
 #		Ignition
+#		CAN
 #	}
 #	CONFIG
 #	GRAPH
@@ -51,7 +61,8 @@ class Dashboard(ctk.CTk):
 			self,
 			lambda: ignition_command(0),
 			switch_command,
-			None
+			None,
+			self.send_can_command
 		)
 
 		self.CONFIG = Config(
@@ -80,6 +91,8 @@ class Dashboard(ctk.CTk):
 		self.writing_thread = None
 		self.connection_lock = threading.Lock()
 		self.ui_alive = True
+		self.can_device = None
+		self.can_bitrate = 500000
 		self.update_connection_status(False)
 	
 		
@@ -194,6 +207,96 @@ class Dashboard(ctk.CTk):
 			# Window or label may already be destroyed during shutdown.
 			self.ui_alive = False
 
+	def _parse_hex_bytes(self, text: str):
+		msg = text.strip()
+		if msg == "":
+			raise ValueError("CAN message is empty.")
+
+		if " " in msg or "," in msg:
+			tokens = [tok for tok in msg.replace(",", " ").split() if tok]
+			return bytes(int(tok, 16) for tok in tokens)
+
+		msg = msg.replace("0x", "").replace("0X", "")
+		if len(msg) % 2 != 0:
+			raise ValueError("Hex message must have an even number of characters.")
+		return bytes(int(msg[i:i+2], 16) for i in range(0, len(msg), 2))
+
+	def _get_can_device(self):
+		if self.can_device is not None:
+			return self.can_device
+		if not _GS_USB_AVAILABLE:
+			raise RuntimeError("gs-usb is not installed. Install with: pip install gs-usb==0.3.0")
+
+		try:
+			devs = GsUsb.scan()
+			if len(devs) == 0:
+				raise RuntimeError("No INNO-MAKER usb2can device found.")
+
+			dev = devs[0]
+			try:
+				dev.stop()
+			except Exception:
+				pass
+
+			if not dev.set_bitrate(self.can_bitrate):
+				raise RuntimeError(f"Failed to set CAN bitrate to {self.can_bitrate}.")
+
+			dev.start(GS_CAN_MODE_NORMAL)
+			self.can_device = dev
+			print(f"usb2can ready (bitrate={self.can_bitrate}, device_index=0)")
+		except Exception as exc:
+			if "libusb" in str(exc).lower():
+				raise RuntimeError("usb2can requires libusb driver setup (Zadig) and libusb-1.0.dll per INNO-MAKER instructions.") from exc
+			raise
+		return self.can_device
+
+	def close_can_bus(self):
+		if self.can_device is not None:
+			try:
+				self.can_device.stop()
+			except Exception:
+				pass
+			self.can_device = None
+
+	def send_can_command(self, can_id_text: str, message_text: str):
+		try:
+			can_id = int(can_id_text.strip(), 16)
+		except ValueError:
+			print(f"Invalid CAN ID hex: '{can_id_text}'")
+			return
+
+		try:
+			raw_bytes = self._parse_hex_bytes(message_text)
+		except ValueError as exc:
+			print(f"Invalid CAN message hex: {exc}")
+			return
+
+		if len(raw_bytes) < 2:
+			print("CAN message must include a 2-byte length header.")
+			return
+
+		payload_len = (raw_bytes[0] << 8) | raw_bytes[1]
+		payload = raw_bytes[2:]
+
+		if payload_len != len(payload):
+			print(f"CAN message length mismatch: header={payload_len}, payload={len(payload)}")
+			return
+
+		if len(payload) > 8:
+			print(f"USB2CAN classic frame supports up to 8 data bytes (got {len(payload)}).")
+			return
+
+		try:
+			dev = self._get_can_device()
+			frame_can_id = can_id | CAN_EFF_FLAG if can_id > 0x7FF else can_id
+			frame = GsUsbFrame(can_id=frame_can_id, data=payload)
+			if dev.send(frame):
+				print(f"Sent CAN ID 0x{can_id:X}: {payload.hex(' ').upper()}")
+			else:
+				print("CAN send failed: device did not accept frame.")
+		except Exception as exc:
+			print(f"CAN send failed: {exc}")
+
 	# ==========================================================================
 	class Graph:
 		def __init__(self, parent, func_plot):
@@ -253,6 +356,7 @@ def main():
 	root.mainloop()
 	root.ui_alive = False
 	root.disconnect_serial(update_ui=False)
+	root.close_can_bus()
 
 
 # ===============================================================
@@ -579,6 +683,7 @@ def setup_dashboard(root: Dashboard):
 	root.ACTUATION.panel.grid_columnconfigure(0, weight=0)
 	root.ACTUATION.panel.grid_columnconfigure(1, weight=0)
 	root.ACTUATION.panel.grid_columnconfigure(2, weight=0)
+	root.ACTUATION.panel.grid_columnconfigure(3, weight=0)
 
 	root.ADC0.panel.grid(row=1, column=0, padx=(16, 8), pady=8, sticky="nsew")
 	root.ADC1.panel.grid(row=1, column=1, padx=(8, 16), pady=8, sticky="nsew")
@@ -626,6 +731,12 @@ def setup_dashboard(root: Dashboard):
 	root.ACTUATION.ignition.panel.grid_columnconfigure(0, weight=1)
 	root.ACTUATION.ignition.title.grid(row=0, column=0, pady=4, sticky="n")
 	root.ACTUATION.ignition.button.grid(row=1, column=0, padx=6, pady=3, sticky="w")
+
+	root.ACTUATION.can.panel.grid(row=0, column=3, sticky="nw", padx=6, pady=6)
+	root.ACTUATION.can.title.grid(row=0, column=0, columnspan=3, pady=4, sticky="w")
+	root.ACTUATION.can.can_id_entry.grid(row=1, column=0, padx=2, pady=2, sticky="w")
+	root.ACTUATION.can.message_entry.grid(row=1, column=1, padx=2, pady=2, sticky="w")
+	root.ACTUATION.can.send_button.grid(row=1, column=2, padx=2, pady=2, sticky="w")
 
 	root.CONFIG.path_entry.grid(row=0, column=1, padx=4, pady=4, sticky="ew")
 	root.CONFIG.panel.grid_columnconfigure(1, weight=1)

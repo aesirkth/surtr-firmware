@@ -1,5 +1,6 @@
 
 from constants import *
+import re
 
 # =========================================================================	
 # ACTUATION
@@ -14,11 +15,12 @@ from constants import *
 # =========================================================================	
 # func_ignition() and func_stepper() not used right now.
 class Actuation:
-    def __init__(self, parent, func_ignition, func_switch, func_stepper):
+    def __init__(self, parent, func_ignition, func_switch, func_stepper, func_can):
         self.panel = ctk.CTkFrame(parent, border_width=1)
         self.switch = self.Switch(self.panel, func_switch)
         self.stepper = self.Stepper(self.panel, func_stepper)
         self.ignition = self.Ignition(self.panel, func_ignition)
+        self.can = self.Can(self.panel, func_can)
     
     # =====================================================================
     class Switch:
@@ -141,3 +143,58 @@ class Actuation:
                 self.disabled = disabled
                 state = "disabled" if disabled else "normal"
                 self.button.configure(state=state)
+
+    # =====================================================================
+    class Can:
+            def __init__(self, parent, func_send):
+                self.panel = ctk.CTkFrame(parent)
+                self.title = ctk.CTkLabel(self.panel, text="CAN", font=DEFAULT_FONT_BOLD)
+                can_id_vcmd = (self.panel.register(self._validate_can_id), "%P")
+                msg_vcmd = (self.panel.register(self._validate_can_message), "%P")
+                self.can_id_entry = ctk.CTkEntry(
+                    self.panel,
+                    width=100,
+                    font=DEFAULT_FONT,
+                    corner_radius=0,
+                    placeholder_text="ID hex",
+                    validate="key",
+                    validatecommand=can_id_vcmd,
+                )
+                self.message_entry = ctk.CTkEntry(
+                    self.panel,
+                    width=230,
+                    font=DEFAULT_FONT,
+                    corner_radius=0,
+                    placeholder_text="len(2B)+payload hex",
+                    validate="key",
+                    validatecommand=msg_vcmd,
+                )
+                self.send_button = ctk.CTkButton(
+                    self.panel,
+                    text="Send",
+                    command=lambda: func_send(self.can_id_entry.get(), self.message_entry.get()),
+                    width=70,
+                    font=DEFAULT_FONT,
+                    corner_radius=0
+                )
+
+            def _validate_can_id(self, proposed: str):
+                if proposed == "":
+                    return True
+                return re.fullmatch(r"(0[xX])?[0-9a-fA-F]*", proposed) is not None
+
+            def _validate_can_message(self, proposed: str):
+                if proposed == "":
+                    return True
+                if re.fullmatch(r"[0-9a-fA-FxX,\s]*", proposed) is None:
+                    return False
+
+                has_separators = ("," in proposed) or (" " in proposed)
+                if not has_separators:
+                    return re.fullmatch(r"(0[xX])?[0-9a-fA-F]*", proposed) is not None
+
+                tokens = [tok for tok in re.split(r"[\s,]+", proposed.strip()) if tok]
+                for tok in tokens:
+                    if re.fullmatch(r"(0[xX])?[0-9a-fA-F]{0,2}", tok) is None:
+                        return False
+                return True
