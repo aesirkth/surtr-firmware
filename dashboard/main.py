@@ -725,7 +725,7 @@ def adc_to_scaled_normalized_voltage(root: Dashboard, adc_id, ch_in, adc_val):
 #
 def adc_to_scaled_normalized_current(root: Dashboard, adc_id, ch_in, adc_val):
 	scale = root.CONFIG.get_adc_channel_scale(adc_id, ch_in)
-	return adc_to_normalized_voltage(adc_val) * scale
+	return adc_to_normalized_current(adc_val) * scale
 
 # parse_command_protobuf():
 #	Uses protobuf protocol and derives operation from real message in packet.
@@ -783,36 +783,27 @@ def parse_command_protobuf(message: bytes, root: Dashboard):
 	# It is only mentioned for ADC1.
 	match msg.WhichOneof("command"):
 		case "adc_measurements": 
+			def update_adc_from_packet(adc_tag: int):
+				start_index = 0 if adc_tag == ADC0_TAG else NUM_CHANNELS_PER_ADC
+				for channel_num in range(1, NUM_CHANNELS_PER_ADC + 1):
+					value_key = f"value{channel_num - 1}"
+					adc_value = data["adcMeasurements"][value_key]
+
+					if channel_num <= NUM_CHANNELS_ADC_VOLTAGE:
+						scaled_value = adc_to_scaled_normalized_voltage(root, adc_tag, channel_num, adc_value)
+					else:
+						scaled_value = adc_to_scaled_normalized_current(root, adc_tag, channel_num, adc_value)
+
+					root.adc_temp_buffer[start_index + (channel_num - 1)] = scaled_value
 
 			# ADC0 because "id" not mentioned in protobuf message.
-			# 0-7 Voltage 8-11 Current
 			if not data["adcMeasurements"]["id"]:
-				for key, val in data["adcMeasurements"].items():
+				update_adc_from_packet(ADC0_TAG)
+				root.ADC0.update_channels(root.adc_temp_buffer[0:NUM_CHANNELS_PER_ADC])
 
-					if key == "id": 
-						continue
-
-					index = int(key.removeprefix("value"))
-					if index < NUM_CHANNELS_ADC_VOLTAGE: 
-						root.adc_temp_buffer[index] = adc_to_scaled_normalized_voltage(root, ADC0_TAG, (index+1), val)
-					else: 
-						root.adc_temp_buffer[index] = adc_to_scaled_normalized_current(root, ADC0_TAG, (index+1), val)
-				root.ADC0.update_channels(root.adc_temp_buffer[0:(NUM_CHANNELS_PER_ADC)])
-
-			# ADC1 because "id=1". Structurally: ADC1 [id] [0-11] 
-			# 0-7 Voltage 8-11 Current
+			# ADC1 because "id=1". Structurally: ADC1 [id] [0-11].
 			else:
-				for key, val in data["adcMeasurements"].items():
-
-					if key == "id": 
-						continue
-
-					index = int(key.removeprefix("value"))
-					if index < NUM_CHANNELS_ADC_VOLTAGE: 
-						root.adc_temp_buffer[index+NUM_CHANNELS_PER_ADC] = adc_to_scaled_normalized_voltage(root, ADC1_TAG, (index+1), val)
-					else: 
-						root.adc_temp_buffer[index+NUM_CHANNELS_PER_ADC] = adc_to_scaled_normalized_current(root, ADC1_TAG, (index+1), val)
-
+				update_adc_from_packet(ADC1_TAG)
 				writeRow(root.SAVEFILE_WHANDLE, time, root.adc_temp_buffer)
 				root.ADC1.update_channels(root.adc_temp_buffer[NUM_CHANNELS_PER_ADC:NUM_CHANNELS_TOTAL])
 			

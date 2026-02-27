@@ -8,10 +8,10 @@
     "channel6": {"scale": 1.0, "label": "", "disabled": false},
     "channel7": {"scale": 1.0, "label": "", "disabled": false},
     "channel8": {"scale": 1.0, "label": "", "disabled": false},
-    "channel9": {"scale": 1.0, "label": "ADC0:1", "disabled": false},
-    "channel10": {"scale": 1.0, "label": "ADC0:2", "disabled": false},
-    "channel11": {"scale": 1.0, "label": "ADC0:3", "disabled": false},
-    "channel12": {"scale": 1.0, "label": "ADC0:4", "disabled": false},
+    "channel9": {"scale": 1.0, "label": "ADC0:9", "disabled": false},
+    "channel10": {"scale": 1.0, "label": "ADC0:10", "disabled": false},
+    "channel11": {"scale": 1.0, "label": "ADC0:11", "disabled": false},
+    "channel12": {"scale": 1.0, "label": "ADC0:12", "disabled": false},
     "range_label": "CONTEXT"
   },
   "ADC1": {
@@ -23,10 +23,10 @@
     "channel6": {"scale": 1.0, "label": "", "disabled": false},
     "channel7": {"scale": 1.0, "label": "", "disabled": false},
     "channel8": {"scale": 1.0, "label": "", "disabled": false},
-    "channel9": {"scale": 1.0, "label": "ADC1:1", "disabled": false},
-    "channel10": {"scale": 1.0, "label": "ADC1:2", "disabled": false},
-    "channel11": {"scale": 1.0, "label": "ADC1:3", "disabled": false},
-    "channel12": {"scale": 1.0, "label": "ADC1:4", "disabled": false},
+    "channel9": {"scale": 1.0, "label": "ADC1:9", "disabled": false},
+    "channel10": {"scale": 1.0, "label": "ADC1:10", "disabled": false},
+    "channel11": {"scale": 1.0, "label": "ADC1:11", "disabled": false},
+    "channel12": {"scale": 1.0, "label": "ADC1:12", "disabled": false},
     "range_label": "CONTEXT"
   },
   "STEPPERS": {
