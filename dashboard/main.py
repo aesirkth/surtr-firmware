@@ -72,6 +72,9 @@ class Dashboard(ctk.CTk):
 			self.config_apply_labels,
 			get_default_config_path()
 		)
+		self.adc_temp_buffer = [0]*NUM_CHANNELS_TOTAL
+		self.adc_raw_buffer = [0]*NUM_CHANNELS_TOTAL
+		self.adc_zero_bias = [0]*NUM_CHANNELS_TOTAL
 		self.config_apply_labels()
 
 		self.GRAPH = self.Graph(
@@ -92,9 +95,12 @@ class Dashboard(ctk.CTk):
 			self.SIDEBAR,
 			self.recover_can_connection
 		)
+		self.ADC_ZERO = self.AdcZero(
+			self.SIDEBAR,
+			self.capture_adc_zero_bias
+		)
 
 		self.TIME = self.Time(self.SIDEBAR, "-", time.time())
-		self.adc_temp_buffer = [0]*NUM_CHANNELS_TOTAL
 		self.serial_connection = None
 		self.serial_stop_event = None
 		self.reading_thread = None
@@ -124,6 +130,7 @@ class Dashboard(ctk.CTk):
 			self.ADC1.channel[i].update_label(label)
 			self.ADC1.channel[i].set_disabled(self.CONFIG.get_adc_channel_disabled(ADC1_TAG, ch_id))
 		self.ADC1.update_range_label(self.CONFIG.config["ADC1"]["range_label"])
+		self.reset_adc_zero_bias()
 
 		for i in range(NUM_SWITCHES):
 			switch_id = i + 1
@@ -159,6 +166,33 @@ class Dashboard(ctk.CTk):
 			return None
 		port = str(raw_port).strip()
 		return port if port else None
+
+	def _adc_buffer_index(self, adc_tag: int, channel_num: int):
+		start_index = 0 if adc_tag == ADC0_TAG else NUM_CHANNELS_PER_ADC
+		return start_index + (channel_num - 1)
+
+	def reset_adc_zero_bias(self):
+		for i in range(NUM_CHANNELS_TOTAL):
+			self.adc_zero_bias[i] = 0.0
+
+	def capture_adc_zero_bias(self):
+		count = 0
+		for adc_tag in (ADC0_TAG, ADC1_TAG):
+			for channel_num in range(1, NUM_CHANNELS_PER_ADC + 1):
+				buffer_index = self._adc_buffer_index(adc_tag, channel_num)
+				if self.CONFIG.get_adc_channel_zeroable(adc_tag, channel_num):
+					self.adc_zero_bias[buffer_index] = self.adc_raw_buffer[buffer_index]
+					count += 1
+				else:
+					self.adc_zero_bias[buffer_index] = 0.0
+		print(f"ADC zero captured for {count} channels.")
+
+	def _apply_adc_zero_bias(self, adc_tag: int, channel_num: int, scaled_value: float):
+		buffer_index = self._adc_buffer_index(adc_tag, channel_num)
+		self.adc_raw_buffer[buffer_index] = scaled_value
+		if self.CONFIG.get_adc_channel_zeroable(adc_tag, channel_num):
+			return scaled_value - self.adc_zero_bias[buffer_index]
+		return scaled_value
 
 	def reconnect_serial(self, raw_port):
 		port = self._normalize_port_arg(raw_port)
@@ -485,6 +519,20 @@ class Dashboard(ctk.CTk):
 			)
 
 	# ==========================================================================
+	class AdcZero:
+		def __init__(self, parent, func_zero):
+			self.panel = ctk.CTkFrame(parent)
+			self.title = ctk.CTkLabel(self.panel, text="ADC Zero", font=DEFAULT_FONT)
+			self.button = ctk.CTkButton(
+				self.panel,
+				text="Zero",
+				command=func_zero,
+				width=150,
+				font=DEFAULT_FONT,
+				corner_radius=0
+			)
+
+	# ==========================================================================
 	class Time:
 		def __init__(self, parent, value, start_time):
 				self.panel = ctk.CTkFrame(parent, border_width=1)
@@ -794,6 +842,7 @@ def parse_command_protobuf(message: bytes, root: Dashboard):
 					else:
 						scaled_value = adc_to_scaled_normalized_current(root, adc_tag, channel_num, adc_value)
 
+					scaled_value = root._apply_adc_zero_bias(adc_tag, channel_num, scaled_value)
 					root.adc_temp_buffer[start_index + (channel_num - 1)] = scaled_value
 
 			# ADC0 because "id" not mentioned in protobuf message.
@@ -928,7 +977,11 @@ def setup_dashboard(root: Dashboard):
 	root.CAN_RECOVERY.title.grid(row=0, column=0, pady=4)
 	root.CAN_RECOVERY.button.grid(row=1, column=0, padx=6, pady=3, sticky="w")
 
-	root.TIME.panel.grid(row=3, column=0, padx=0, pady=(4, 0), sticky="nw")
+	root.ADC_ZERO.panel.grid(row=3, column=0, sticky="nw", padx=0, pady=(4, 0))
+	root.ADC_ZERO.title.grid(row=0, column=0, pady=4)
+	root.ADC_ZERO.button.grid(row=1, column=0, padx=6, pady=3, sticky="w")
+
+	root.TIME.panel.grid(row=4, column=0, padx=0, pady=(4, 0), sticky="nw")
 	root.TIME.label_pgt.grid(row=0, column=0, padx=6, pady=(3, 1), sticky="w")
 	root.TIME.label_srt.grid(row=1, column=0, padx=6, pady=(0, 3), sticky="w")
 

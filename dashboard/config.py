@@ -56,6 +56,10 @@ class Config:
         channel_cfg = self.config[f"ADC{adc_id}"][f"channel{ch_id}"]
         return channel_cfg.get("disabled", False)
 
+    def get_adc_channel_zeroable(self, adc_id, ch_id):
+        channel_cfg = self.config[f"ADC{adc_id}"][f"channel{ch_id}"]
+        return channel_cfg.get("zeroable", False)
+
     def get_switch_label(self, switch_id):
         return self._get_switch_cfg(switch_id).get("label", f"SW {switch_id}")
 
