@@ -1,6 +1,5 @@
 
 from constants import *
-import re
 
 # =========================================================================	
 # ACTUATION
@@ -15,12 +14,12 @@ import re
 # =========================================================================	
 # func_ignition() and func_stepper() not used right now.
 class Actuation:
-    def __init__(self, parent, func_ignition, func_switch, func_stepper, func_can):
+    def __init__(self, parent, func_ignition, func_switch, func_stepper, func_can_switch):
         self.panel = ctk.CTkFrame(parent, border_width=1)
         self.switch = self.Switch(self.panel, func_switch)
         self.stepper = self.Stepper(self.panel, func_stepper)
         self.ignition = self.Ignition(self.panel, func_ignition)
-        self.can = self.Can(self.panel, func_can)
+        self.can_switch = self.CanSwitch(self.panel, func_can_switch)
     
     # =====================================================================
     class Switch:
@@ -145,56 +144,49 @@ class Actuation:
                 self.button.configure(state=state)
 
     # =====================================================================
-    class Can:
-            def __init__(self, parent, func_send):
-                self.panel = ctk.CTkFrame(parent)
-                self.title = ctk.CTkLabel(self.panel, text="CAN", font=DEFAULT_FONT_BOLD)
-                can_id_vcmd = (self.panel.register(self._validate_can_id), "%P")
-                msg_vcmd = (self.panel.register(self._validate_can_message), "%P")
-                self.can_id_entry = ctk.CTkEntry(
-                    self.panel,
-                    width=100,
-                    font=DEFAULT_FONT,
-                    corner_radius=0,
-                    placeholder_text="ID hex",
-                    validate="key",
-                    validatecommand=can_id_vcmd,
-                )
-                self.message_entry = ctk.CTkEntry(
-                    self.panel,
-                    width=230,
-                    font=DEFAULT_FONT,
-                    corner_radius=0,
-                    placeholder_text="len(2B)+payload hex",
-                    validate="key",
-                    validatecommand=msg_vcmd,
-                )
-                self.send_button = ctk.CTkButton(
-                    self.panel,
-                    text="Send",
-                    command=lambda: func_send(self.can_id_entry.get(), self.message_entry.get()),
-                    width=70,
+    class CanSwitch:
+        def __init__(self, parent, func):
+            self.panel = ctk.CTkFrame(parent)
+            self.title = ctk.CTkLabel(self.panel, text="CAN Switches", font=DEFAULT_FONT_BOLD)
+            self.button: list[Actuation.CanSwitch.Button] = []
+            for i in range(0, 4):
+                bt = Actuation.CanSwitch.Button(self.panel, i + 1, f"CAN {i+1}", func)
+                self.button.append(bt)
+
+        class Button:
+            def __init__(self, parent, switch_id, label, func):
+                self.id = switch_id
+                self.label = ctk.CTkLabel(parent, text=label, font=DEFAULT_FONT)
+                self.on = ctk.CTkButton(
+                    parent,
+                    text="On",
+                    command=lambda: self._set_and_send(func, True),
+                    width=50,
                     font=DEFAULT_FONT,
                     corner_radius=0
                 )
+                self.off = ctk.CTkButton(
+                    parent,
+                    text="Off",
+                    command=lambda: self._set_and_send(func, False),
+                    width=50,
+                    font=DEFAULT_FONT,
+                    corner_radius=0
+                )
+                self.current_state = False
+                self.set_state(False)
 
-            def _validate_can_id(self, proposed: str):
-                if proposed == "":
-                    return True
-                return re.fullmatch(r"(0[xX])?[0-9a-fA-F]*", proposed) is not None
+            def _set_and_send(self, func, state: bool):
+                self.set_state(state)
+                func(self.id, state)
 
-            def _validate_can_message(self, proposed: str):
-                if proposed == "":
-                    return True
-                if re.fullmatch(r"[0-9a-fA-FxX,\s]*", proposed) is None:
-                    return False
-
-                has_separators = ("," in proposed) or (" " in proposed)
-                if not has_separators:
-                    return re.fullmatch(r"(0[xX])?[0-9a-fA-F]*", proposed) is not None
-
-                tokens = [tok for tok in re.split(r"[\s,]+", proposed.strip()) if tok]
-                for tok in tokens:
-                    if re.fullmatch(r"(0[xX])?[0-9a-fA-F]{0,2}", tok) is None:
-                        return False
-                return True
+            def set_state(self, state: bool):
+                self.current_state = state
+                active_color = "#1f6aa5"
+                inactive_color = "#3a3a3a"
+                if state:
+                    self.on.configure(fg_color=active_color)
+                    self.off.configure(fg_color=inactive_color)
+                else:
+                    self.on.configure(fg_color=inactive_color)
+                    self.off.configure(fg_color=active_color)

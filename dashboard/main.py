@@ -3,6 +3,7 @@ from config import Config
 from constants import *
 from actuation import Actuation
 from graph import plot_adc_graph_live
+import re
 try:
 	from gs_usb.gs_usb import GsUsb
 	from gs_usb.gs_usb_frame import GsUsbFrame
@@ -62,7 +63,7 @@ class Dashboard(ctk.CTk):
 			lambda: ignition_command(0),
 			switch_command,
 			None,
-			self.send_can_command
+			self.send_can_switch_command
 		)
 
 		self.CONFIG = Config(
@@ -81,6 +82,10 @@ class Dashboard(ctk.CTk):
 			self.SIDEBAR,
 			lambda: self.reconnect_serial(self.CONNECTION.port_var.get()),
 			initial_port_arg
+		)
+		self.CAN_COMMAND = self.CanCommand(
+			self.SIDEBAR,
+			lambda: self.send_can_command(self.CAN_COMMAND.can_id_entry.get(), self.CAN_COMMAND.message_entry.get())
 		)
 
 		self.TIME = self.Time(self.SIDEBAR, "-", time.time())
@@ -207,18 +212,26 @@ class Dashboard(ctk.CTk):
 			# Window or label may already be destroyed during shutdown.
 			self.ui_alive = False
 
-	def _parse_hex_bytes(self, text: str):
+	def _parse_can_id(self, can_id_text: str):
+		raw = can_id_text.strip()
+		if raw == "":
+			raise ValueError("CAN ID is empty.")
+		return int(raw, 16)
+
+	def _parse_two_hex_bytes(self, text: str):
 		msg = text.strip()
 		if msg == "":
 			raise ValueError("CAN message is empty.")
 
 		if " " in msg or "," in msg:
 			tokens = [tok for tok in msg.replace(",", " ").split() if tok]
+			if len(tokens) != 2:
+				raise ValueError("CAN message must be exactly two bytes.")
 			return bytes(int(tok, 16) for tok in tokens)
 
 		msg = msg.replace("0x", "").replace("0X", "")
-		if len(msg) % 2 != 0:
-			raise ValueError("Hex message must have an even number of characters.")
+		if len(msg) != 4:
+			raise ValueError("CAN message must be exactly 4 hex chars (2 bytes).")
 		return bytes(int(msg[i:i+2], 16) for i in range(0, len(msg), 2))
 
 	def _get_can_device(self):
@@ -258,44 +271,63 @@ class Dashboard(ctk.CTk):
 				pass
 			self.can_device = None
 
+	def _is_recoverable_can_error(self, exc: Exception):
+		msg = str(exc).lower()
+		return (
+			"timeout error" in msg
+			or "_usb_reap_async" in msg
+			or "no backend available" in msg
+			or "device not found" in msg
+		)
+
+	def _send_can_payload(self, can_id: int, payload: bytes, context: str):
+		if len(payload) > 8:
+			print(f"CAN send failed: payload too long ({len(payload)} bytes).")
+			return False
+		frame_can_id = can_id | CAN_EFF_FLAG if can_id > 0x7FF else can_id
+		frame = GsUsbFrame(can_id=frame_can_id, data=payload)
+
+		for attempt in range(2):
+			try:
+				dev = self._get_can_device()
+				if dev.send(frame):
+					print(f"{context} -> CAN ID 0x{can_id:X}: {payload.hex(' ').upper()}")
+					return True
+				print(f"{context} failed: device did not accept frame.")
+				return False
+			except Exception as exc:
+				if attempt == 0 and self._is_recoverable_can_error(exc):
+					print(f"{context}: CAN backend timeout/error, reinitializing and retrying once...")
+					self.close_can_bus()
+					continue
+				print(f"{context} failed: {exc}")
+				return False
+
+		return False
+
 	def send_can_command(self, can_id_text: str, message_text: str):
 		try:
-			can_id = int(can_id_text.strip(), 16)
-		except ValueError:
-			print(f"Invalid CAN ID hex: '{can_id_text}'")
+			can_id = self._parse_can_id(can_id_text)
+		except ValueError as exc:
+			print(f"Invalid CAN ID hex: {exc}")
 			return
-
 		try:
-			raw_bytes = self._parse_hex_bytes(message_text)
+			payload = self._parse_two_hex_bytes(message_text)
 		except ValueError as exc:
 			print(f"Invalid CAN message hex: {exc}")
 			return
+		self._send_can_payload(can_id, payload, "Sent custom CAN")
 
-		if len(raw_bytes) < 2:
-			print("CAN message must include a 2-byte length header.")
-			return
-
-		payload_len = (raw_bytes[0] << 8) | raw_bytes[1]
-		payload = raw_bytes[2:]
-
-		if payload_len != len(payload):
-			print(f"CAN message length mismatch: header={payload_len}, payload={len(payload)}")
-			return
-
-		if len(payload) > 8:
-			print(f"USB2CAN classic frame supports up to 8 data bytes (got {len(payload)}).")
-			return
-
+	def send_can_switch_command(self, switch_id: int, state: bool):
 		try:
-			dev = self._get_can_device()
-			frame_can_id = can_id | CAN_EFF_FLAG if can_id > 0x7FF else can_id
-			frame = GsUsbFrame(can_id=frame_can_id, data=payload)
-			if dev.send(frame):
-				print(f"Sent CAN ID 0x{can_id:X}: {payload.hex(' ').upper()}")
-			else:
-				print("CAN send failed: device did not accept frame.")
-		except Exception as exc:
-			print(f"CAN send failed: {exc}")
+			can_id_text = self.CAN_COMMAND.can_id_entry.get().strip()
+			can_id = self._parse_can_id(can_id_text if can_id_text else "124")
+		except ValueError as exc:
+			print(f"CAN switch {switch_id} send failed: {exc}")
+			return
+		payload = bytes([switch_id, 0x01 if state else 0x00])
+		state_text = "ON" if state else "OFF"
+		self._send_can_payload(can_id, payload, f"Sent CAN switch {switch_id} {state_text}")
 
 	# ==========================================================================
 	class Graph:
@@ -313,6 +345,64 @@ class Dashboard(ctk.CTk):
 			self.port_entry = ctk.CTkEntry(self.panel, textvariable=self.port_var, width=150, font=DEFAULT_FONT, corner_radius=0)
 			self.reconnect_button = ctk.CTkButton(self.panel, text="Reconnect", command=func_reconnect, width=150, font=DEFAULT_FONT, corner_radius=0)
 			self.status_label = ctk.CTkLabel(self.panel, text="Not connected", font=("IBM Plex Mono", 12))
+	# ==========================================================================
+	class CanCommand:
+		def __init__(self, parent, func_send):
+			self.panel = ctk.CTkFrame(parent)
+			self.title = ctk.CTkLabel(self.panel, text="CAN Command", font=DEFAULT_FONT)
+			can_id_vcmd = (self.panel.register(self._validate_can_id), "%P")
+			msg_vcmd = (self.panel.register(self._validate_can_message), "%P")
+			self.can_id_var = ctk.StringVar(value="124")
+			self.can_id_entry = ctk.CTkEntry(
+				self.panel,
+				width=150,
+				font=DEFAULT_FONT,
+				corner_radius=0,
+				placeholder_text="CAN ID hex",
+				textvariable=self.can_id_var,
+				validate="key",
+				validatecommand=can_id_vcmd,
+			)
+			self.message_entry = ctk.CTkEntry(
+				self.panel,
+				width=150,
+				font=DEFAULT_FONT,
+				corner_radius=0,
+				placeholder_text="2 bytes hex",
+				validate="key",
+				validatecommand=msg_vcmd,
+			)
+			self.send_button = ctk.CTkButton(
+				self.panel,
+				text="Send",
+				command=func_send,
+				width=150,
+				font=DEFAULT_FONT,
+				corner_radius=0
+			)
+
+		def _validate_can_id(self, proposed: str):
+			if proposed == "":
+				return True
+			return re.fullmatch(r"(0[xX])?[0-9a-fA-F]*", proposed) is not None
+
+		def _validate_can_message(self, proposed: str):
+			if proposed == "":
+				return True
+			if re.fullmatch(r"[0-9a-fA-FxX,\s]*", proposed) is None:
+				return False
+
+			if " " in proposed or "," in proposed:
+				tokens = [tok for tok in re.split(r"[\s,]+", proposed.strip()) if tok]
+				if len(tokens) > 2:
+					return False
+				for tok in tokens:
+					if re.fullmatch(r"(0[xX])?[0-9a-fA-F]{0,2}", tok) is None:
+						return False
+				return True
+
+			return re.fullmatch(r"(0[xX])?[0-9a-fA-F]{0,4}", proposed) is not None
+
 	# ==========================================================================
 	class Time:
 		def __init__(self, parent, value, start_time):
@@ -732,11 +822,12 @@ def setup_dashboard(root: Dashboard):
 	root.ACTUATION.ignition.title.grid(row=0, column=0, pady=4, sticky="n")
 	root.ACTUATION.ignition.button.grid(row=1, column=0, padx=6, pady=3, sticky="w")
 
-	root.ACTUATION.can.panel.grid(row=0, column=3, sticky="nw", padx=6, pady=6)
-	root.ACTUATION.can.title.grid(row=0, column=0, columnspan=3, pady=4, sticky="w")
-	root.ACTUATION.can.can_id_entry.grid(row=1, column=0, padx=2, pady=2, sticky="w")
-	root.ACTUATION.can.message_entry.grid(row=1, column=1, padx=2, pady=2, sticky="w")
-	root.ACTUATION.can.send_button.grid(row=1, column=2, padx=2, pady=2, sticky="w")
+	root.ACTUATION.can_switch.panel.grid(row=0, column=3, sticky="nw", padx=6, pady=6)
+	root.ACTUATION.can_switch.title.grid(row=0, column=0, columnspan=3, pady=4, sticky="w")
+	for i in range(4):
+		root.ACTUATION.can_switch.button[i].label.grid(row=i+1, column=0, padx=2, pady=1, sticky="w")
+		root.ACTUATION.can_switch.button[i].on.grid(row=i+1, column=1, padx=2, pady=1, sticky="w")
+		root.ACTUATION.can_switch.button[i].off.grid(row=i+1, column=2, padx=2, pady=1, sticky="w")
 
 	root.CONFIG.path_entry.grid(row=0, column=1, padx=4, pady=4, sticky="ew")
 	root.CONFIG.panel.grid_columnconfigure(1, weight=1)
@@ -755,7 +846,13 @@ def setup_dashboard(root: Dashboard):
 	root.CONNECTION.reconnect_button.grid(row=2, column=0, padx=6, pady=3, sticky="w")
 	root.CONNECTION.status_label.grid(row=3, column=0, padx=6, pady=(0, 3), sticky="w")
 
-	root.TIME.panel.grid(row=1, column=0, padx=0, pady=(4, 0), sticky="nw")
+	root.CAN_COMMAND.panel.grid(row=1, column=0, sticky="nw", padx=0, pady=(4, 0))
+	root.CAN_COMMAND.title.grid(row=0, column=0, pady=4)
+	root.CAN_COMMAND.can_id_entry.grid(row=1, column=0, padx=6, pady=3, sticky="w")
+	root.CAN_COMMAND.message_entry.grid(row=2, column=0, padx=6, pady=3, sticky="w")
+	root.CAN_COMMAND.send_button.grid(row=3, column=0, padx=6, pady=3, sticky="w")
+
+	root.TIME.panel.grid(row=2, column=0, padx=0, pady=(4, 0), sticky="nw")
 	root.TIME.label_pgt.grid(row=0, column=0, padx=6, pady=(3, 1), sticky="w")
 	root.TIME.label_srt.grid(row=1, column=0, padx=6, pady=(0, 3), sticky="w")
 
