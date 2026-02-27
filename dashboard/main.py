@@ -110,6 +110,9 @@ class Dashboard(ctk.CTk):
 		self.ui_alive = True
 		self.can_device = None
 		self.can_bitrate = 500000
+		self.can_rx_stop_event = threading.Event()
+		self.can_rx_thread = threading.Thread(target=self._can_rx_loop, daemon=True)
+		self.can_rx_thread.start()
 		self.update_connection_status(False)
 	
 		
@@ -380,6 +383,47 @@ class Dashboard(ctk.CTk):
 			or "could not claim interface" in msg
 		)
 
+	def update_can_rx_temperature(self, value: int):
+		if not self.ui_alive:
+			return
+		try:
+			if not self.winfo_exists():
+				self.ui_alive = False
+				return
+			self.ACTUATION.can_rx_temp.set_value(value)
+		except Exception:
+			self.ui_alive = False
+
+	def _can_rx_loop(self):
+		target_can_id = 0x122
+		while not self.can_rx_stop_event.is_set():
+			try:
+				with self.can_lock:
+					dev = self._get_can_device()
+					frame = GsUsbFrame()
+					ok = dev.read(frame, 100)
+				if not ok:
+					continue
+
+				if frame.arbitration_id != target_can_id:
+					continue
+				if frame.can_dlc < 4:
+					continue
+
+				# Decode temperature from first two bytes as uint16 (big-endian).
+				value = int.from_bytes(bytes(frame.data[:2]), byteorder="big", signed=False)
+				bias = 200
+				self.update_can_rx_temperature(value-bias)
+			except Exception as exc:
+				if self.can_rx_stop_event.is_set():
+					return
+				if self._is_recoverable_can_error(exc):
+					with self.can_lock:
+						self._recover_can_connection_locked()
+					time.sleep(0.1)
+					continue
+				time.sleep(0.2)
+
 	def _send_can_payload(self, can_id: int, payload: bytes, context: str):
 		if len(payload) > 8:
 			print(f"CAN send failed: payload too long ({len(payload)} bytes).")
@@ -574,6 +618,7 @@ def main():
 
 	root.mainloop()
 	root.ui_alive = False
+	root.can_rx_stop_event.set()
 	root.disconnect_serial(update_ui=False)
 	root.close_can_bus()
 
@@ -895,6 +940,7 @@ def setup_dashboard(root: Dashboard):
 	root.ACTUATION.panel.grid_columnconfigure(1, weight=0)
 	root.ACTUATION.panel.grid_columnconfigure(2, weight=0)
 	root.ACTUATION.panel.grid_columnconfigure(3, weight=0)
+	root.ACTUATION.panel.grid_columnconfigure(4, weight=0)
 
 	root.ADC0.panel.grid(row=1, column=0, padx=(16, 8), pady=8, sticky="nsew")
 	root.ADC1.panel.grid(row=1, column=1, padx=(8, 16), pady=8, sticky="nsew")
@@ -949,6 +995,10 @@ def setup_dashboard(root: Dashboard):
 		root.ACTUATION.can_switch.button[i].label.grid(row=i+1, column=0, padx=2, pady=1, sticky="w")
 		root.ACTUATION.can_switch.button[i].on.grid(row=i+1, column=1, padx=2, pady=1, sticky="w")
 		root.ACTUATION.can_switch.button[i].off.grid(row=i+1, column=2, padx=2, pady=1, sticky="w")
+
+	root.ACTUATION.can_rx_temp.panel.grid(row=0, column=4, sticky="nw", padx=6, pady=6)
+	root.ACTUATION.can_rx_temp.title.grid(row=0, column=0, padx=6, pady=4, sticky="w")
+	root.ACTUATION.can_rx_temp.value.grid(row=1, column=0, padx=6, pady=3, sticky="w")
 
 	root.CONFIG.path_entry.grid(row=0, column=1, padx=4, pady=4, sticky="ew")
 	root.CONFIG.panel.grid_columnconfigure(1, weight=1)

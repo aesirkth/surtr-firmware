@@ -20,6 +20,7 @@ class Actuation:
         self.stepper = self.Stepper(self.panel, func_stepper)
         self.ignition = self.Ignition(self.panel, func_ignition)
         self.can_switch = self.CanSwitch(self.panel, func_can_switch)
+        self.can_rx_temp = self.CanRxTemp(self.panel)
     
     # =====================================================================
     class Switch:
@@ -220,3 +221,13 @@ class Actuation:
                 else:
                     self.on.configure(fg_color=inactive_color)
                     self.off.configure(fg_color=active_color)
+
+    # =====================================================================
+    class CanRxTemp:
+        def __init__(self, parent):
+            self.panel = ctk.CTkFrame(parent)
+            self.title = ctk.CTkLabel(self.panel, text="CAN Rx Temp", font=DEFAULT_FONT_BOLD)
+            self.value = ctk.CTkLabel(self.panel, text="-", font=DEFAULT_FONT)
+
+        def set_value(self, val):
+            self.value.configure(text=str(val))
