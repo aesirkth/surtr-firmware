@@ -38,16 +38,58 @@ class Actuation:
             def __init__(self, parent, id, label, func):
                 self.id = id
                 self.label 	= ctk.CTkLabel(parent, text=label, font=DEFAULT_FONT)
-                self.sw_state = ctk.BooleanVar(value=False)
-                self.sw = ctk.CTkSwitch(
-                    parent, 
-                    variable=self.sw_state, 
-                    command=lambda: func(self.id, self.sw_state.get()),
-                    onvalue=True, 
-                    offvalue=False, 
-                    width=50, 
-                    font=DEFAULT_FONT, 
-                    corner_radius=0)
+                self.disabled = False
+                self.current_state = False
+                self.on = ctk.CTkButton(
+                    parent,
+                    text="On",
+                    command=lambda: func(self.id, True),
+                    width=50,
+                    font=DEFAULT_FONT,
+                    corner_radius=0
+                )
+                self.off = ctk.CTkButton(
+                    parent,
+                    text="Off",
+                    command=lambda: func(self.id, False),
+                    width=50,
+                    font=DEFAULT_FONT,
+                    corner_radius=0
+                )
+                self.set_state(False)
+
+            def update_label(self, label):
+                self.label.configure(True, text=label)
+
+            def update_state_labels(self, on_label, off_label):
+                self.on.configure(text=on_label)
+                self.off.configure(text=off_label)
+
+            def set_disabled(self, disabled):
+                self.disabled = disabled
+                state = "disabled" if disabled else "normal"
+                text_color = ("gray60", "gray45") if disabled else ("gray10", "gray90")
+                self.label.configure(text_color=text_color)
+                self.on.configure(state=state)
+                self.off.configure(state=state)
+                self.set_state(self.current_state)
+
+            def set_state(self, state: bool):
+                self.current_state = state
+                if self.disabled:
+                    disabled_color = "#4a4a4a"
+                    self.on.configure(fg_color=disabled_color)
+                    self.off.configure(fg_color=disabled_color)
+                    return
+
+                active_color = "#1f6aa5"
+                inactive_color = "#3a3a3a"
+                if state:
+                    self.on.configure(fg_color=active_color)
+                    self.off.configure(fg_color=inactive_color)
+                else:
+                    self.on.configure(fg_color=inactive_color)
+                    self.off.configure(fg_color=active_color)
 
     # =====================================================================
     class Stepper:
@@ -64,6 +106,19 @@ class Actuation:
                 self.label 	= ctk.CTkLabel(parent, text=label, font=DEFAULT_FONT)
                 self.entry  = ctk.CTkEntry(parent, width=60, font=DEFAULT_FONT)
                 self.button = ctk.CTkButton(parent, text="Send", command=func, width=60, font=DEFAULT_FONT, corner_radius=0)
+                self.disabled = False
+
+            def update_label(self, label):
+                self.label.configure(True, text=label)
+
+            def set_disabled(self, disabled):
+                self.disabled = disabled
+                text_color = ("gray60", "gray45") if disabled else ("gray10", "gray90")
+                entry_state = "disabled" if disabled else "normal"
+                button_state = "disabled" if disabled else "normal"
+                self.label.configure(text_color=text_color)
+                self.entry.configure(state=entry_state)
+                self.button.configure(state=button_state)
 
     # =====================================================================
     class Ignition:
@@ -77,3 +132,12 @@ class Actuation:
                     width=150, 
                     font=DEFAULT_FONT, 
                     corner_radius=0)
+                self.disabled = False
+
+            def update_label(self, label):
+                self.button.configure(text=label)
+
+            def set_disabled(self, disabled):
+                self.disabled = disabled
+                state = "disabled" if disabled else "normal"
+                self.button.configure(state=state)

@@ -28,7 +28,7 @@ from graph import plot_adc_graph_live
 #} Dashboard;
 # =================================================================
 class Dashboard(ctk.CTk):
-	def __init__(self):
+	def __init__(self, initial_port_arg=None):
 		super().__init__()
 
 		self.SAVEFILE 		= get_logfile_name()
@@ -62,12 +62,25 @@ class Dashboard(ctk.CTk):
 		self.config_apply_labels()
 
 		self.GRAPH = self.Graph(
-			self, 
+			self,
 			lambda: plot_adc_graph_live(self.SAVEFILE, self.CONFIG.filepath)
 		)
+		self.SIDEBAR = ctk.CTkFrame(self, fg_color="transparent")
+		self.CONNECTION = self.Connection(
+			self.SIDEBAR,
+			lambda: self.reconnect_serial(self.CONNECTION.port_var.get()),
+			initial_port_arg
+		)
 
-		self.TIME = self.Time(self, "-", time.time())
+		self.TIME = self.Time(self.SIDEBAR, "-", time.time())
 		self.adc_temp_buffer = [0]*NUM_CHANNELS_TOTAL
+		self.serial_connection = None
+		self.serial_stop_event = None
+		self.reading_thread = None
+		self.writing_thread = None
+		self.connection_lock = threading.Lock()
+		self.ui_alive = True
+		self.update_connection_status(False)
 	
 		
 	# config_apply_labels():
@@ -75,26 +88,134 @@ class Dashboard(ctk.CTk):
 	#	Function is passed to "import_config" in Config.
 	def config_apply_labels(self):
 		for i in range(0,NUM_CHANNELS_PER_ADC):
-			label = self.CONFIG.get_adc_channel_label(ADC0_TAG, (i+1))
+			ch_id = i + 1
+			label = self.CONFIG.get_adc_channel_label(ADC0_TAG, ch_id)
 			self.ADC0.channel[i].update_label(label)
+			self.ADC0.channel[i].set_disabled(self.CONFIG.get_adc_channel_disabled(ADC0_TAG, ch_id))
 		self.ADC0.update_range_label(self.CONFIG.config["ADC0"]["range_label"])
 
 		for i in range(0,NUM_CHANNELS_PER_ADC):
-			label = self.CONFIG.get_adc_channel_label(ADC1_TAG, (i+1))
+			ch_id = i + 1
+			label = self.CONFIG.get_adc_channel_label(ADC1_TAG, ch_id)
 			self.ADC1.channel[i].update_label(label)
+			self.ADC1.channel[i].set_disabled(self.CONFIG.get_adc_channel_disabled(ADC1_TAG, ch_id))
 		self.ADC1.update_range_label(self.CONFIG.config["ADC1"]["range_label"])
+
+		for i in range(NUM_SWITCHES):
+			switch_id = i + 1
+			switch_button = self.ACTUATION.switch.button[i]
+			switch_button.update_label(self.CONFIG.get_switch_label(switch_id))
+			switch_button.update_state_labels(
+				self.CONFIG.get_switch_on_label(switch_id),
+				self.CONFIG.get_switch_off_label(switch_id)
+			)
+			switch_button.set_disabled(self.CONFIG.get_switch_disabled(switch_id))
+
+		for i in range(NUM_STEPPERS):
+			stepper_id = i + 1
+			stepper_motor = self.ACTUATION.stepper.motor[i]
+			stepper_motor.update_label(self.CONFIG.get_stepper_label(stepper_id))
+			stepper_motor.set_disabled(self.CONFIG.get_stepper_disabled(stepper_id))
+
+		self.ACTUATION.ignition.update_label(self.CONFIG.get_ignition_label())
+		self.ACTUATION.ignition.set_disabled(self.CONFIG.get_ignition_disabled())
+
+	def _normalize_port_arg(self, raw_port):
+		if raw_port is None:
+			return None
+		port = str(raw_port).strip()
+		return port if port else None
+
+	def reconnect_serial(self, raw_port):
+		port = self._normalize_port_arg(raw_port)
+
+		self.disconnect_serial()
+
+		try:
+			ser_con = serial.Serial(port, BAUDRATE, timeout=0.25)
+		except serial.SerialException as exc:
+			print(f"Reconnect failed for port '{port}': {exc}")
+			self.update_connection_status(False)
+			return
+
+		self.serial_connection = ser_con
+		self.serial_stop_event = threading.Event()
+		self.reading_thread = threading.Thread(target=serial_connection_read, args=(ser_con, self, self.serial_stop_event), daemon=True)
+		self.writing_thread = threading.Thread(target=serial_connection_write, args=(ser_con, self, self.serial_stop_event), daemon=True)
+		self.reading_thread.start()
+		self.writing_thread.start()
+		print(f"Connected to Surtr on {ser_con.port}.")
+		self.update_connection_status(True, ser_con.port)
+
+	def disconnect_serial(self, update_ui=True):
+		self._mark_connection_lost()
+		if update_ui:
+			self.update_connection_status(False)
+
+	def handle_connection_loss(self, reason):
+		if self.serial_stop_event is None or self.serial_stop_event.is_set():
+			return
+		print(f"Serial connection lost: {reason}")
+		self._mark_connection_lost()
+		self.update_connection_status(False)
+
+	def _mark_connection_lost(self):
+		with self.connection_lock:
+			if self.serial_stop_event is not None:
+				self.serial_stop_event.set()
+
+			if self.serial_connection is not None and self.serial_connection.is_open:
+				try:
+					self.serial_connection.close()
+				except serial.SerialException:
+					pass
+
+			self.serial_connection = None
+			self.serial_stop_event = None
+			self.reading_thread = None
+			self.writing_thread = None
+
+	def update_connection_status(self, connected, port=None):
+		if not self.ui_alive:
+			return
+
+		if connected:
+			status_text = f"Connected ({port})" if port else "Connected"
+			status_color = ("gray35", "gray70")
+		else:
+			status_text = "Not connected"
+			status_color = ("gray50", "gray60")
+		try:
+			if not self.winfo_exists():
+				self.ui_alive = False
+				return
+			self.CONNECTION.status_label.configure(text=status_text, text_color=status_color)
+		except Exception:
+			# Window or label may already be destroyed during shutdown.
+			self.ui_alive = False
 
 	# ==========================================================================
 	class Graph:
-		def __init__(self, parent, func):
+		def __init__(self, parent, func_plot):
 			self.panel = ctk.CTkFrame(parent)
-			self.title = ctk.CTkLabel(self.panel, text="Graph", font=DEFAULT_FONT)		
-			self.button = ctk.CTkButton(self.panel, text="Plot Graph", command=func, width=150, font=DEFAULT_FONT, corner_radius=0)
+			self.title = ctk.CTkLabel(self.panel, text="Plot", font=DEFAULT_FONT)		
+			self.button = ctk.CTkButton(self.panel, text="Plot Graph", command=func_plot, width=150, font=DEFAULT_FONT, corner_radius=0)
+
+	# ==========================================================================
+	class Connection:
+		def __init__(self, parent, func_reconnect, initial_port_arg):
+			self.panel = ctk.CTkFrame(parent)
+			self.title = ctk.CTkLabel(self.panel, text="Connection", font=DEFAULT_FONT)
+			self.port_var = ctk.StringVar(value="" if initial_port_arg is None else str(initial_port_arg))
+			self.port_entry = ctk.CTkEntry(self.panel, textvariable=self.port_var, width=150, font=DEFAULT_FONT, corner_radius=0)
+			self.reconnect_button = ctk.CTkButton(self.panel, text="Reconnect", command=func_reconnect, width=150, font=DEFAULT_FONT, corner_radius=0)
+			self.status_label = ctk.CTkLabel(self.panel, text="Not connected", font=("IBM Plex Mono", 12))
 	# ==========================================================================
 	class Time:
 		def __init__(self, parent, value, start_time):
-				self.label_pgt = ctk.CTkLabel(parent, text=value, font=DEFAULT_FONT)
-				self.label_srt = ctk.CTkLabel(parent, text=value, font=DEFAULT_FONT)
+				self.panel = ctk.CTkFrame(parent, border_width=1)
+				self.label_pgt = ctk.CTkLabel(self.panel, text=value, font=("IBM Plex Mono", 12))
+				self.label_srt = ctk.CTkLabel(self.panel, text=value, font=("IBM Plex Mono", 12))
 				self.start_time = start_time
 				self.time_srt = None
 				self.time_pgt = None
@@ -107,8 +228,8 @@ class Dashboard(ctk.CTk):
 		def update_time(self, val):
 				self.time_pgt = math.ceil(time.time() - self.start_time)
 				self.time_srt = math.ceil(val)
-				self.label_pgt.configure(True, text=f"Time (program sinceBoot): " + self.convert_to_min_sec(self.time_pgt))
-				self.label_srt.configure(True, text=f"Time (Surtr sinceBoot): " + self.convert_to_min_sec(self.time_srt))
+				self.label_pgt.configure(True, text=f"Time (program): " + self.convert_to_min_sec(self.time_pgt))
+				self.label_srt.configure(True, text=f"Time (Surtr): " + self.convert_to_min_sec(self.time_srt))
 # =============================================================================
 
 
@@ -116,23 +237,22 @@ class Dashboard(ctk.CTk):
 # GLOBALS
 # ===============================================================
 write_queue = queue.Queue()
+CONNECTION_LOST_TIMEOUT_S = 2.0
 
 # ===============================================================
 # MAIN FUNCTION
 # ===============================================================
 def main():
 
-	root = Dashboard()
 	port = sys.argv[1] if len(sys.argv) == 2 else None
+	root = Dashboard(port)
 
 	setup_dashboard(root)
-
-	reading_thread = threading.Thread(target=serial_connection_read, args=(port,root), daemon=True)
-	writing_thread = threading.Thread(target=serial_connection_write, args=(port, root), daemon=True)
-	reading_thread.start()
-	writing_thread.start()
+	root.reconnect_serial(port)
 
 	root.mainloop()
+	root.ui_alive = False
+	root.disconnect_serial(update_ui=False)
 
 
 # ===============================================================
@@ -143,17 +263,42 @@ def main():
 # 	Dissect message by checking Alignment and checksum CRC.
 # 	Checksum bytes received: |low|high| so have to swap |high|low|.
 # 	se_con.read(1)[0] where [0] converts byte to integer.
-def serial_connection_read(port: str, root: Dashboard):
+def serial_connection_read(ser_con: serial.Serial, root: Dashboard, stop_event: threading.Event):
 	try:
-		ser_con = serial.Serial(port, BAUDRATE)
-		while True:
-			
-			if(ser_con.read(1)[0] != ALIGNMENT_BYTE):
+		last_rx_time = time.monotonic()
+		while not stop_event.is_set():
+			align_byte = ser_con.read(1)
+			if len(align_byte) != 1:
+				if time.monotonic() - last_rx_time > CONNECTION_LOST_TIMEOUT_S:
+					root.handle_connection_loss("no incoming data")
+					return
+				continue
+			last_rx_time = time.monotonic()
+			if align_byte[0] != ALIGNMENT_BYTE:
 				continue
 
-			length 	= ser_con.read(1)[0]
-			data 	= ser_con.read(length)
-			crc 	= ser_con.read(1)[0] + (ser_con.read(1)[0] << 8)
+			length_byte = ser_con.read(1)
+			if len(length_byte) != 1:
+				if time.monotonic() - last_rx_time > CONNECTION_LOST_TIMEOUT_S:
+					root.handle_connection_loss("incomplete packet header")
+					return
+				continue
+
+			length = length_byte[0]
+			data = ser_con.read(length)
+			if len(data) != length:
+				if time.monotonic() - last_rx_time > CONNECTION_LOST_TIMEOUT_S:
+					root.handle_connection_loss("incomplete packet payload")
+					return
+				continue
+
+			crc_bytes = ser_con.read(2)
+			if len(crc_bytes) != 2:
+				if time.monotonic() - last_rx_time > CONNECTION_LOST_TIMEOUT_S:
+					root.handle_connection_loss("incomplete packet checksum")
+					return
+				continue
+			crc = crc_bytes[0] + (crc_bytes[1] << 8)
 			packet = bytes([ALIGNMENT_BYTE, length]) + data
 
 			if(crc != crc16(CRC_POLY, CRC_SEED, packet)):
@@ -161,24 +306,39 @@ def serial_connection_read(port: str, root: Dashboard):
 				
 			parse_command_protobuf(data, root)
 
-	except serial.SerialException:
-		print("Serial port connection failed.")
+	except serial.SerialException as exc:
+		if not stop_event.is_set():
+			root.handle_connection_loss(str(exc))
 		return
 	
 # serial_connection_write():
 # 	blocking here on a any form of outgoing update occurs.
 #	 write queue() blocks while empty.
-def serial_connection_write(port: str, root: Dashboard):
+def serial_connection_write(ser_con: serial.Serial, root: Dashboard, stop_event: threading.Event):
 	try:
-		ser_con = serial.Serial(port, BAUDRATE)
-		while True:
-		
-			data = write_queue.get()
+		while not stop_event.is_set():
+			try:
+				data = write_queue.get(timeout=0.25)
+			except queue.Empty:
+				continue
+
 			packet = prepare_packet(data)
 			ser_con.write(packet)
 
-	except serial.SerialException:
-		print("Serial port connection failed.")
+			msg = schema.SurtrMessage()
+			msg.ParseFromString(data)
+			match msg.WhichOneof("command"):
+				case "sw_ctrl":
+					switch_id = msg.sw_ctrl.id
+					switch_label = root.CONFIG.get_switch_label(switch_id)
+					state_text = "ON" if msg.sw_ctrl.state else "OFF"
+					print(f"Sent switch {switch_id} ({switch_label}): {state_text} to Surtr")
+				case _:
+					pass
+
+	except serial.SerialException as exc:
+		if not stop_event.is_set():
+			root.handle_connection_loss(str(exc))
 		return
 	
 
@@ -386,10 +546,9 @@ def parse_command_protobuf(message: bytes, root: Dashboard):
 
 			return
 		case "switch_states":
-			# SWITCHSTATES this is never shown in gui and never used in graph plots...
-			# Ignore for now....
-			# We control switches from frontend, so only reason we would ever read state
-			# of switches from Surtr would be to sync/doublecheck surtr sw state with frontend sw state.
+			for i in range(NUM_SWITCHES):
+				state = getattr(msg.switch_states, f"sw{i+1}")
+				root.ACTUATION.switch.button[i].set_state(state)
 			return
 		case _:
 			raise Exception("Invalid SURTR command.")
@@ -406,23 +565,24 @@ def setup_dashboard(root: Dashboard):
 	ctk.set_default_color_theme("dark-blue")
 
 	root.title("Surtr Dashboard")
-	root.minsize(1500, 800)
+	root.minsize(1500, 600)
 
 	root.grid_columnconfigure(0, weight=1)
 	root.grid_columnconfigure(1, weight=1)
+	root.grid_columnconfigure(2, weight=0)
 
 	root.ADC0.panel.grid_columnconfigure(1, minsize=160, weight=1)
 	root.ADC0.panel.grid_columnconfigure(3, minsize=160, weight=1)
 	root.ADC1.panel.grid_columnconfigure(1, minsize=160, weight=1)
 	root.ADC1.panel.grid_columnconfigure(3, minsize=160, weight=1)
 
-	root.ACTUATION.panel.grid_columnconfigure(0, weight=1)  # Switches - don't expand
-	root.ACTUATION.panel.grid_columnconfigure(1, weight=1)  # Steppers - don't expand
-	root.ACTUATION.panel.grid_columnconfigure(2, weight=1)  # Ignition - fill remaining space
+	root.ACTUATION.panel.grid_columnconfigure(0, weight=0)
+	root.ACTUATION.panel.grid_columnconfigure(1, weight=0)
+	root.ACTUATION.panel.grid_columnconfigure(2, weight=0)
 
-	root.ADC0.panel.grid(row=2, column=0, padx=(24, 12), pady=8, sticky="nsew")
-	root.ADC1.panel.grid(row=2, column=1, padx=(12, 24), pady=8, sticky="nsew")
-	root.ACTUATION.panel.grid(row=3, column=0, columnspan=2, pady=16, padx=24, sticky="nsew")
+	root.ADC0.panel.grid(row=1, column=0, padx=(16, 8), pady=8, sticky="nsew")
+	root.ADC1.panel.grid(row=1, column=1, padx=(8, 16), pady=8, sticky="nsew")
+	root.ACTUATION.panel.grid(row=2, column=0, columnspan=2, pady=8, padx=(16, 16), sticky="ew")
 
 	# ADC panel titles
 	root.ADC0.title.grid(row=0, column=0, columnspan=4, padx=16, pady=8)
@@ -443,41 +603,50 @@ def setup_dashboard(root: Dashboard):
 	root.ADC1.PT_range_label.grid(row=7, column=0, columnspan=4, padx=16, pady=8)
 	
 	root.ACTUATION.switch.title.grid(row=0, column=0, columnspan=6, pady=4)
-	root.ACTUATION.switch.panel.grid(row=0, column=0, sticky="nsew", padx=12, pady=12)
+	root.ACTUATION.switch.panel.grid(row=0, column=0, sticky="nw", padx=6, pady=6)
 
 	SW_PER_COL = 4
 	for i in range(NUM_SWITCHES):
 		row = (i) % SW_PER_COL + 1  # +1 to account for title
 		col = (i) // SW_PER_COL
-		root.ACTUATION.switch.button[i].label.grid(row=row, column=col*3+0, padx=4, pady=2, sticky="ew")
-		root.ACTUATION.switch.button[i].sw.grid(row=row, column=col*3+1, padx=4, pady=2, sticky="ew")
-		#root.ACTUATION.switch.button[i].off.grid(row=row, column=col*3+2, padx=4, pady=2, sticky="ew")
+		root.ACTUATION.switch.button[i].label.grid(row=row, column=col*3+0, padx=2, pady=1, sticky="w")
+		root.ACTUATION.switch.button[i].on.grid(row=row, column=col*3+1, padx=2, pady=1, sticky="w")
+		root.ACTUATION.switch.button[i].off.grid(row=row, column=col*3+2, padx=2, pady=1, sticky="w")
 	
 	root.ACTUATION.stepper.title.grid(row=0, column=0, columnspan=3, pady=4)
-	root.ACTUATION.stepper.panel.grid(row=0, column=1, sticky="nsew", padx=12, pady=12)
+	root.ACTUATION.stepper.panel.grid(row=0, column=1, sticky="nw", padx=6, pady=6)
 
 	for i in range(0, NUM_STEPPERS):
-		root.ACTUATION.stepper.motor[i].label.grid(row=i+1, column=0, padx=4, pady=3, sticky="ew")
-		root.ACTUATION.stepper.motor[i].entry.grid(row=i+1, column=1, padx=4, pady=3, sticky="ew")
-		root.ACTUATION.stepper.motor[i].button.grid(row=i+1, column=2, padx=4, pady=3, sticky="ew")
+		root.ACTUATION.stepper.motor[i].label.grid(row=i+1, column=0, padx=2, pady=1, sticky="w")
+		root.ACTUATION.stepper.motor[i].entry.grid(row=i+1, column=1, padx=2, pady=1, sticky="w")
+		root.ACTUATION.stepper.motor[i].button.grid(row=i+1, column=2, padx=2, pady=1, sticky="w")
 	
-	root.ACTUATION.ignition.panel.grid(row=0, column=2, sticky="nsew", padx=12, pady=12)
+	root.ACTUATION.ignition.panel.grid(row=0, column=2, sticky="nw", padx=6, pady=6)
 	
 	root.ACTUATION.ignition.panel.grid_columnconfigure(0, weight=1)
 	root.ACTUATION.ignition.title.grid(row=0, column=0, pady=4, sticky="n")
-	root.ACTUATION.ignition.button.grid(row=1, column=0, padx=24, pady=6, sticky="ew")
-
-	root.TIME.label_pgt.grid(row=1, column=0, padx=4, pady=4, sticky="ew")
-	root.TIME.label_srt.grid(row=1, column=1, padx=4, pady=4, sticky="ew")
+	root.ACTUATION.ignition.button.grid(row=1, column=0, padx=6, pady=3, sticky="w")
 
 	root.CONFIG.path_entry.grid(row=0, column=1, padx=4, pady=4, sticky="ew")
 	root.CONFIG.panel.grid_columnconfigure(1, weight=1)
 	root.CONFIG.panel.grid(row=0, column=0, columnspan=2, sticky="ew", padx=8, pady=4)
 	root.CONFIG.import_button.grid(row=0, column=0, padx=4, pady=4)
 	
-	root.GRAPH.panel.grid(row=0, column=2, sticky="nsew", padx=12, pady=12)
+	root.GRAPH.panel.grid(row=0, column=2, sticky="nw", padx=6, pady=6)
 	root.GRAPH.title.grid(row=0, column=0, pady=4)
-	root.GRAPH.button.grid(row=1, column=0, padx=24, pady=6, sticky="ew")
+	root.GRAPH.button.grid(row=1, column=0, padx=6, pady=3, sticky="w")
+
+	root.SIDEBAR.grid(row=1, column=2, sticky="nw", padx=6, pady=3)
+
+	root.CONNECTION.panel.grid(row=0, column=0, sticky="nw", padx=0, pady=0)
+	root.CONNECTION.title.grid(row=0, column=0, pady=4)
+	root.CONNECTION.port_entry.grid(row=1, column=0, padx=6, pady=3, sticky="w")
+	root.CONNECTION.reconnect_button.grid(row=2, column=0, padx=6, pady=3, sticky="w")
+	root.CONNECTION.status_label.grid(row=3, column=0, padx=6, pady=(0, 3), sticky="w")
+
+	root.TIME.panel.grid(row=1, column=0, padx=0, pady=(4, 0), sticky="nw")
+	root.TIME.label_pgt.grid(row=0, column=0, padx=6, pady=(3, 1), sticky="w")
+	root.TIME.label_srt.grid(row=1, column=0, padx=6, pady=(0, 3), sticky="w")
 
 
 def get_logfile_name():
@@ -492,7 +661,7 @@ def init_logfile(filename):
 	return savefile_whandle
 
 def get_default_config_path():
-		return os.path.join(os.path.dirname(__file__), "adc_config.json")
+		return os.path.join(os.path.dirname(__file__), "config.json")
 
 
 if __name__ == "__main__":

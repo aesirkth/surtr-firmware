@@ -27,7 +27,7 @@ class Config:
     #   func_apply_labels() --> Dashboard.config_apply_labels()
     def config_import(self, func_apply_labels):
         filepath_import = filedialog.askopenfilename(
-            title="Select ADC Config File",
+            title="Select Config File",
             filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
             initialdir=os.path.dirname(self.filepath)
         )
@@ -51,7 +51,46 @@ class Config:
     
     def get_adc_channel_label(self, adc_id, ch_id):
         return self.config[f"ADC{adc_id}"][f"channel{ch_id}"]["label"]
-		
+
+    def get_adc_channel_disabled(self, adc_id, ch_id):
+        channel_cfg = self.config[f"ADC{adc_id}"][f"channel{ch_id}"]
+        return channel_cfg.get("disabled", False)
+
+    def get_switch_label(self, switch_id):
+        return self._get_switch_cfg(switch_id).get("label", f"SW {switch_id}")
+
+    def get_switch_on_label(self, switch_id):
+        return self._get_switch_cfg(switch_id).get("on_label", "On")
+
+    def get_switch_off_label(self, switch_id):
+        return self._get_switch_cfg(switch_id).get("off_label", "Off")
+
+    def get_switch_disabled(self, switch_id):
+        return self._get_switch_cfg(switch_id).get("disabled", False)
+
+    def get_stepper_label(self, stepper_id):
+        return self._get_stepper_cfg(stepper_id).get("label", f"STEP {stepper_id}")
+
+    def get_stepper_disabled(self, stepper_id):
+        return self._get_stepper_cfg(stepper_id).get("disabled", False)
+
+    def get_ignition_label(self):
+        return self._get_ignition_cfg().get("label", "Ignite")
+
+    def get_ignition_disabled(self):
+        return self._get_ignition_cfg().get("disabled", False)
+
+    def _get_switch_cfg(self, switch_id):
+        switches = self.config.get("SWITCHES", {})
+        return switches.get(f"switch{switch_id}", {})
+
+    def _get_stepper_cfg(self, stepper_id):
+        steppers = self.config.get("STEPPERS", {})
+        return steppers.get(f"stepper{stepper_id}", {})
+
+    def _get_ignition_cfg(self):
+        return self.config.get("IGNITION", {})
+
 
 # config_loadfile():
 #	Tries to retrieve json config object from file.
