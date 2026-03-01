@@ -290,7 +290,7 @@ def adc_to_scaled_normalized_voltage(root: Dashboard, adc_id, ch_in, adc_val):
 #
 def adc_to_scaled_normalized_current(root: Dashboard, adc_id, ch_in, adc_val):
 	scale = root.CONFIG.get_adc_channel_scale(adc_id, ch_in)
-	return adc_to_normalized_voltage(adc_val) * scale
+	return adc_to_normalized_current(adc_val) * scale
 
 # parse_command_protobuf():
 #	Uses protobuf protocol and derives operation from real message in packet.
