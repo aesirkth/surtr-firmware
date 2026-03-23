@@ -305,6 +305,9 @@
 	&rcc_mco_1_pa8_fast
 	>;
 	pinctrl-names = "default";
+
+	phy-connection-type = "rmii";
+    phy-handle = <&phy>;
 };
 
 &mdio {
