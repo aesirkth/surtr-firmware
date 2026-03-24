@@ -19,7 +19,7 @@ int collect_adc(uint32_t *adc_val, Msg *msg)
     *msg = msg_construct_with_time(sizeof(adc_val), (uint8_t*) adc_val);
     if(k_msgq_put(&write_msgq, msg->data, K_NO_WAIT) != 0)
     {
-        LOG_WRN("Message could not be placed on queue.");
+        //LOG_WRN("Message could not be placed on queue.");
         return 0;
     }
 
@@ -39,7 +39,7 @@ int collect_sw(uint8_t *sw, Msg *msg)
     // Motor2 -> 0x00000000
     if(k_msgq_put(&write_msgq, msg->data, K_NO_WAIT) != 0)
     {
-        LOG_WRN("Message could not be placed on queue.");
+        //LOG_WRN("Message could not be placed on queue.");
         return 0;
     }
 

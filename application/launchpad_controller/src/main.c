@@ -161,13 +161,16 @@ K_MSGQ_DEFINE(write_msgq, MSG_SIZE, MSGQ_BACKLOG, MSGQ_ALIGN);
  */
 void server_main(struct Server *server, struct Client *client)
 {
+    LOG_DBG("Entering Server_main().\n");
     while(1)
     {
 		switch (state)
 		{
 			case STATE_NO_CONNECTION:
+                LOG_DBG("State: NO_CONNECTION.\n");
 				if (accept_connection(server, client)) 
 				{
+                    LOG_DBG("New Connection Established.\n");
 					state = STATE_CONNECTION;
 					k_sem_give(&sem_connection);
 					k_sem_give(&sem_connection);
@@ -175,7 +178,9 @@ void server_main(struct Server *server, struct Client *client)
 				break;
 
 			case STATE_CONNECTION:
+                    LOG_DBG("State: CONNECTION.\n");
 					k_sem_take(&sem_connection_fail, K_FOREVER);
+                    LOG_DBG("Connection Lost.\n");
 					close(client->socket);
 					state = STATE_NO_CONNECTION;
 
@@ -194,6 +199,7 @@ void server_main(struct Server *server, struct Client *client)
  */
 void in_thread_main(struct Client* client, THREAD_EMPTYARG, THREAD_EMPTYARG)
 {
+    LOG_DBG("InThread Enter.\n");
 	uint8_t rx_buf[MSG_SIZE];
 	uint8_t payload[MSG_SIZE];
 	int payload_size;
@@ -202,13 +208,16 @@ void in_thread_main(struct Client* client, THREAD_EMPTYARG, THREAD_EMPTYARG)
 
     while(1)
     {
+        LOG_DBG("InThread Waiting for Request.\n");
 		if(!handle_request(client, rx_buf, payload, &payload_size))
 		{
+            LOG_DBG("InThread Request Failed.\n");
 			k_sem_give(&sem_connection_fail);
 			k_sem_take(&sem_connection, K_FOREVER);
 			continue;
 		}
 		execute_command(payload, payload_size);
+        LOG_DBG("InThread Request Handled.\n");
     }
 }
 
@@ -220,14 +229,17 @@ void in_thread_main(struct Client* client, THREAD_EMPTYARG, THREAD_EMPTYARG)
  */
 void out_thread_main(struct Client *client, THREAD_EMPTYARG, THREAD_EMPTYARG)
 {
+    LOG_DBG("OutThread Enter.\n");
     uint8_t tx_buf[MSG_SIZE];
 
 	k_sem_take(&sem_connection, K_FOREVER);
 
     while(1)
     {
+        LOG_DBG("OutThread Waiting to Send Message.\n");
 		if(!send_message(client, tx_buf))
 		{
+            LOG_DBG("OutThread Send Message Failed.\n");
 			k_sem_give(&sem_connection_fail);
 			k_sem_take(&sem_connection, K_FOREVER);
 			continue;
@@ -245,6 +257,7 @@ void out_thread_main(struct Client *client, THREAD_EMPTYARG, THREAD_EMPTYARG)
  */
 void adc_thread_main(THREAD_EMPTYARG, THREAD_EMPTYARG, THREAD_EMPTYARG)
 {
+    LOG_DBG("ADCThread Enter.\n");
 	int64_t ms_start_time, 
 			ms_end_time,
 			cycle_time,
@@ -255,16 +268,21 @@ void adc_thread_main(THREAD_EMPTYARG, THREAD_EMPTYARG, THREAD_EMPTYARG)
 
 	while(1)
 	{
+        //LOG_DBG("ADCThread Blink.\n");
 		ms_start_time = k_uptime_get();
 		
 		blink_leds(led_state);
 		led_state = !led_state;
 
 		if(!collect_adc(adc, &msg))
-			LOG_ERR("Collect ADC failed.");
+        {
+			//LOG_ERR("Collect ADC failed.");
+        }
 
 		if(!collect_sw(sw, &msg))
-			LOG_ERR("Collect SW failed.");
+        {
+			//LOG_ERR("Collect SW failed.");
+        }
 
 
 		ms_end_time = k_uptime_get();
@@ -296,14 +314,21 @@ void kernel_exit()
  */
 int main()
 {
+    LOG_DBG("Program Start.\n");
+
 	// Initializes ADC devices.
 	for(int i = 0; i < NUM_EXT_ADC; i++)
 		if (!device_is_ready(adcs[i]))
 			FATALERROR("External ADC device ready failed.");
+    LOG_DBG("ADC initialized.\n");
 	
+    /*
 	for(int i = 0; i < NUM_STEPPERS; i++)
 		if (!device_is_ready(steppers[i]))
 		FATALERROR("Steppers device ready failed.");
+
+    LOG_DBG("STEPPERS device ready.\n");
+    */
 
 	// Initializes LED GPIOs as outputs with initial state 0.
 	for(int i = 0; i < NUM_LEDS; i++)
@@ -311,9 +336,10 @@ int main()
 		if(!gpio_is_ready_dt(&leds[i]))
 			FATALERROR("LED GPIO ready failed.");
 
-		if (gpio_pin_configure_dt(&switches[i], GPIO_OUTPUT_INACTIVE) < 0)
+		if (gpio_pin_configure_dt(&leds[i], GPIO_OUTPUT_INACTIVE) < 0)
 			FATALERROR("Switch GPIO configure failed.");
 	}
+    LOG_DBG("LEDS initialized.\n");
 
 	// Initializes Switch GPIOs as outputs with initial state 0.
     for(int i = 0; i < NUM_SWITCHES; i++)
@@ -324,6 +350,7 @@ int main()
 		if (gpio_pin_configure_dt(&switches[i], GPIO_OUTPUT_INACTIVE) < 0)
 			FATALERROR("Switch GPIO configure failed.");
     }
+    LOG_DBG("Switches initialized.\n");
     
 	/* INITIALIZE MOTOR */
 	/* MICROSTEP1 = 0b0000, */
@@ -338,16 +365,19 @@ int main()
     drv8711_set_current_limit(steppers[MOTOR1_INDEX], MOTOR_CURRENT_I_LIMIT);
     drv8711_set_microstep(steppers[MOTOR1_INDEX], MICROSTEP1);
     drv8711_enable(steppers[MOTOR1_INDEX], true);
+    LOG_DBG("Motors drv8711 conifgured.\n");
 
 	/* INITIALIZE DCHP */
 	if(initialize_dchp() != 0)
 		FATALERROR("Initialized DCHP failed.");
+    LOG_DBG("DCHP Initialized.\n");
 
 	// AF_INET = IPV4
 	// SOCK_STREAM = TCP
 	if(!server_constructor(&server, AF_INET, 
 		SOCK_STREAM, IP, INADDR_ANY, PORT, BACKLOG))
 		FATALERROR("Server failed to initialize.");
+    LOG_DBG("Server Initialized.\n");
 	
 	/* INITIALIZE SEMAPHORES */
 	// initial = 0, count = 2 (2 threads);
@@ -374,6 +404,7 @@ int main()
 		0,
 		K_NO_WAIT
 	);
+    LOG_DBG("InThread Initialized.\n");
 
 	// Initialize OUT_THREAD
 	out_id = k_thread_create(
@@ -388,6 +419,7 @@ int main()
 		0,
 		K_NO_WAIT
 	);
+    LOG_DBG("OutThread Initialized.\n");
 	
 	adc_id = k_thread_create(
 		&adc_thread,
@@ -401,6 +433,7 @@ int main()
 		0,
 		K_NO_WAIT
 	);
+    LOG_DBG("ADCThread Initialized.\n");
 	
 	server_main(&server, &client);
 
