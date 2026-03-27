@@ -178,9 +178,24 @@ def plot_single_graph_live(adc_id, adc_num, filepath: str, configfile: str):
 			time.append(float(column[0]))
 
 			if(adc_id == ADC0_TAG):
-				adc_val.append(float(column[adc_num+1]))
+				raw = float(column[adc_num+1])
+				if(adc_num < ADC0_CHANNEL_VOLTAGE_END):
+					scaled = adc_to_scaled_normalized_voltage(config, ADC0_TAG, (adc_num+1), raw)
+				else:
+					scaled = adc_to_scaled_normalized_current(config, ADC0_TAG, (adc_num+1), raw)
+				adc_val.append(scaled)
+
 			else:
-				adc_val.append(float(column[adc_num+1+NUM_CHANNELS_PER_ADC]))
+				raw = float(column[adc_num+1+NUM_CHANNELS_PER_ADC])
+				if((adc_num+NUM_CHANNELS_PER_ADC) < ADC1_CHANNEL_VOLTAGE_END):
+					scaled = adc_to_scaled_normalized_voltage(config, ADC1_TAG, (adc_num+1), raw)
+				else:
+					scaled = adc_to_scaled_normalized_current(config, ADC1_TAG, (adc_num+1), raw)
+				adc_val.append(scaled)
+				print(raw)
+				print(scaled)
+
+
 
 			filepos = file.tell()
 
@@ -194,12 +209,19 @@ def plot_single_graph_live(adc_id, adc_num, filepath: str, configfile: str):
 # getRow():
 #	splits row of .csv data into their equivalent column adc.
 #	| time | adc01 | adc02 | ....
-def getRow(line, time, adc):
-	column = line.strip().split(",")
-	time.append(float(column[0]))
+def getRow(line, time, adc, sw):
+	col = 0
 
+	column = line.strip().split(",")
+	time.append(float(column[col]))
+
+	col += 1
 	for i in range(24):
-		adc[i].append(float(column[i+1]))
+		adc[i].append(float(column[i+col]))
+
+	col += 24
+	for i in range(8):
+		sw[i].append(int(column[i+col]))
 
 # ===============================================================
 # voltage_subplot():
@@ -273,6 +295,55 @@ def isVoltageADC(adc_num):
    		 adc_num < ADC1_CHANNEL_VOLTAGE_END)):
 		return True
 	return False
+
+
+
+# normalize_current():
+#	Takes current reading from ADC and turns it into a 0-1 range signal.
+def normalize_current(i):
+	return ((i - I_START) / (I_END - I_START))
+
+# normalize_voltage():
+#	Takes voltage reading from ADC and turns it into a 0-1 range signal.
+def normalize_voltage(v):
+	return ((v - V_START) / (V_END - V_START))
+
+# adc_to_voltage():
+# 	Constant 2 is for VREF=2.5 => +/-1.25 so 1.25*2 => +/-2.5
+# 	1 < VREF < AVDD=5V so +/-2.5 is in range.
+#	Constant 0.1 unknown.	
+def adc_to_voltage(adc_in):
+	return ((adc_in * VREF * 2) / (ADCBITSIZE * 0.1))
+
+# adc_to_current():
+#	I = V / R=50
+def adc_to_current(adc_in):
+	return ((adc_in * VREF * 2) / (ADCBITSIZE * ADCRESISTANCE))
+
+# adc_to_normalized_voltage():
+#
+def adc_to_normalized_voltage(adc_in):
+	return normalize_voltage(adc_to_voltage(adc_in))
+
+# adc_to_normalized_current():
+#
+def adc_to_normalized_current(adc_in):
+	return normalize_current(adc_to_voltage(adc_in))
+
+# adc_to_scaled_normalized_voltage():
+#
+def adc_to_scaled_normalized_voltage(config, adc_id, ch_in, adc_val):
+	scale = get_adc_channel_scale(config, adc_id, ch_in)
+	return adc_to_normalized_voltage(adc_val) * scale
+
+# adc_to_scaled_normalized_current():
+#
+def adc_to_scaled_normalized_current(config, adc_id, ch_in, adc_val):
+	scale = get_adc_channel_scale(config, adc_id, ch_in)
+	return adc_to_normalized_current(adc_val) * scale
+    
+def get_adc_channel_scale(config, adc_id, ch_id):
+    return config[f"ADC{adc_id}"][f"channel{ch_id}"]["scale"]
 
 # Can be run as executable. In that case it is not live.
 # In order to have multiple windows, plt.show() can only be run once.
