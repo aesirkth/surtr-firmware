@@ -2,7 +2,6 @@ from adc import ADC
 from config import Config
 from constants import *
 from actuation import Actuation
-from graph import plot_adc_graph_live
 import re
 try:
 	from gs_usb.gs_usb import GsUsb
@@ -35,7 +34,6 @@ GS_CAN_MODE_NORMAL = 0
 #		CAN
 #	}
 #	CONFIG
-#	GRAPH
 # 	TIME
 #} Dashboard;
 # =================================================================
@@ -50,7 +48,7 @@ class Dashboard(ctk.CTk):
 			self,
 			ADC0_TAG,
 			"ADC0",
-			""
+			"",
 		)
 		self.ADC1 = ADC(
 			self,
@@ -77,10 +75,6 @@ class Dashboard(ctk.CTk):
 		self.adc_zero_bias = [0]*NUM_CHANNELS_TOTAL
 		self.config_apply_labels()
 
-		self.GRAPH = self.Graph(
-			self,
-			lambda: plot_adc_graph_live(self.SAVEFILE, self.CONFIG.filepath)
-		)
 		self.SIDEBAR = ctk.CTkFrame(self, fg_color="transparent")
 		self.CONNECTION = self.Connection(
 			self.SIDEBAR,
@@ -126,6 +120,8 @@ class Dashboard(ctk.CTk):
 			self.ADC0.channel[i].update_label(label)
 			self.ADC0.channel[i].set_disabled(self.CONFIG.get_adc_channel_disabled(ADC0_TAG, ch_id))
 		self.ADC0.update_range_label(self.CONFIG.config["ADC0"]["range_label"])
+		self.ADC0.datafile = self.SAVEFILE
+		self.ADC0.configfile = self.CONFIG.filepath
 
 		for i in range(0,NUM_CHANNELS_PER_ADC):
 			ch_id = i + 1
@@ -133,6 +129,8 @@ class Dashboard(ctk.CTk):
 			self.ADC1.channel[i].update_label(label)
 			self.ADC1.channel[i].set_disabled(self.CONFIG.get_adc_channel_disabled(ADC1_TAG, ch_id))
 		self.ADC1.update_range_label(self.CONFIG.config["ADC1"]["range_label"])
+		self.ADC1.datafile = self.SAVEFILE
+		self.ADC1.configfile = self.CONFIG.filepath
 		self.reset_adc_zero_bias()
 
 		for i in range(NUM_SWITCHES):
@@ -473,13 +471,6 @@ class Dashboard(ctk.CTk):
 		payload = bytes([switch_id, 0x01 if state else 0x00])
 		state_text = "ON" if state else "OFF"
 		self._send_can_payload(can_id, payload, f"Sent CAN switch {switch_id} {state_text}")
-
-	# ==========================================================================
-	class Graph:
-		def __init__(self, parent, func_plot):
-			self.panel = ctk.CTkFrame(parent)
-			self.title = ctk.CTkLabel(self.panel, text="Plot", font=DEFAULT_FONT)		
-			self.button = ctk.CTkButton(self.panel, text="Plot Graph", command=func_plot, width=150, font=DEFAULT_FONT, corner_radius=0)
 
 	# ==========================================================================
 	class Connection:
@@ -871,6 +862,8 @@ def parse_command_protobuf(message: bytes, root: Dashboard):
 
 	data = json_format.MessageToDict(msg, always_print_fields_with_no_presence=True)
 
+	#print(data)
+
 	# Due to inconsistencies with the protobuf messages delivered
 	# we check if "id" is mentioned in message.
 	# It is only mentioned for ADC1.
@@ -898,10 +891,10 @@ def parse_command_protobuf(message: bytes, root: Dashboard):
 			# ADC1 because "id=1". Structurally: ADC1 [id] [0-11].
 			else:
 				update_adc_from_packet(ADC1_TAG)
-				writeRow(root.SAVEFILE_WHANDLE, time, root.adc_temp_buffer)
 				root.ADC1.update_channels(root.adc_temp_buffer[NUM_CHANNELS_PER_ADC:NUM_CHANNELS_TOTAL])
 			
 			# Update usSinceBoot Surtr time.
+			writeRow(root.SAVEFILE_WHANDLE, time, root.adc_temp_buffer)
 			root.TIME.update_time(math.ceil(time))
 
 			return
@@ -955,11 +948,13 @@ def setup_dashboard(root: Dashboard):
 
 	for i in range(NUM_CHANNELS_PER_ADC):
 		row = (i//2)+1
-		col = (i%2)*2
+		col = (i%2)*3
 		root.ADC0.channel[i].label.grid(row=row, column=col, padx=4, pady=4, sticky="ew")
 		root.ADC0.channel[i].value.grid(row=row, column=col+1, padx=4, pady=4, sticky="ew")
+		root.ADC0.channel[i].button.grid(row=row, column=col+2, padx=6, pady=3, sticky="ew")
 		root.ADC1.channel[i].label.grid(row=row, column=col, padx=4, pady=4, sticky="ew")
 		root.ADC1.channel[i].value.grid(row=row, column=col+1, padx=4, pady=4, sticky="ew")
+		root.ADC1.channel[i].button.grid(row=row, column=col+2, padx=6, pady=3, sticky="ew")
 
 	root.ADC0.PT_range_label.grid(row=7, column=0, columnspan=4, padx=16, pady=8)
 	root.ADC1.PT_range_label.grid(row=7, column=0, columnspan=4, padx=16, pady=8)
@@ -1005,10 +1000,6 @@ def setup_dashboard(root: Dashboard):
 	root.CONFIG.panel.grid(row=0, column=0, columnspan=2, sticky="ew", padx=8, pady=4)
 	root.CONFIG.import_button.grid(row=0, column=0, padx=4, pady=4)
 	
-	root.GRAPH.panel.grid(row=0, column=2, sticky="nw", padx=6, pady=6)
-	root.GRAPH.title.grid(row=0, column=0, pady=4)
-	root.GRAPH.button.grid(row=1, column=0, padx=6, pady=3, sticky="w")
-
 	root.SIDEBAR.grid(row=1, column=2, sticky="nw", padx=6, pady=3)
 
 	root.CONNECTION.panel.grid(row=0, column=0, sticky="nw", padx=0, pady=0)

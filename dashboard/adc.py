@@ -1,5 +1,6 @@
 
 from constants import *
+from graph import plot_single_graph_live
 
 # ===============================================================
 # ADC CHANNELS
@@ -12,10 +13,12 @@ class ADC:
         self.title = ctk.CTkLabel(self.panel, text=title, font=DEFAULT_FONT_BOLD)
         self.label = ctk.CTkLabel(self.panel, text=label, font=DEFAULT_FONT)
         self.PT_range_label = ctk.CTkLabel(self.panel, text="range_text_0", font=DEFAULT_FONT, justify="center")
+        self.datafile = None
+        self.configfile = None
 
         self.channel: list[ADC.Channel] = []
         for i in range(0, NUM_CHANNELS_PER_ADC):
-            ch = ADC.Channel(self.panel, f"CH {i+1}", "-")
+            ch = ADC.Channel(self.panel, f"CH {i+1}", "-", lambda n=i: plot_single_graph_live(self.id, n, self.datafile, self.configfile))
             self.channel.append(ch)
 
     def update_channels(self, adc_values):
@@ -28,10 +31,17 @@ class ADC:
     # =====================================================================
     class Channel:
     
-        def __init__(self, parent, label, value):
+        def __init__(self, parent, label, value, func):
             self.label = ctk.CTkLabel(parent, text=label, font=DEFAULT_FONT)
             self.value = ctk.CTkLabel(parent, text=value, font=DEFAULT_FONT)
+            self.button = ctk.CTkButton(parent, 
+                                        text="G", 
+                                        command=lambda: func(), 
+                                        width=25, 
+                                        font=DEFAULT_FONT, 
+                                        corner_radius=0)
             self.disabled = False
+            self.button.configure(state="normal")
 
         def update_val(self, val):
             if self.disabled:
