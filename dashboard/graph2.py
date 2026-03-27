@@ -13,7 +13,34 @@ def _safe_channel_label(label, fallback):
 	return label if label != ADC_NOTUSED else fallback
 
 
-def _read_csv(filepath):
+def _build_scale_factors(config):
+	scale_factors = [1.0] * NUM_CHANNELS_TOTAL
+
+	for i in range(NUM_CHANNELS_PER_ADC):
+		ch_id = i + 1
+		scale_factors[i] = float(config["ADC0"][f"channel{ch_id}"].get("scale", 1.0))
+		scale_factors[i + NUM_CHANNELS_PER_ADC] = float(config["ADC1"][f"channel{ch_id}"].get("scale", 1.0))
+
+	return scale_factors
+
+
+def _build_rescale_factors(plot_config, original_config):
+	plot_scale_factors = _build_scale_factors(plot_config)
+	original_scale_factors = _build_scale_factors(original_config)
+	rescale_factors = [1.0] * NUM_CHANNELS_TOTAL
+
+	for i in range(NUM_CHANNELS_TOTAL):
+		original_scale = original_scale_factors[i]
+		target_scale = plot_scale_factors[i]
+		if original_scale == 0.0:
+			rescale_factors[i] = 1.0
+		else:
+			rescale_factors[i] = target_scale / original_scale
+
+	return rescale_factors
+
+
+def _read_csv(filepath, rescale_factors):
 	time_values = []
 	adc_values = [[] for _ in range(NUM_CHANNELS_TOTAL)]
 	last_raw_time = None
@@ -33,7 +60,10 @@ def _read_csv(filepath):
 				continue
 			try:
 				raw_time = float(columns[0])
-				row_adc = [float(columns[i + 1]) for i in range(NUM_CHANNELS_TOTAL)]
+				row_adc = [
+					float(columns[i + 1]) * rescale_factors[i]
+					for i in range(NUM_CHANNELS_TOTAL)
+				]
 			except ValueError:
 				continue
 			
@@ -108,7 +138,7 @@ def _build_series_definitions(config):
 
 
 class Graph2App(ctk.CTk):
-	def __init__(self, filepath, configfile, live=False):
+	def __init__(self, filepath, configfile, original_configfile=None, live=False):
 		super().__init__()
 		self.title("Surtr Graph Viewer")
 		self.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}")
@@ -116,10 +146,13 @@ class Graph2App(ctk.CTk):
 
 		self.filepath = filepath
 		self.configfile = configfile
+		self.original_configfile = original_configfile if original_configfile else configfile
 		self.live = live
 		self.job_id = None
 
 		self.config_data = json.load(open(self.configfile, "r", encoding="utf-8"))
+		self.original_config_data = json.load(open(self.original_configfile, "r", encoding="utf-8"))
+		self.rescale_factors = _build_rescale_factors(self.config_data, self.original_config_data)
 		self.series_definitions = _build_series_definitions(self.config_data)
 		self.toggle_vars = {}
 
@@ -268,7 +301,7 @@ class Graph2App(ctk.CTk):
 
 	def _draw_plot(self):
 		try:
-			time_values, adc_values = _read_csv(self.filepath)
+			time_values, adc_values = _read_csv(self.filepath, self.rescale_factors)
 			self._plot_series(time_values, adc_values)
 			self.canvas.draw_idle()
 		except Exception as exc:
@@ -290,23 +323,32 @@ class Graph2App(ctk.CTk):
 		self.destroy()
 
 
-def plot_adc_graph_static(filepath, configfile):
-	app = Graph2App(filepath, configfile, live=False)
+def plot_adc_graph_static(filepath, configfile, original_configfile=None):
+	app = Graph2App(filepath, configfile, original_configfile=original_configfile, live=False)
 	app.mainloop()
 
 
-def plot_adc_graph_live(filepath, configfile):
-	app = Graph2App(filepath, configfile, live=True)
+def plot_adc_graph_live(filepath, configfile, original_configfile=None):
+	app = Graph2App(filepath, configfile, original_configfile=original_configfile, live=True)
 	app.mainloop()
 
 
 if __name__ == "__main__":
 	if len(sys.argv) < 3:
-		print("Usage: graph2.py <csv.file> <json.config> [--live]")
+		print("Usage: graph2.py <csv.file> <plot.json.config> [<original.json.config>] [--live]")
 		sys.exit(1)
 
-	live_mode = len(sys.argv) > 3 and sys.argv[3] == "--live"
+	plot_config_path = sys.argv[2]
+	original_config_path = None
+	live_mode = False
+
+	for arg in sys.argv[3:]:
+		if arg == "--live":
+			live_mode = True
+		else:
+			original_config_path = arg
+
 	if live_mode:
-		plot_adc_graph_live(sys.argv[1], sys.argv[2])
+		plot_adc_graph_live(sys.argv[1], plot_config_path, original_config_path)
 	else:
-		plot_adc_graph_static(sys.argv[1], sys.argv[2])
+		plot_adc_graph_static(sys.argv[1], plot_config_path, original_config_path)

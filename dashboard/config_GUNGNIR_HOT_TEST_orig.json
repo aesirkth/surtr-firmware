@@ -8,10 +8,10 @@
     "channel6": {"scale": 1.0, "label": "", "disabled": false},
     "channel7": {"scale": 1.0, "label": "", "disabled": false},
     "channel8": {"scale": 1.0, "label": "", "disabled": false},
-    "channel9": {"scale": 100.0, "label": "", "disabled": false},
-    "channel10": {"scale": 100.0, "label": "", "disabled": false},
-    "channel11": {"scale": 100.0, "label": "PT-100a [bar]", "disabled": false},
-    "channel12": {"scale": 100.0, "label": "PT-100b [bar]", "disabled": false},
+    "channel9": {"scale": 100.0, "label": "PT-100a [bar]", "disabled": false},
+    "channel10": {"scale": 100.0, "label": "PT-100b [bar]", "disabled": false},
+    "channel11": {"scale": 100.0, "label": "PT-100c [bar]", "disabled": false},
+    "channel12": {"scale": 1.0, "label": "", "disabled": false},
     "range_label": "PT-100: 100 bar"
   },
   "ADC1": {
@@ -23,10 +23,10 @@
     "channel6": {"scale": 1.0, "label": "", "disabled": false},
     "channel7": {"scale": 1.0, "label": "", "disabled": false},
     "channel8": {"scale": 1.0, "label": "", "disabled": false},
-    "channel9": {"scale": 100.0, "label": "", "disabled": false},
-    "channel10": {"scale": 100.0, "label": "", "disabled": false},
-    "channel11": {"scale": 100.0, "label": "", "disabled": false},
-    "channel12": {"scale": 1000.0, "label": "PT-100c [bar]", "disabled": false},
+    "channel9": {"scale": 817.14, "label": "LC [kg]", "disabled": false},
+    "channel10": {"scale": 1.0, "label": "", "disabled": false},
+    "channel11": {"scale": 1.0, "label": "", "disabled": false},
+    "channel12": {"scale": 1.0, "label": "", "disabled": false},
     "range_label": "LC: 1000 KG"
   },
   "STEPPERS": {
