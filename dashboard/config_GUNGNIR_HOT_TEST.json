@@ -1,42 +1,42 @@
 {
   "ADC0": {
-    "channel1": {"scale": 1.0, "label": "", "disabled": false, "zeroable": false},
-    "channel2": {"scale": 1.0, "label": "", "disabled": false, "zeroable": false},
-    "channel3": {"scale": 1.0, "label": "", "disabled": false, "zeroable": false},
-    "channel4": {"scale": 1.0, "label": "", "disabled": false, "zeroable": false},
-    "channel5": {"scale": 1.0, "label": "", "disabled": false, "zeroable": false},
-    "channel6": {"scale": 1.0, "label": "", "disabled": false, "zeroable": false},
-    "channel7": {"scale": 1.0, "label": "", "disabled": false, "zeroable": false},
-    "channel8": {"scale": 1.0, "label": "", "disabled": false, "zeroable": false},
-    "channel9": {"scale": 100.0, "label": "PT-100a [bar]", "disabled": false, "zeroable": false},
-    "channel10": {"scale": 100.0, "label": "PT-100b [bar]", "disabled": false, "zeroable": false},
-    "channel11": {"scale": 100.0, "label": "PT-100c [bar]", "disabled": false, "zeroable": false},
-    "channel12": {"scale": 1.0, "label": "", "disabled": false, "zeroable": false},
-    "range_label": "PT-100: 100 bar"
+    "channel1": {"scale": 1.0, "label": "", "disabled": true},
+    "channel2": {"scale": 1.0, "label": "", "disabled": true},
+    "channel3": {"scale": 1.0, "label": "", "disabled": true},
+    "channel4": {"scale": 1.0, "label": "", "disabled": true},
+    "channel5": {"scale": 1.0, "label": "", "disabled": true},
+    "channel6": {"scale": 1.0, "label": "", "disabled": true},
+    "channel7": {"scale": 1.0, "label": "", "disabled": true},
+    "channel8": {"scale": 1.0, "label": "", "disabled": true},
+    "channel9": {"scale": 100.0, "label": "Gung Tnk [bar]", "disabled": false},
+    "channel10": {"scale": 1.0, "label": "", "disabled": true},
+    "channel11": {"scale": 100.0, "label": "N2O fill [bar]", "disabled": false},
+    "channel12": {"scale": 100.0, "label": "N2O vent [bar]", "disabled": false},
+    "range_label": "RED\n(Gung Tnk), (N/C)\n (N2O FILL), (N2O VENT)"
   },
   "ADC1": {
-    "channel1": {"scale": 1.0, "label": "", "disabled": false, "zeroable": false},
-    "channel2": {"scale": 1.0, "label": "", "disabled": false, "zeroable": false},
-    "channel3": {"scale": 1.0, "label": "", "disabled": false, "zeroable": false},
-    "channel4": {"scale": 1.0, "label": "", "disabled": false, "zeroable": false},
-    "channel5": {"scale": 1.0, "label": "", "disabled": false, "zeroable": false},
-    "channel6": {"scale": 1.0, "label": "", "disabled": false, "zeroable": false},
-    "channel7": {"scale": 1.0, "label": "", "disabled": false, "zeroable": false},
-    "channel8": {"scale": 1.0, "label": "", "disabled": false, "zeroable": false},
-    "channel9": {"scale": 817.14, "label": "LC [kg]", "disabled": false, "zeroable": false},
-    "channel10": {"scale": 1.0, "label": "", "disabled": false, "zeroable": false},
-    "channel11": {"scale": 1.0, "label": "", "disabled": false, "zeroable": false},
-    "channel12": {"scale": 1.0, "label": "", "disabled": false, "zeroable": false},
-    "range_label": "LC: 1000 KG"
+    "channel1": {"scale": 1.0, "label": "", "disabled": true},
+    "channel2": {"scale": 1.0, "label": "", "disabled": true},
+    "channel3": {"scale": 1.0, "label": "", "disabled": true},
+    "channel4": {"scale": 1.0, "label": "", "disabled": true},
+    "channel5": {"scale": 1.0, "label": "", "disabled": true},
+    "channel6": {"scale": 1.0, "label": "", "disabled": true},
+    "channel7": {"scale": 1.0, "label": "", "disabled": true},
+    "channel8": {"scale": 1.0, "label": "", "disabled": true},
+    "channel9": {"scale": 817.14, "label": "LC-Thrust [kg]", "disabled": false},
+    "channel10": {"scale": 1.0, "label": "", "disabled": true},
+    "channel11": {"scale": 1.0, "label": "", "disabled": true},
+    "channel12": {"scale": 1.0, "label": "", "disabled": true},
+    "range_label": "BLUE\n(LC-Thrust), (N/C) \n (N/C), (N/C)"
   },
   "STEPPERS": {
-    "stepper1": {"label": "STEP 1", "disabled": false},
-    "stepper2": {"label": "STEP 2", "disabled": false},
-    "stepper3": {"label": "STEP 3", "disabled": false}
+    "stepper1": {"label": "N/C", "disabled": true},
+    "stepper2": {"label": "N/C", "disabled": true},
+    "stepper3": {"label": "N/C", "disabled": true}
   },
   "IGNITION": {
     "label": "Ignite",
-    "disabled": false
+    "disabled": true
   },
   "CAN_SWITCHES": {
     "switch1": {"label": "CAN 1", "on_label": "On", "off_label": "Off", "disabled": false},
@@ -45,13 +45,13 @@
     "switch4": {"label": "CAN 4", "on_label": "On", "off_label": "Off", "disabled": false}
   },
   "SWITCHES": {
-    "switch1": {"label": "SW 1", "on_label": "On", "off_label": "Off", "disabled": false},
-    "switch2": {"label": "SW 2", "on_label": "On", "off_label": "Off", "disabled": false},
-    "switch3": {"label": "SW 3", "on_label": "On", "off_label": "Off", "disabled": false},
-    "switch4": {"label": "SW 4", "on_label": "On", "off_label": "Off", "disabled": false},
-    "switch5": {"label": "SW 5", "on_label": "On", "off_label": "Off", "disabled": false},
-    "switch6": {"label": "SW 6", "on_label": "On", "off_label": "Off", "disabled": false},
-    "switch7": {"label": "SW 7", "on_label": "On", "off_label": "Off", "disabled": false},
-    "switch8": {"label": "SW 8", "on_label": "On", "off_label": "Off", "disabled": false}
+    "switch1": {"label": "N2O vent (17)", "on_label": "On", "off_label": "Off", "disabled": false},
+    "switch2": {"label": "N/C", "on_label": "On", "off_label": "Off", "disabled": true},
+    "switch3": {"label": "N2O fill (16)", "on_label": "On", "off_label": "Off", "disabled": false},
+    "switch4": {"label": "Ignition", "on_label": "On", "off_label": "Off", "disabled": false},
+    "switch5": {"label": "N/C", "on_label": "On", "off_label": "Off", "disabled": true},
+    "switch6": {"label": "N/C", "on_label": "On", "off_label": "Off", "disabled": true},
+    "switch7": {"label": "N/C", "on_label": "On", "off_label": "Off", "disabled": true},
+    "switch8": {"label": "N/C", "on_label": "On", "off_label": "Off", "disabled": true}
   }
 }

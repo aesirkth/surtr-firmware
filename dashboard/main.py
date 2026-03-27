@@ -95,6 +95,9 @@ class Dashboard(ctk.CTk):
 		)
 
 		self.TIME = self.Time(self.SIDEBAR, "-", time.time())
+		self.adc_temp_buffer = [0]*NUM_CHANNELS_TOTAL
+		self.adc_raw_buffer = [0]*NUM_CHANNELS_TOTAL
+		self.sw_raw_buffer = [0]*NUM_SWITCHES
 		self.serial_connection = None
 		self.serial_stop_event = None
 		self.reading_thread = None
@@ -732,9 +735,13 @@ def prepare_packet(data: bytes):
 
 # writeRow():
 # 	Writes a row into storage data file .csv in the following format:
-# 	time | adc_val0 | adc_val1 | adc_val2 | adc_val3 | .... | adc_val23 |
-def writeRow(file, time, adc_values):
-	line = str(time) + "," + ",".join(str(v) for v in adc_values) + "\n"
+# 	time | adc_val0 | adc_val1 | adc_val2 | adc_val3 | .... | adc_val23 | sw0 | sw1 | .. | sw7
+def writeRow(file, time, adc_raw, switches):
+	line = (
+        str(time) + "," +
+        ",".join(str(v) for v in adc_raw) + "," +
+        ",".join(str(v) for v in switches) + "\n"
+    )
 	file.write(line)
 	file.flush()
 
@@ -869,6 +876,24 @@ def parse_command_protobuf(message: bytes, root: Dashboard):
 	# It is only mentioned for ADC1.
 	match msg.WhichOneof("command"):
 		case "adc_measurements": 
+
+			# ADC0 because "id" not mentioned in protobuf message.
+			# 0-7 Voltage 8-11 Current
+			if not data["adcMeasurements"]["id"]:
+				for key, val in data["adcMeasurements"].items():
+
+					if key == "id": 
+						continue
+
+					index = int(key.removeprefix("value"))
+					root.adc_raw_buffer[index] = val
+
+					if index < NUM_CHANNELS_ADC_VOLTAGE: 
+						root.adc_temp_buffer[index] = adc_to_scaled_normalized_voltage(root, ADC0_TAG, (index+1), val)
+					else: 
+						root.adc_temp_buffer[index] = adc_to_scaled_normalized_current(root, ADC0_TAG, (index+1), val)
+
+				root.ADC0.update_channels(root.adc_temp_buffer[0:(NUM_CHANNELS_PER_ADC)])
 			def update_adc_from_packet(adc_tag: int):
 				start_index = 0 if adc_tag == ADC0_TAG else NUM_CHANNELS_PER_ADC
 				for channel_num in range(1, NUM_CHANNELS_PER_ADC + 1):
@@ -883,6 +908,22 @@ def parse_command_protobuf(message: bytes, root: Dashboard):
 					scaled_value = root._apply_adc_zero_bias(adc_tag, channel_num, scaled_value)
 					root.adc_temp_buffer[start_index + (channel_num - 1)] = scaled_value
 
+			# ADC1 because "id=1". Structurally: ADC1 [id] [0-11] 
+			# 0-7 Voltage 8-11 Current
+			else:
+				for key, val in data["adcMeasurements"].items():
+
+					if key == "id": 
+						continue
+
+					index = int(key.removeprefix("value"))
+					root.adc_raw_buffer[index+NUM_CHANNELS_PER_ADC] = val
+
+					if index < NUM_CHANNELS_ADC_VOLTAGE: 
+						root.adc_temp_buffer[index+NUM_CHANNELS_PER_ADC] = adc_to_scaled_normalized_voltage(root, ADC1_TAG, (index+1), val)
+					else: 
+						root.adc_temp_buffer[index+NUM_CHANNELS_PER_ADC] = adc_to_scaled_normalized_current(root, ADC1_TAG, (index+1), val)
+
 			# ADC0 because "id" not mentioned in protobuf message.
 			if not data["adcMeasurements"]["id"]:
 				update_adc_from_packet(ADC0_TAG)
@@ -893,8 +934,11 @@ def parse_command_protobuf(message: bytes, root: Dashboard):
 				update_adc_from_packet(ADC1_TAG)
 				root.ADC1.update_channels(root.adc_temp_buffer[NUM_CHANNELS_PER_ADC:NUM_CHANNELS_TOTAL])
 			
+			# Write raw adc values into savefile and switch states.
+			for j, b in enumerate(root.ACTUATION.switch.button):
+				root.sw_raw_buffer[j] = int(b.current_state)
+			writeRow(root.SAVEFILE_WHANDLE, time, root.adc_raw_buffer, root.sw_raw_buffer)
 			# Update usSinceBoot Surtr time.
-			writeRow(root.SAVEFILE_WHANDLE, time, root.adc_temp_buffer)
 			root.TIME.update_time(math.ceil(time))
 
 			return
@@ -1034,7 +1078,8 @@ def get_logfile_name():
 
 def init_logfile(filename):
 	savefile_whandle = open(filename, "w")
-	savefile_whandle.write("time," + ",".join(f"adc{i:02d}" for i in range(NUM_CHANNELS_TOTAL)) + "\n")
+	savefile_whandle.write("time," + ",".join(f"adc{i:02d}" for i in range(NUM_CHANNELS_TOTAL)) 
+						+ ",".join(f"sw{i:02d}" for i in range(NUM_SWITCHES)) + "\n")
 	savefile_whandle.flush()
 	return savefile_whandle
 
