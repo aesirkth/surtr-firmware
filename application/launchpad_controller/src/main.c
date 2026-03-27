@@ -1,6 +1,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/drivers/uart.h>
 #include <zephyr/device.h>
 #include <drv8711.h>
 #include <ad4111.h>
@@ -38,6 +39,7 @@
 #define MSG_SIZE				128
 #define MSGQ_BACKLOG			4
 #define MSGQ_ALIGN				1	// default by zephyr.
+#define STANDARD_BAUDRATE		115200
 
 #define STATE_NO_CONNECTION 	0
 #define STATE_CONNECTION		1
@@ -55,12 +57,16 @@ LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL);
 /* ========================================================== */
 /* =				DEVICE DEFINITIONS						= */
 /* ========================================================== */
-/* AD4111 devices drivers initialized by zephyr on boot. */
-/* DRV8711 devices drivers initialized by zephyr on boot. */
+/* AD4111 devices drivers initialized by zephyr on boot.      */
+/* DRV8711 devices drivers initialized by zephyr on boot.     */
+/* UART has to be *const pointer.  UART4 on board.            */
 const struct device *adcs[] = {
 	DEVICE_DT_GET(DT_ALIAS(xadc1)),
 	DEVICE_DT_GET(DT_ALIAS(xadc2)),
 };
+
+const struct device *const uart_dev = 
+    DEVICE_DT_GET(DT_ALIAS(external_uart));
     
 const struct device *steppers[] = {
 	DEVICE_DT_GET(DT_ALIAS(motor1)),
@@ -101,6 +107,13 @@ uint32_t motor_dir_state[NUM_STEPPERS];
 uint8_t sw[NUM_SWITCHES];
 uint8_t led[NUM_LEDS];
 
+struct uart_config uart_config = {
+	.baudrate = STANDARD_BAUDRATE,
+	.data_bits = UART_CFG_DATA_BITS_8,
+	.flow_ctrl = UART_CFG_FLOW_CTRL_NONE,
+	.parity = UART_CFG_PARITY_NONE,
+	.stop_bits = UART_CFG_STOP_BITS_1
+};
 
 /* ========================================================== */
 /* =				THREAD DEFINITIONS						= */
@@ -150,6 +163,7 @@ static uint8_t state = STATE_NO_CONNECTION;
 K_MSGQ_DEFINE(write_msgq, MSG_SIZE, MSGQ_BACKLOG, MSGQ_ALIGN);
 
 /**
+ * ==========================================================
  * server_main():
  * 		FSM with 2 states NO_CONNECTION, CONNECTION
  * 		Starts of in NO_CONNECTION and continously attempts to established connection.
@@ -190,6 +204,7 @@ void server_main(struct Server *server, struct Client *client)
 }
 
 /**
+ * ==========================================================
  * in_thread_main():
  *      The main function for thread IN which has the purpose of continously
  *      waiting for new input received and executing the commands received.
@@ -222,6 +237,7 @@ void in_thread_main(struct Client* client, THREAD_EMPTYARG, THREAD_EMPTYARG)
 }
 
 /**
+ * ==========================================================
  * out_thread_main():
  * 		Only task is to send messages that are in write queue.
  * 		Initially waits for main thread CONNECTION which releases this thread.
@@ -248,6 +264,7 @@ void out_thread_main(struct Client *client, THREAD_EMPTYARG, THREAD_EMPTYARG)
 }
 
 /**
+ * ==========================================================
  * adc_main_thread():
  * 		PERIOD of 1000 msec
  * 		Blink LEDS, Collect ADC values and place on queue.
@@ -295,6 +312,7 @@ void adc_thread_main(THREAD_EMPTYARG, THREAD_EMPTYARG, THREAD_EMPTYARG)
 }
 
 /**
+ * ==========================================================
  * kernel_exit():
  * 		Infinite loop for stalling when dead.
  */
@@ -308,28 +326,20 @@ void kernel_exit()
 }
 
 /**
+ * ==========================================================
  * main():
  * 	Initializes all devices (ADC ad4111, STEPPER drv8711)
  *	Initializes all gpios (switches, leds)
  */
 int main()
 {
-    LOG_DBG("Program Start.\n");
-
-	// Initializes ADC devices.
+	/* ------------- ADCS INITIALIZE -------------- */
 	for(int i = 0; i < NUM_EXT_ADC; i++)
 		if (!device_is_ready(adcs[i]))
 			FATALERROR("External ADC device ready failed.");
     LOG_DBG("ADC initialized.\n");
 	
-    /*
-	for(int i = 0; i < NUM_STEPPERS; i++)
-		if (!device_is_ready(steppers[i]))
-		FATALERROR("Steppers device ready failed.");
-
-    LOG_DBG("STEPPERS device ready.\n");
-    */
-
+	/* ------------- LEDS INITIALIZE -------------- */
 	// Initializes LED GPIOs as outputs with initial state 0.
 	for(int i = 0; i < NUM_LEDS; i++)
 	{
@@ -341,6 +351,7 @@ int main()
 	}
     LOG_DBG("LEDS initialized.\n");
 
+	/* ---------- SWITCHES INITIALIZE --------------- */
 	// Initializes Switch GPIOs as outputs with initial state 0.
     for(int i = 0; i < NUM_SWITCHES; i++)
     {
@@ -352,8 +363,14 @@ int main()
     }
     LOG_DBG("Switches initialized.\n");
     
-	/* INITIALIZE MOTOR */
-	/* MICROSTEP1 = 0b0000, */
+	/* ------- STEPPER MOTOR INITIALIZE ------------- */
+	/* ------- MICROSTEP1 = 0b0000 ------------------ */
+    /*
+	for(int i = 0; i < NUM_STEPPERS; i++)
+		if (!device_is_ready(steppers[i]))
+		FATALERROR("Steppers device ready failed.");
+
+    LOG_DBG("STEPPERS device ready.\n");
 	for(int i = 0; i < NUM_STEPPERS; i++)
 		if(gpio_pin_configure_dt(&motor_dir_dt[i], GPIO_OUTPUT) < 0)
 			FATALERROR("Stepper Motor Dir configure failed.");
@@ -366,32 +383,49 @@ int main()
     drv8711_set_microstep(steppers[MOTOR1_INDEX], MICROSTEP1);
     drv8711_enable(steppers[MOTOR1_INDEX], true);
     LOG_DBG("Motors drv8711 conifgured.\n");
+    */
 
-	/* INITIALIZE DCHP */
+	/* ---------- UART INITIALIZE ------------------ */
+    if (!device_is_ready(uart_dev))
+		FATALERROR("External UART failed.");
+	
+	if (uart_configure(uart_dev, &uart_config) < 0)
+		FATALERROR("External UART configure failed.");
+
+	if (uart_irq_callback_set(uart_dev, uart_isr) < 0)
+		FATALERROR("External UART ISR callback failed.");
+
+	uart_irq_rx_enable(uart_dev);
+	uart_irq_tx_enable(uart_dev);
+    
+
+	/* ---------- DHCP INITIALIZE ------------------ */
 	if(initialize_dchp() != 0)
 		FATALERROR("Initialized DCHP failed.");
     LOG_DBG("DCHP Initialized.\n");
 
-	// AF_INET = IPV4
+	/* ---------- DHCP INITIALIZE ------------------ */
+	// AF_INET = IPV4 	IPPROTO_TCP
 	// SOCK_STREAM = TCP
 	if(!server_constructor(&server, AF_INET, 
 		SOCK_STREAM, IP, INADDR_ANY, PORT, BACKLOG))
 		FATALERROR("Server failed to initialize.");
     LOG_DBG("Server Initialized.\n");
 	
-	/* INITIALIZE SEMAPHORES */
+	/* ---------- SEMAPHORE INITIALIZE ------------- */
 	// initial = 0, count = 2 (2 threads);
     k_sem_init(&sem_connection, 0, 2);
 	k_sem_init(&sem_connection_fail, 0, 1);
 	
+	/* ---------- RESET STATIC ARRAYS -------------- */
 	/* Initialize adc[], sw[], led[] with zeroes */
 	memset(motor_dir_state, 0, sizeof(motor_dir_state));
 	memset(adc, 0, sizeof(adc));
 	memset(sw, 0, sizeof(sw));
 	memset(led, 0, sizeof(led));
 
+	/* ---------- IN THREAD INITIALIZE ------------- */
 	// All devices pass start threads.
-	// Initialize IN_THREAD
 	in_id = k_thread_create(
 		&in_thread,
 		in_stack,
@@ -406,7 +440,7 @@ int main()
 	);
     LOG_DBG("InThread Initialized.\n");
 
-	// Initialize OUT_THREAD
+	/* --------- OUT THREAD INITIALIZE ------------- */
 	out_id = k_thread_create(
 		&out_thread,
 		out_stack,
@@ -421,6 +455,7 @@ int main()
 	);
     LOG_DBG("OutThread Initialized.\n");
 	
+	/* --------- ADC THREAD INITIALIZE ------------- */
 	adc_id = k_thread_create(
 		&adc_thread,
 		adc_stack,

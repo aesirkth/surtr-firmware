@@ -63,13 +63,20 @@ int handle_request(struct Client *client, uint8_t *rx_buf, uint8_t *p_data_buf, 
  *      Gets message from queue, encodes data into packet, and sends data.
  *      send() does not guarantee that all bytes are sent in one go, so has
  *      to be placed in loop until all bytes are sent.
+ * 
+ *      Send() takes bytes from TX_BUF and sends then over client->socket
+ *      The data in TX_BUF comes from UART. TX_size is set when encoding packet.
+ * 
+ *      MSGQ -> ENCODE -> UART -> NET
  */
 int send_message(struct Client *client, uint8_t *tx_buf)
 {
     Msg msg;
-    uint8_t tx_size = 0;
     int sent_bytes = 0;
     int num_bytes = 0;
+
+    uint8_t encoded_message[128];
+    uint8_t tx_size = 0;
 
     if(!k_msgq_get(&write_msgq, &msg, K_FOREVER))
     {
@@ -77,7 +84,10 @@ int send_message(struct Client *client, uint8_t *tx_buf)
         return 0;
     }
 
-    encode_packet(msg.data, tx_buf, msg.length, &tx_size);
+    encode_packet(msg.data, encoded_message, msg.length, &tx_size);
+
+    for (int i = 0; i < tx_size; i++)
+		uart_poll_out(uart_dev, tx_buf[i]);
 
     while (sent_bytes < tx_size) {
         num_bytes = send(client->socket, tx_buf + sent_bytes, tx_size - sent_bytes, 0);

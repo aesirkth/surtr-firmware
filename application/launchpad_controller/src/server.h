@@ -40,6 +40,7 @@ struct Server {
 
 /* Write Message Queue declared in main. */
 extern struct k_msgq write_msgq;
+extern struct device *const uart_dev;
 
 /**
  * server_constructor():
