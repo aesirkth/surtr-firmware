@@ -180,7 +180,7 @@
  &usart6 {
 	pinctrl-0 = <&usart6_tx_pg14>;
 	pinctrl-names = "default";
-	current-speed = <1000000>;
+	current-speed = <115200>;
 	fifo-enable;
 	status = "okay";
  };
@@ -305,6 +305,9 @@
 	&rcc_mco_1_pa8_fast
 	>;
 	pinctrl-names = "default";
+
+	phy-connection-type = "rmii";
+    phy-handle = <&phy>;
 };
 
 &mdio {
