@@ -889,24 +889,13 @@ def parse_command_protobuf(message: bytes, root: Dashboard):
 					root.adc_raw_buffer[index] = val
 
 					if index < NUM_CHANNELS_ADC_VOLTAGE: 
-						root.adc_temp_buffer[index] = adc_to_scaled_normalized_voltage(root, ADC0_TAG, (index+1), val)
+						scaled_value = adc_to_scaled_normalized_voltage(root, ADC0_TAG, (index+1), val)
+						root.adc_temp_buffer[index] = root._apply_adc_zero_bias(ADC0_TAG, (index+1), scaled_value)
 					else: 
-						root.adc_temp_buffer[index] = adc_to_scaled_normalized_current(root, ADC0_TAG, (index+1), val)
+						scaled_value = adc_to_scaled_normalized_current(root, ADC0_TAG, (index+1), val)
+						root.adc_temp_buffer[index] = root._apply_adc_zero_bias(ADC0_TAG, (index+1), scaled_value)
 
 				root.ADC0.update_channels(root.adc_temp_buffer[0:(NUM_CHANNELS_PER_ADC)])
-			def update_adc_from_packet(adc_tag: int):
-				start_index = 0 if adc_tag == ADC0_TAG else NUM_CHANNELS_PER_ADC
-				for channel_num in range(1, NUM_CHANNELS_PER_ADC + 1):
-					value_key = f"value{channel_num - 1}"
-					adc_value = data["adcMeasurements"][value_key]
-
-					if channel_num <= NUM_CHANNELS_ADC_VOLTAGE:
-						scaled_value = adc_to_scaled_normalized_voltage(root, adc_tag, channel_num, adc_value)
-					else:
-						scaled_value = adc_to_scaled_normalized_current(root, adc_tag, channel_num, adc_value)
-
-					scaled_value = root._apply_adc_zero_bias(adc_tag, channel_num, scaled_value)
-					root.adc_temp_buffer[start_index + (channel_num - 1)] = scaled_value
 
 			# ADC1 because "id=1". Structurally: ADC1 [id] [0-11] 
 			# 0-7 Voltage 8-11 Current
@@ -920,18 +909,12 @@ def parse_command_protobuf(message: bytes, root: Dashboard):
 					root.adc_raw_buffer[index+NUM_CHANNELS_PER_ADC] = val
 
 					if index < NUM_CHANNELS_ADC_VOLTAGE: 
-						root.adc_temp_buffer[index+NUM_CHANNELS_PER_ADC] = adc_to_scaled_normalized_voltage(root, ADC1_TAG, (index+1), val)
+						scaled_value = adc_to_scaled_normalized_voltage(root, ADC1_TAG, (index+1), val)
+						root.adc_temp_buffer[index+NUM_CHANNELS_PER_ADC] = root._apply_adc_zero_bias(ADC1_TAG, (index+1), scaled_value)
 					else: 
-						root.adc_temp_buffer[index+NUM_CHANNELS_PER_ADC] = adc_to_scaled_normalized_current(root, ADC1_TAG, (index+1), val)
+						scaled_value = adc_to_scaled_normalized_current(root, ADC1_TAG, (index+1), val)
+						root.adc_temp_buffer[index+NUM_CHANNELS_PER_ADC] = root._apply_adc_zero_bias(ADC1_TAG, (index+1), scaled_value)
 
-			# ADC0 because "id" not mentioned in protobuf message.
-			if not data["adcMeasurements"]["id"]:
-				update_adc_from_packet(ADC0_TAG)
-				root.ADC0.update_channels(root.adc_temp_buffer[0:NUM_CHANNELS_PER_ADC])
-
-			# ADC1 because "id=1". Structurally: ADC1 [id] [0-11].
-			else:
-				update_adc_from_packet(ADC1_TAG)
 				root.ADC1.update_channels(root.adc_temp_buffer[NUM_CHANNELS_PER_ADC:NUM_CHANNELS_TOTAL])
 			
 			# Write raw adc values into savefile and switch states.

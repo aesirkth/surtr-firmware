@@ -192,8 +192,6 @@ def plot_single_graph_live(adc_id, adc_num, filepath: str, configfile: str):
 				else:
 					scaled = adc_to_scaled_normalized_current(config, ADC1_TAG, (adc_num+1), raw)
 				adc_val.append(scaled)
-				print(raw)
-				print(scaled)
 
 
 
