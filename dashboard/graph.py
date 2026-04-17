@@ -31,6 +31,7 @@ def plot_adc_graph_static(filepath, configfile):
 	
 	time = []
 	adc = [[] for _ in range(24)]
+	sw = [[] for _ in range(NUM_SWITCHES)]
 
     # Read first row with labels
 	if file.readline() == EOF:
@@ -40,7 +41,8 @@ def plot_adc_graph_static(filepath, configfile):
 		line = file.readline()
 		if line == EOF:
 			break
-		getRow(line, time, adc)
+		getRow(line, time, adc, sw, config)
+
 
 	fig = plt.figure(WINDOW, (WINDOW_WIDTH, WINDOW_HEIGHT))
 
@@ -74,7 +76,12 @@ def plot_adc_graph_static_separate(filepath, configfile):
 	config = json.load(open(configfile, 'r'))
 	time = []
 	adc = [[] for _ in range(24)]
+	sw = [[] for _ in range(NUM_SWITCHES)]
 	subplots = []
+	
+	outfile = open("scaled.csv", "w")
+	outfile.write("time," + ",".join(f"adc{i:02d}" for i in range(NUM_CHANNELS_TOTAL)) 
+						+ ",".join(f"sw{i:02d}" for i in range(NUM_SWITCHES)) + "\n")
 
 	plt.figure(WINDOW2, (WINDOW_WIDTH, WINDOW_HEIGHT))
 	subplots = collect_subplots(config)
@@ -87,8 +94,9 @@ def plot_adc_graph_static_separate(filepath, configfile):
 		line = file.readline()
 		if line == EOF:
 			break
-		getRow(line, time, adc)
+		getRow(line, time, adc, sw, config, outfile)
 
+	outfile.close()
 	# Create a Grid of subplots 
 	subplots_length = len(subplots)
 	rows = math.ceil(subplots_length / STATIC_COLUMNS)
@@ -96,15 +104,21 @@ def plot_adc_graph_static_separate(filepath, configfile):
 	for i,sbp in enumerate(subplots, start=1):
 
 		ax = plt.subplot(rows, STATIC_COLUMNS, i)
-		if(isVoltageADC(sbp["num"])):
-			ax.set_title("Voltage (V) in ADCs over time (t)")
-			ax.set_ylabel("Voltage (V)")
+		if "sw" in sbp:
+			ax.set_title("SW over (t)")
+			ax.set_ylabel("SW")
 			ax.set_label("time (t) (seconds)")
+			plt.plot(time, sw[sbp["sw"]], label=sbp["label"])
 		else:
-			ax.set_title("Current (I) in ADCs over time (t)")
-			ax.set_ylabel("Current (I)")
-			ax.set_xlabel("time (t) (seconds)")
-		plt.plot(time, adc[sbp["num"]], label=sbp["label"])
+			if(isVoltageADC(sbp["num"])):
+				ax.set_title("Voltage (V) in ADCs over time (t)")
+				ax.set_ylabel("Voltage (V)")
+				ax.set_label("time (t) (seconds)")
+			else:
+				ax.set_title("Current (I) in ADCs over time (t)")
+				ax.set_ylabel("Current (I)")
+				ax.set_xlabel("time (t) (seconds)")
+			plt.plot(time, adc[sbp["num"]], label=sbp["label"])
 		plt.legend()
 
 	plt.tight_layout()
@@ -192,8 +206,6 @@ def plot_single_graph_live(adc_id, adc_num, filepath: str, configfile: str):
 				else:
 					scaled = adc_to_scaled_normalized_current(config, ADC1_TAG, (adc_num+1), raw)
 				adc_val.append(scaled)
-				print(raw)
-				print(scaled)
 
 
 
@@ -209,19 +221,75 @@ def plot_single_graph_live(adc_id, adc_num, filepath: str, configfile: str):
 # getRow():
 #	splits row of .csv data into their equivalent column adc.
 #	| time | adc01 | adc02 | ....
-def getRow(line, time, adc, sw):
+def getRow(line, time, adc, sw, config, outfile):
 	col = 0
 
+	line_scaled = []
 	column = line.strip().split(",")
 	time.append(float(column[col]))
+	
 
 	col += 1
-	for i in range(24):
-		adc[i].append(float(column[i+col]))
-
-	col += 24
+	adc_num = 1
 	for i in range(8):
+		raw = float(column[col])
+		scaled = adc_to_scaled_normalized_voltage(config, ADC0_TAG, adc_num, raw)
+		#scaled = raw
+		adc[i].append(scaled)
+		line_scaled.append(scaled)
+		adc_num += 1
+		col += 1
+
+	for i in range(8,12):
+		raw = float(column[col])
+		scaled = adc_to_scaled_normalized_current(config, ADC0_TAG, adc_num, raw)
+		#scaled = raw
+		adc[i].append(scaled)
+		line_scaled.append(scaled)
+		adc_num += 1
+		col += 1
+
+	adc_num = 1
+
+	for i in range(12, 20):
+		raw = float(column[col])
+		scaled = adc_to_scaled_normalized_voltage(config, ADC1_TAG, adc_num, raw)
+		#scaled = raw
+		adc[i].append(scaled)
+		line_scaled.append(scaled)
+		adc_num += 1
+		col += 1
+
+	for i in range(20, 24):
+		raw = float(column[col])
+		scaled = adc_to_scaled_normalized_current(config, ADC1_TAG, adc_num, raw)
+		#scaled = raw
+		if i == 21:
+			# 100 kg load cell:
+			scaled = 0.593 * raw + 15.4
+			column[22] = str(scaled)
+		adc[i].append(scaled)
+		line_scaled.append(scaled)
+		adc_num += 1
+		col += 1
+
+	#col += 24
+	for i in range(NUM_SWITCHES):
 		sw[i].append(int(column[i+col]))
+		line_scaled.append(int(column[i+col]))
+
+	out_line = (
+
+        ",".join(str(v) for v in column) + "\n"
+    )
+	outfile.write(out_line)
+	outfile.flush()
+
+
+	
+	#column = line.strip().split(",")
+	#time.append(float(column[0]))
+
 
 # ===============================================================
 # voltage_subplot():
@@ -283,6 +351,12 @@ def collect_subplots(config):
 			sbp = {"num": i, "label": label}
 			subplots.append(sbp)
 
+	for i in range(0, NUM_SWITCHES):
+		label = config["SWITCHES"][f"switch{i+1}"]["label"]
+		if label != "N/C":
+			sbp = {"sw": i, "label": label}
+			subplots.append(sbp)
+
 	return subplots
 
 # ===============================================================
@@ -295,6 +369,16 @@ def isVoltageADC(adc_num):
    		 adc_num < ADC1_CHANNEL_VOLTAGE_END)):
 		return True
 	return False
+
+def writeNewFile(filename, time, adc, sw):
+	file = open(filename, "w")
+	file.write("time," + ",".join(f"adc{i:02d}" for i in range(NUM_CHANNELS_TOTAL)) 
+						+ ",".join(f"sw{i:02d}" for i in range(NUM_SWITCHES)) + "\n")
+	
+	col = 0
+
+
+
 
 
 
@@ -354,6 +438,6 @@ if __name__ == "__main__":
 		print("Usage: graph.py <csv.file> <json.config>")
 		sys.exit(1)
 	
-	plot_adc_graph_static(sys.argv[1], sys.argv[2])
+	#plot_adc_graph_static(sys.argv[1], sys.argv[2])
 	plot_adc_graph_static_separate(sys.argv[1], sys.argv[2])
 	plt.show()

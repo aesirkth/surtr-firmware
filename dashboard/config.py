@@ -56,6 +56,10 @@ class Config:
         channel_cfg = self.config[f"ADC{adc_id}"][f"channel{ch_id}"]
         return channel_cfg.get("disabled", False)
 
+    def get_adc_channel_zeroable(self, adc_id, ch_id):
+        channel_cfg = self.config[f"ADC{adc_id}"][f"channel{ch_id}"]
+        return channel_cfg.get("zeroable", False)
+
     def get_switch_label(self, switch_id):
         return self._get_switch_cfg(switch_id).get("label", f"SW {switch_id}")
 
@@ -74,6 +78,18 @@ class Config:
     def get_stepper_disabled(self, stepper_id):
         return self._get_stepper_cfg(stepper_id).get("disabled", False)
 
+    def get_can_switch_label(self, switch_id):
+        return self._get_can_switch_cfg(switch_id).get("label", f"CAN {switch_id}")
+
+    def get_can_switch_on_label(self, switch_id):
+        return self._get_can_switch_cfg(switch_id).get("on_label", "On")
+
+    def get_can_switch_off_label(self, switch_id):
+        return self._get_can_switch_cfg(switch_id).get("off_label", "Off")
+
+    def get_can_switch_disabled(self, switch_id):
+        return self._get_can_switch_cfg(switch_id).get("disabled", False)
+
     def get_ignition_label(self):
         return self._get_ignition_cfg().get("label", "Ignite")
 
@@ -90,6 +106,10 @@ class Config:
 
     def _get_ignition_cfg(self):
         return self.config.get("IGNITION", {})
+
+    def _get_can_switch_cfg(self, switch_id):
+        can_switches = self.config.get("CAN_SWITCHES", {})
+        return can_switches.get(f"switch{switch_id}", {})
 
 
 # config_loadfile():

@@ -2,6 +2,17 @@ from adc import ADC
 from config import Config
 from constants import *
 from actuation import Actuation
+import re
+try:
+	from gs_usb.gs_usb import GsUsb
+	from gs_usb.gs_usb_frame import GsUsbFrame
+	from gs_usb.constants import CAN_EFF_FLAG
+	import usb.util
+	_GS_USB_AVAILABLE = True
+except Exception:
+	_GS_USB_AVAILABLE = False
+
+GS_CAN_MODE_NORMAL = 0
 
 
 # ===============================================================
@@ -20,6 +31,7 @@ from actuation import Actuation
 #		Stepper:
 #			motor[3]
 #		Ignition
+#		CAN
 #	}
 #	CONFIG
 # 	TIME
@@ -49,7 +61,8 @@ class Dashboard(ctk.CTk):
 			self,
 			lambda: ignition_command(0),
 			switch_command,
-			None
+			None,
+			self.send_can_switch_command
 		)
 
 		self.CONFIG = Config(
@@ -57,6 +70,9 @@ class Dashboard(ctk.CTk):
 			self.config_apply_labels,
 			get_default_config_path()
 		)
+		self.adc_temp_buffer = [0]*NUM_CHANNELS_TOTAL
+		self.adc_raw = [0]*NUM_CHANNELS_TOTAL
+		self.adc_zero_bias = [0]*NUM_CHANNELS_TOTAL
 		self.config_apply_labels()
 
 		self.SIDEBAR = ctk.CTkFrame(self, fg_color="transparent")
@@ -64,6 +80,18 @@ class Dashboard(ctk.CTk):
 			self.SIDEBAR,
 			lambda: self.reconnect_serial(self.CONNECTION.port_var.get()),
 			initial_port_arg
+		)
+		self.CAN_COMMAND = self.CanCommand(
+			self.SIDEBAR,
+			lambda: self.send_can_command(self.CAN_COMMAND.can_id_entry.get(), self.CAN_COMMAND.message_entry.get())
+		)
+		self.CAN_RECOVERY = self.CanRecovery(
+			self.SIDEBAR,
+			self.recover_can_connection
+		)
+		self.ADC_ZERO = self.AdcZero(
+			self.SIDEBAR,
+			self.capture_adc_zero_bias
 		)
 
 		self.TIME = self.Time(self.SIDEBAR, "-", time.time())
@@ -75,7 +103,13 @@ class Dashboard(ctk.CTk):
 		self.reading_thread = None
 		self.writing_thread = None
 		self.connection_lock = threading.Lock()
+		self.can_lock = threading.Lock()
 		self.ui_alive = True
+		self.can_device = None
+		self.can_bitrate = 500000
+		self.can_rx_stop_event = threading.Event()
+		self.can_rx_thread = threading.Thread(target=self._can_rx_loop, daemon=True)
+		self.can_rx_thread.start()
 		self.update_connection_status(False)
 	
 		
@@ -100,6 +134,7 @@ class Dashboard(ctk.CTk):
 		self.ADC1.update_range_label(self.CONFIG.config["ADC1"]["range_label"])
 		self.ADC1.datafile = self.SAVEFILE
 		self.ADC1.configfile = self.CONFIG.filepath
+		self.reset_adc_zero_bias()
 
 		for i in range(NUM_SWITCHES):
 			switch_id = i + 1
@@ -120,11 +155,48 @@ class Dashboard(ctk.CTk):
 		self.ACTUATION.ignition.update_label(self.CONFIG.get_ignition_label())
 		self.ACTUATION.ignition.set_disabled(self.CONFIG.get_ignition_disabled())
 
+		for i in range(4):
+			can_switch_id = i + 1
+			can_switch_button = self.ACTUATION.can_switch.button[i]
+			can_switch_button.update_label(self.CONFIG.get_can_switch_label(can_switch_id))
+			can_switch_button.update_state_labels(
+				self.CONFIG.get_can_switch_on_label(can_switch_id),
+				self.CONFIG.get_can_switch_off_label(can_switch_id)
+			)
+			can_switch_button.set_disabled(self.CONFIG.get_can_switch_disabled(can_switch_id))
+
 	def _normalize_port_arg(self, raw_port):
 		if raw_port is None:
 			return None
 		port = str(raw_port).strip()
 		return port if port else None
+
+	def _adc_buffer_index(self, adc_tag: int, channel_num: int):
+		start_index = 0 if adc_tag == ADC0_TAG else NUM_CHANNELS_PER_ADC
+		return start_index + (channel_num - 1)
+
+	def reset_adc_zero_bias(self):
+		for i in range(NUM_CHANNELS_TOTAL):
+			self.adc_zero_bias[i] = 0.0
+
+	def capture_adc_zero_bias(self):
+		count = 0
+		for adc_tag in (ADC0_TAG, ADC1_TAG):
+			for channel_num in range(1, NUM_CHANNELS_PER_ADC + 1):
+				buffer_index = self._adc_buffer_index(adc_tag, channel_num)
+				if self.CONFIG.get_adc_channel_zeroable(adc_tag, channel_num):
+					self.adc_zero_bias[buffer_index] = self.adc_raw_buffer[buffer_index]
+					count += 1
+				else:
+					self.adc_zero_bias[buffer_index] = 0.0
+		print(f"ADC zero captured for {count} channels.")
+
+	def _apply_adc_zero_bias(self, adc_tag: int, channel_num: int, scaled_value: float):
+		buffer_index = self._adc_buffer_index(adc_tag, channel_num)
+		self.adc_raw_buffer[buffer_index] = scaled_value
+		if self.CONFIG.get_adc_channel_zeroable(adc_tag, channel_num):
+			return scaled_value - self.adc_zero_bias[buffer_index]
+		return scaled_value
 
 	def reconnect_serial(self, raw_port):
 		port = self._normalize_port_arg(raw_port)
@@ -194,6 +266,215 @@ class Dashboard(ctk.CTk):
 			# Window or label may already be destroyed during shutdown.
 			self.ui_alive = False
 
+	def _parse_can_id(self, can_id_text: str):
+		raw = can_id_text.strip()
+		if raw == "":
+			raise ValueError("CAN ID is empty.")
+		return int(raw, 16)
+
+	def _parse_two_hex_bytes(self, text: str):
+		msg = text.strip()
+		if msg == "":
+			raise ValueError("CAN message is empty.")
+
+		if " " in msg or "," in msg:
+			tokens = [tok for tok in msg.replace(",", " ").split() if tok]
+			if len(tokens) != 2:
+				raise ValueError("CAN message must be exactly two bytes.")
+			return bytes(int(tok, 16) for tok in tokens)
+
+		msg = msg.replace("0x", "").replace("0X", "")
+		if len(msg) != 4:
+			raise ValueError("CAN message must be exactly 4 hex chars (2 bytes).")
+		return bytes(int(msg[i:i+2], 16) for i in range(0, len(msg), 2))
+
+	def _get_can_device(self):
+		if self.can_device is not None:
+			return self.can_device
+		if not _GS_USB_AVAILABLE:
+			raise RuntimeError("gs-usb is not installed. Install with: pip install gs-usb==0.3.0")
+
+		try:
+			devs = GsUsb.scan()
+			if len(devs) == 0:
+				raise RuntimeError("No INNO-MAKER usb2can device found.")
+
+			dev = devs[0]
+			try:
+				dev.stop()
+			except Exception:
+				pass
+
+			if not dev.set_bitrate(self.can_bitrate):
+				raise RuntimeError(f"Failed to set CAN bitrate to {self.can_bitrate}.")
+
+			dev.start(GS_CAN_MODE_NORMAL)
+			self.can_device = dev
+			print(f"usb2can ready (bitrate={self.can_bitrate}, device_index=0)")
+		except Exception as exc:
+			if "libusb" in str(exc).lower():
+				raise RuntimeError("usb2can requires libusb driver setup (Zadig) and libusb-1.0.dll per INNO-MAKER instructions.") from exc
+			raise
+		return self.can_device
+
+	def close_can_bus(self):
+		if self.can_device is not None:
+			try:
+				self.can_device.stop()
+			except Exception:
+				pass
+			try:
+				usb.util.dispose_resources(self.can_device.gs_usb)
+			except Exception:
+				pass
+			self.can_device = None
+			time.sleep(0.1)
+
+	def _simulate_usb_replug_locked(self, raw_usb_dev=None):
+		# Best-effort software equivalent of unplug/replug: USB device reset + re-enumeration delay.
+		usb_dev = raw_usb_dev
+		if usb_dev is None:
+			try:
+				devs = GsUsb.scan()
+				if len(devs) > 0:
+					usb_dev = devs[0].gs_usb
+			except Exception:
+				usb_dev = None
+
+		if usb_dev is None:
+			return
+
+		try:
+			usb_dev.reset()
+			print("Issued USB reset cycle for usb2can device.")
+		except Exception as exc:
+			print(f"USB reset cycle failed: {exc}")
+		time.sleep(1.0)
+
+	def _recover_can_connection_locked(self, max_attempts=3):
+		raw_usb_dev = self.can_device.gs_usb if self.can_device is not None else None
+		self.close_can_bus()
+		self._simulate_usb_replug_locked(raw_usb_dev)
+		last_exc = None
+		for attempt in range(max_attempts):
+			try:
+				self._get_can_device()
+				return True
+			except Exception as exc:
+				last_exc = exc
+				time.sleep(0.2 * (attempt + 1))
+		print(f"CAN recovery failed: {last_exc}")
+		return False
+
+	def recover_can_connection(self):
+		with self.can_lock:
+			print("Recovering CAN backend...")
+			if self._recover_can_connection_locked():
+				print("CAN recovery successful.")
+			return
+
+	def _is_recoverable_can_error(self, exc: Exception):
+		msg = str(exc).lower()
+		return (
+			"timeout error" in msg
+			or "_usb_reap_async" in msg
+			or "no backend available" in msg
+			or "device not found" in msg
+			or "resource is in use" in msg
+			or "could not claim interface" in msg
+		)
+
+	def update_can_rx_temperature(self, value: int):
+		if not self.ui_alive:
+			return
+		try:
+			if not self.winfo_exists():
+				self.ui_alive = False
+				return
+			self.ACTUATION.can_rx_temp.set_value(value)
+		except Exception:
+			self.ui_alive = False
+
+	def _can_rx_loop(self):
+		target_can_id = 0x122
+		while not self.can_rx_stop_event.is_set():
+			try:
+				with self.can_lock:
+					dev = self._get_can_device()
+					frame = GsUsbFrame()
+					ok = dev.read(frame, 100)
+				if not ok:
+					continue
+
+				if frame.arbitration_id != target_can_id:
+					continue
+				if frame.can_dlc < 4:
+					continue
+
+				# Decode temperature from first two bytes as uint16 (big-endian).
+				value = int.from_bytes(bytes(frame.data[:2]), byteorder="big", signed=False)
+				bias = 200
+				self.update_can_rx_temperature(value-bias)
+			except Exception as exc:
+				if self.can_rx_stop_event.is_set():
+					return
+				if self._is_recoverable_can_error(exc):
+					with self.can_lock:
+						self._recover_can_connection_locked()
+					time.sleep(0.1)
+					continue
+				time.sleep(0.2)
+
+	def _send_can_payload(self, can_id: int, payload: bytes, context: str):
+		if len(payload) > 8:
+			print(f"CAN send failed: payload too long ({len(payload)} bytes).")
+			return False
+		frame_can_id = can_id | CAN_EFF_FLAG if can_id > 0x7FF else can_id
+		frame = GsUsbFrame(can_id=frame_can_id, data=payload)
+
+		with self.can_lock:
+			for attempt in range(2):
+				try:
+					dev = self._get_can_device()
+					if dev.send(frame):
+						print(f"{context} -> CAN ID 0x{can_id:X}: {payload.hex(' ').upper()}")
+						return True
+					print(f"{context} failed: device did not accept frame.")
+					return False
+				except Exception as exc:
+					if attempt == 0 and self._is_recoverable_can_error(exc):
+						print(f"{context}: CAN backend timeout/error, trying recovery and retry...")
+						if self._recover_can_connection_locked():
+							continue
+					print(f"{context} failed: {exc}")
+					return False
+
+			return False
+
+	def send_can_command(self, can_id_text: str, message_text: str):
+		try:
+			can_id = self._parse_can_id(can_id_text)
+		except ValueError as exc:
+			print(f"Invalid CAN ID hex: {exc}")
+			return
+		try:
+			payload = self._parse_two_hex_bytes(message_text)
+		except ValueError as exc:
+			print(f"Invalid CAN message hex: {exc}")
+			return
+		self._send_can_payload(can_id, payload, "Sent custom CAN")
+
+	def send_can_switch_command(self, switch_id: int, state: bool):
+		try:
+			can_id_text = self.CAN_COMMAND.can_id_entry.get().strip()
+			can_id = self._parse_can_id(can_id_text if can_id_text else "124")
+		except ValueError as exc:
+			print(f"CAN switch {switch_id} send failed: {exc}")
+			return
+		payload = bytes([switch_id, 0x01 if state else 0x00])
+		state_text = "ON" if state else "OFF"
+		self._send_can_payload(can_id, payload, f"Sent CAN switch {switch_id} {state_text}")
+
 	# ==========================================================================
 	class Connection:
 		def __init__(self, parent, func_reconnect, initial_port_arg):
@@ -203,6 +484,92 @@ class Dashboard(ctk.CTk):
 			self.port_entry = ctk.CTkEntry(self.panel, textvariable=self.port_var, width=150, font=DEFAULT_FONT, corner_radius=0)
 			self.reconnect_button = ctk.CTkButton(self.panel, text="Reconnect", command=func_reconnect, width=150, font=DEFAULT_FONT, corner_radius=0)
 			self.status_label = ctk.CTkLabel(self.panel, text="Not connected", font=("IBM Plex Mono", 12))
+	# ==========================================================================
+	class CanCommand:
+		def __init__(self, parent, func_send):
+			self.panel = ctk.CTkFrame(parent)
+			self.title = ctk.CTkLabel(self.panel, text="CAN Command", font=DEFAULT_FONT)
+			can_id_vcmd = (self.panel.register(self._validate_can_id), "%P")
+			msg_vcmd = (self.panel.register(self._validate_can_message), "%P")
+			self.can_id_var = ctk.StringVar(value="124")
+			self.can_id_entry = ctk.CTkEntry(
+				self.panel,
+				width=150,
+				font=DEFAULT_FONT,
+				corner_radius=0,
+				placeholder_text="CAN ID hex",
+				textvariable=self.can_id_var,
+				validate="key",
+				validatecommand=can_id_vcmd,
+			)
+			self.message_entry = ctk.CTkEntry(
+				self.panel,
+				width=150,
+				font=DEFAULT_FONT,
+				corner_radius=0,
+				placeholder_text="2 bytes hex",
+				validate="key",
+				validatecommand=msg_vcmd,
+			)
+			self.send_button = ctk.CTkButton(
+				self.panel,
+				text="Send",
+				command=func_send,
+				width=150,
+				font=DEFAULT_FONT,
+				corner_radius=0
+			)
+
+		def _validate_can_id(self, proposed: str):
+			if proposed == "":
+				return True
+			return re.fullmatch(r"(0[xX])?[0-9a-fA-F]*", proposed) is not None
+
+		def _validate_can_message(self, proposed: str):
+			if proposed == "":
+				return True
+			if re.fullmatch(r"[0-9a-fA-FxX,\s]*", proposed) is None:
+				return False
+
+			if " " in proposed or "," in proposed:
+				tokens = [tok for tok in re.split(r"[\s,]+", proposed.strip()) if tok]
+				if len(tokens) > 2:
+					return False
+				for tok in tokens:
+					if re.fullmatch(r"(0[xX])?[0-9a-fA-F]{0,2}", tok) is None:
+						return False
+				return True
+
+			return re.fullmatch(r"(0[xX])?[0-9a-fA-F]{0,4}", proposed) is not None
+
+	# ==========================================================================
+	class CanRecovery:
+		def __init__(self, parent, func_recover):
+			self.panel = ctk.CTkFrame(parent)
+			self.title = ctk.CTkLabel(self.panel, text="CAN Recovery", font=DEFAULT_FONT)
+			self.button = ctk.CTkButton(
+				self.panel,
+				text="Recover CAN",
+				command=func_recover,
+				width=150,
+				font=DEFAULT_FONT,
+				corner_radius=0
+			)
+
+	# ==========================================================================
+	class AdcZero:
+		def __init__(self, parent, func_zero):
+			self.panel = ctk.CTkFrame(parent)
+			self.title = ctk.CTkLabel(self.panel, text="ADC Zero", font=DEFAULT_FONT)
+			self.button = ctk.CTkButton(
+				self.panel,
+				text="Zero",
+				command=func_zero,
+				width=150,
+				font=DEFAULT_FONT,
+				corner_radius=0
+			)
+
 	# ==========================================================================
 	class Time:
 		def __init__(self, parent, value, start_time):
@@ -245,7 +612,9 @@ def main():
 
 	root.mainloop()
 	root.ui_alive = False
+	root.can_rx_stop_event.set()
 	root.disconnect_serial(update_ui=False)
+	root.close_can_bus()
 
 
 # ===============================================================
@@ -517,12 +886,14 @@ def parse_command_protobuf(message: bytes, root: Dashboard):
 						continue
 
 					index = int(key.removeprefix("value"))
-					root.adc_raw_buffer[index] = val
+					root.adc_raw[index] = val
 
 					if index < NUM_CHANNELS_ADC_VOLTAGE: 
-						root.adc_temp_buffer[index] = adc_to_scaled_normalized_voltage(root, ADC0_TAG, (index+1), val)
+						scaled_value = adc_to_scaled_normalized_voltage(root, ADC0_TAG, (index+1), val)
+						root.adc_temp_buffer[index] = root._apply_adc_zero_bias(ADC0_TAG, (index+1), scaled_value)
 					else: 
-						root.adc_temp_buffer[index] = adc_to_scaled_normalized_current(root, ADC0_TAG, (index+1), val)
+						scaled_value = adc_to_scaled_normalized_current(root, ADC0_TAG, (index+1), val)
+						root.adc_temp_buffer[index] = root._apply_adc_zero_bias(ADC0_TAG, (index+1), scaled_value)
 
 				root.ADC0.update_channels(root.adc_temp_buffer[0:(NUM_CHANNELS_PER_ADC)])
 
@@ -535,19 +906,22 @@ def parse_command_protobuf(message: bytes, root: Dashboard):
 						continue
 
 					index = int(key.removeprefix("value"))
-					root.adc_raw_buffer[index+NUM_CHANNELS_PER_ADC] = val
+					root.adc_raw[index+NUM_CHANNELS_PER_ADC] = val
 
 					if index < NUM_CHANNELS_ADC_VOLTAGE: 
-						root.adc_temp_buffer[index+NUM_CHANNELS_PER_ADC] = adc_to_scaled_normalized_voltage(root, ADC1_TAG, (index+1), val)
+						scaled_value = adc_to_scaled_normalized_voltage(root, ADC1_TAG, (index+1), val)
+						root.adc_temp_buffer[index+NUM_CHANNELS_PER_ADC] = root._apply_adc_zero_bias(ADC1_TAG, (index+1), scaled_value)
 					else: 
-						root.adc_temp_buffer[index+NUM_CHANNELS_PER_ADC] = adc_to_scaled_normalized_current(root, ADC1_TAG, (index+1), val)
+						scaled_value = adc_to_scaled_normalized_current(root, ADC1_TAG, (index+1), val)
+						root.adc_temp_buffer[index+NUM_CHANNELS_PER_ADC] = root._apply_adc_zero_bias(ADC1_TAG, (index+1), scaled_value)
 
 				root.ADC1.update_channels(root.adc_temp_buffer[NUM_CHANNELS_PER_ADC:NUM_CHANNELS_TOTAL])
 			
 			# Write raw adc values into savefile and switch states.
 			for j, b in enumerate(root.ACTUATION.switch.button):
 				root.sw_raw_buffer[j] = int(b.current_state)
-			writeRow(root.SAVEFILE_WHANDLE, time, root.adc_raw_buffer, root.sw_raw_buffer)
+			
+			writeRow(root.SAVEFILE_WHANDLE, time, root.adc_raw, root.sw_raw_buffer)
 			# Update usSinceBoot Surtr time.
 			root.TIME.update_time(math.ceil(time))
 
@@ -586,6 +960,8 @@ def setup_dashboard(root: Dashboard):
 	root.ACTUATION.panel.grid_columnconfigure(0, weight=0)
 	root.ACTUATION.panel.grid_columnconfigure(1, weight=0)
 	root.ACTUATION.panel.grid_columnconfigure(2, weight=0)
+	root.ACTUATION.panel.grid_columnconfigure(3, weight=0)
+	root.ACTUATION.panel.grid_columnconfigure(4, weight=0)
 
 	root.ADC0.panel.grid(row=1, column=0, padx=(16, 8), pady=8, sticky="nsew")
 	root.ADC1.panel.grid(row=1, column=1, padx=(8, 16), pady=8, sticky="nsew")
@@ -636,6 +1012,17 @@ def setup_dashboard(root: Dashboard):
 	root.ACTUATION.ignition.title.grid(row=0, column=0, pady=4, sticky="n")
 	root.ACTUATION.ignition.button.grid(row=1, column=0, padx=6, pady=3, sticky="w")
 
+	root.ACTUATION.can_switch.panel.grid(row=0, column=3, sticky="nw", padx=6, pady=6)
+	root.ACTUATION.can_switch.title.grid(row=0, column=0, columnspan=3, pady=4, sticky="w")
+	for i in range(4):
+		root.ACTUATION.can_switch.button[i].label.grid(row=i+1, column=0, padx=2, pady=1, sticky="w")
+		root.ACTUATION.can_switch.button[i].on.grid(row=i+1, column=1, padx=2, pady=1, sticky="w")
+		root.ACTUATION.can_switch.button[i].off.grid(row=i+1, column=2, padx=2, pady=1, sticky="w")
+
+	root.ACTUATION.can_rx_temp.panel.grid(row=0, column=4, sticky="nw", padx=6, pady=6)
+	root.ACTUATION.can_rx_temp.title.grid(row=0, column=0, padx=6, pady=4, sticky="w")
+	root.ACTUATION.can_rx_temp.value.grid(row=1, column=0, padx=6, pady=3, sticky="w")
+
 	root.CONFIG.path_entry.grid(row=0, column=1, padx=4, pady=4, sticky="ew")
 	root.CONFIG.panel.grid_columnconfigure(1, weight=1)
 	root.CONFIG.panel.grid(row=0, column=0, columnspan=2, sticky="ew", padx=8, pady=4)
@@ -649,7 +1036,21 @@ def setup_dashboard(root: Dashboard):
 	root.CONNECTION.reconnect_button.grid(row=2, column=0, padx=6, pady=3, sticky="w")
 	root.CONNECTION.status_label.grid(row=3, column=0, padx=6, pady=(0, 3), sticky="w")
 
-	root.TIME.panel.grid(row=1, column=0, padx=0, pady=(4, 0), sticky="nw")
+	root.CAN_COMMAND.panel.grid(row=1, column=0, sticky="nw", padx=0, pady=(4, 0))
+	root.CAN_COMMAND.title.grid(row=0, column=0, pady=4)
+	root.CAN_COMMAND.can_id_entry.grid(row=1, column=0, padx=6, pady=3, sticky="w")
+	root.CAN_COMMAND.message_entry.grid(row=2, column=0, padx=6, pady=3, sticky="w")
+	root.CAN_COMMAND.send_button.grid(row=3, column=0, padx=6, pady=3, sticky="w")
+
+	root.CAN_RECOVERY.panel.grid(row=2, column=0, sticky="nw", padx=0, pady=(4, 0))
+	root.CAN_RECOVERY.title.grid(row=0, column=0, pady=4)
+	root.CAN_RECOVERY.button.grid(row=1, column=0, padx=6, pady=3, sticky="w")
+
+	root.ADC_ZERO.panel.grid(row=3, column=0, sticky="nw", padx=0, pady=(4, 0))
+	root.ADC_ZERO.title.grid(row=0, column=0, pady=4)
+	root.ADC_ZERO.button.grid(row=1, column=0, padx=6, pady=3, sticky="w")
+
+	root.TIME.panel.grid(row=4, column=0, padx=0, pady=(4, 0), sticky="nw")
 	root.TIME.label_pgt.grid(row=0, column=0, padx=6, pady=(3, 1), sticky="w")
 	root.TIME.label_srt.grid(row=1, column=0, padx=6, pady=(0, 3), sticky="w")
 

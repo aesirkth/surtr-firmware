@@ -38,6 +38,12 @@
     "label": "Ignite",
     "disabled": true
   },
+  "CAN_SWITCHES": {
+    "switch1": {"label": "CAN 1", "on_label": "On", "off_label": "Off", "disabled": false},
+    "switch2": {"label": "CAN 2", "on_label": "On", "off_label": "Off", "disabled": false},
+    "switch3": {"label": "CAN 3", "on_label": "On", "off_label": "Off", "disabled": false},
+    "switch4": {"label": "CAN 4", "on_label": "On", "off_label": "Off", "disabled": false}
+  },
   "SWITCHES": {
     "switch1": {"label": "N2O vent (17)", "on_label": "On", "off_label": "Off", "disabled": false},
     "switch2": {"label": "N/C", "on_label": "On", "off_label": "Off", "disabled": true},

@@ -2,3 +2,6 @@ matplotlib
 protobuf
 pyserial
 customtkinter
+python-can
+pywin32
+gs-usb==0.3.0
