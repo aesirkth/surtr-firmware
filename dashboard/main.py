@@ -71,7 +71,7 @@ class Dashboard(ctk.CTk):
 			get_default_config_path()
 		)
 		self.adc_temp_buffer = [0]*NUM_CHANNELS_TOTAL
-		self.adc_raw_buffer = [0]*NUM_CHANNELS_TOTAL
+		self.adc_raw = [0]*NUM_CHANNELS_TOTAL
 		self.adc_zero_bias = [0]*NUM_CHANNELS_TOTAL
 		self.config_apply_labels()
 
@@ -886,7 +886,7 @@ def parse_command_protobuf(message: bytes, root: Dashboard):
 						continue
 
 					index = int(key.removeprefix("value"))
-					root.adc_raw_buffer[index] = val
+					root.adc_raw[index] = val
 
 					if index < NUM_CHANNELS_ADC_VOLTAGE: 
 						scaled_value = adc_to_scaled_normalized_voltage(root, ADC0_TAG, (index+1), val)
@@ -906,7 +906,7 @@ def parse_command_protobuf(message: bytes, root: Dashboard):
 						continue
 
 					index = int(key.removeprefix("value"))
-					root.adc_raw_buffer[index+NUM_CHANNELS_PER_ADC] = val
+					root.adc_raw[index+NUM_CHANNELS_PER_ADC] = val
 
 					if index < NUM_CHANNELS_ADC_VOLTAGE: 
 						scaled_value = adc_to_scaled_normalized_voltage(root, ADC1_TAG, (index+1), val)
@@ -920,7 +920,8 @@ def parse_command_protobuf(message: bytes, root: Dashboard):
 			# Write raw adc values into savefile and switch states.
 			for j, b in enumerate(root.ACTUATION.switch.button):
 				root.sw_raw_buffer[j] = int(b.current_state)
-			writeRow(root.SAVEFILE_WHANDLE, time, root.adc_raw_buffer, root.sw_raw_buffer)
+			
+			writeRow(root.SAVEFILE_WHANDLE, time, root.adc_raw, root.sw_raw_buffer)
 			# Update usSinceBoot Surtr time.
 			root.TIME.update_time(math.ceil(time))
 
