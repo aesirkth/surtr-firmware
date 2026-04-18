@@ -5,6 +5,7 @@
 #include <zephyr/device.h>
 #include <drv8711.h>
 #include <ad4111.h>
+#include "circbuf.h"
 #include "collect.h"
 #include "server.h"
 #include "packet.h"
@@ -115,6 +116,10 @@ struct uart_config uart_config = {
 	.stop_bits = UART_CFG_STOP_BITS_1
 };
 
+Circbuf rx_circbuf;
+uint8_t rx_buffer[MSG_SIZE];
+uint8_t payload[MSG_SIZE];
+
 /* ========================================================== */
 /* =				THREAD DEFINITIONS						= */
 /* ========================================================== */
@@ -215,8 +220,6 @@ void server_main(struct Server *server, struct Client *client)
 void in_thread_main(struct Client* client, THREAD_EMPTYARG, THREAD_EMPTYARG)
 {
     LOG_DBG("InThread Enter.\n");
-	uint8_t rx_buf[MSG_SIZE];
-	uint8_t payload[MSG_SIZE];
 	int payload_size;
 
 	k_sem_take(&sem_connection, K_FOREVER);
@@ -224,7 +227,7 @@ void in_thread_main(struct Client* client, THREAD_EMPTYARG, THREAD_EMPTYARG)
     while(1)
     {
         LOG_DBG("InThread Waiting for Request.\n");
-		if(!handle_request(client, rx_buf, payload, &payload_size))
+		if(!handle_request(client, , payload, &payload_size))
 		{
             LOG_DBG("InThread Request Failed.\n");
 			k_sem_give(&sem_connection_fail);
@@ -386,25 +389,29 @@ int main()
     */
 
 	/* ---------- UART INITIALIZE ------------------ */
+	/* -- Only need to enable RX (PC to Surtr) ----- */
+	/* -- TX (Surtr to PC) uses polling ------------ */
     if (!device_is_ready(uart_dev))
 		FATALERROR("External UART failed.");
 	
 	if (uart_configure(uart_dev, &uart_config) < 0)
 		FATALERROR("External UART configure failed.");
 
-	if (uart_irq_callback_set(uart_dev, uart_isr) < 0)
+	circbuf_construct(&rx_circbuf, &rx_buffer, MSG_SIZE);
+
+	if (uart_irq_callback_user_data_set(uart_dev, uart_isr, &rx_circbuf) < 0)
 		FATALERROR("External UART ISR callback failed.");
 
 	uart_irq_rx_enable(uart_dev);
-	uart_irq_tx_enable(uart_dev);
-    
+	// uart_irq_tx_enable(uart_dev);
+
 
 	/* ---------- DHCP INITIALIZE ------------------ */
 	if(initialize_dchp() != 0)
 		FATALERROR("Initialized DCHP failed.");
     LOG_DBG("DCHP Initialized.\n");
 
-	/* ---------- DHCP INITIALIZE ------------------ */
+	/* ---------- SERVER INITIALIZE ---------------- */
 	// AF_INET = IPV4 	IPPROTO_TCP
 	// SOCK_STREAM = TCP
 	if(!server_constructor(&server, AF_INET, 

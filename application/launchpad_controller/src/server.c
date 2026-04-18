@@ -67,7 +67,7 @@ int handle_request(struct Client *client, uint8_t *rx_buf, uint8_t *p_data_buf, 
  *      Send() takes bytes from TX_BUF and sends then over client->socket
  *      The data in TX_BUF comes from UART. TX_size is set when encoding packet.
  * 
- *      MSGQ -> ENCODE -> UART -> NET
+ *      MSGQ -> ENCODE -> UART TX -> NET
  */
 int send_message(struct Client *client, uint8_t *tx_buf)
 {
@@ -103,6 +103,25 @@ int send_message(struct Client *client, uint8_t *tx_buf)
     }
 
     return 1;
+}
+
+/**
+ * uart_isr()
+ *   Interrupt Service Routine for UART
+ *   Reads RX data byte for byte and places in circular buffer.
+ *   Call to uart_irq_update() has to be made before uart_irq_rx_ready().
+ */
+void uart_isr(const struct device *dev, void *circ_buf)
+{
+    uint8_t byte;
+    if(!uart_irq_update(dev))
+        return;
+
+    while (uart_irq_rx_ready(dev))
+    {
+        uart_fifo_read(dev, &byte, 1);
+        circ_buf_push(circ_buf, byte);
+    }
 }
 
 

@@ -4,6 +4,7 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/drivers/uart.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -40,7 +41,7 @@ struct Server {
 
 /* Write Message Queue declared in main. */
 extern struct k_msgq write_msgq;
-extern struct device *const uart_dev;
+extern const struct device *const uart_dev;
 
 /**
  * server_constructor():
