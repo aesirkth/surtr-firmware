@@ -204,7 +204,7 @@ class Dashboard(ctk.CTk):
 		self.disconnect_serial()
 
 		try:
-			ser_con = serial.Serial(port, BAUDRATE, timeout=0.25)
+			ser_con = serial.Serial(port, BAUDRATE, timeout=None)
 		except serial.SerialException as exc:
 			print(f"Reconnect failed for port '{port}': {exc}")
 			self.update_connection_status(False)
@@ -629,36 +629,38 @@ def serial_connection_read(ser_con: serial.Serial, root: Dashboard, stop_event: 
 	try:
 		last_rx_time = time.monotonic()
 		while not stop_event.is_set():
+			print("serial connection begin read.\n")
 			align_byte = ser_con.read(1)
 			if len(align_byte) != 1:
-				if time.monotonic() - last_rx_time > CONNECTION_LOST_TIMEOUT_S:
-					root.handle_connection_loss("no incoming data")
-					return
+				#if time.monotonic() - last_rx_time > CONNECTION_LOST_TIMEOUT_S:
+				#	root.handle_connection_loss("no incoming data")
+				#	return
 				continue
 			last_rx_time = time.monotonic()
 			if align_byte[0] != ALIGNMENT_BYTE:
 				continue
 
+			print("serial connection read length.\n")
 			length_byte = ser_con.read(1)
 			if len(length_byte) != 1:
-				if time.monotonic() - last_rx_time > CONNECTION_LOST_TIMEOUT_S:
-					root.handle_connection_loss("incomplete packet header")
-					return
+				#if time.monotonic() - last_rx_time > CONNECTION_LOST_TIMEOUT_S:
+				#	root.handle_connection_loss("incomplete packet header")
+				#	return
 				continue
 
 			length = length_byte[0]
 			data = ser_con.read(length)
 			if len(data) != length:
-				if time.monotonic() - last_rx_time > CONNECTION_LOST_TIMEOUT_S:
-					root.handle_connection_loss("incomplete packet payload")
-					return
+				#if time.monotonic() - last_rx_time > CONNECTION_LOST_TIMEOUT_S:
+				#	root.handle_connection_loss("incomplete packet payload")
+				#	return
 				continue
 
 			crc_bytes = ser_con.read(2)
 			if len(crc_bytes) != 2:
-				if time.monotonic() - last_rx_time > CONNECTION_LOST_TIMEOUT_S:
-					root.handle_connection_loss("incomplete packet checksum")
-					return
+				#if time.monotonic() - last_rx_time > CONNECTION_LOST_TIMEOUT_S:
+				#	root.handle_connection_loss("incomplete packet checksum")
+				#	return
 				continue
 			crc = crc_bytes[0] + (crc_bytes[1] << 8)
 			packet = bytes([ALIGNMENT_BYTE, length]) + data
@@ -724,13 +726,17 @@ def crc16(poly, seed, buf):
 def prepare_packet(data: bytes):
 	align = ALIGNMENT_BYTE
 	length = len(data)
+	print(align)
+	print(length)
 
 	temp = bytes([align, length]) + data
 	crc = crc16(CRC_POLY, CRC_SEED, temp)
+	print(crc)
 	crc_low = crc & 0x00FF
 	crc_high = (crc >> 8) & 0x00FF
 
 	packet = temp + bytes([crc_low, crc_high])
+	print("packet:\n", packet.hex())
 	return packet
 
 # writeRow():
@@ -869,7 +875,8 @@ def parse_command_protobuf(message: bytes, root: Dashboard):
 
 	data = json_format.MessageToDict(msg, always_print_fields_with_no_presence=True)
 
-	#print(data)
+	print("PARSE_COMMAND_SURTR_PROTOBUF")
+	print(data)
 
 	# Due to inconsistencies with the protobuf messages delivered
 	# we check if "id" is mentioned in message.

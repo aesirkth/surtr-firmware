@@ -10,6 +10,7 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include "packet.h"
+#include "circbuf.h"
 
 #define IPV4 AF_INET
 #define TCP SOCK_STREAM

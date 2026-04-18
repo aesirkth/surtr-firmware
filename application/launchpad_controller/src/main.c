@@ -11,6 +11,7 @@
 #include "packet.h"
 #include "dhcp.h"
 #include "in.h"
+#include "uart.h"
 
 /* ========================================================== */
 /* =			GLOBAL CONSTANT DEFINITIONS					= */
@@ -23,7 +24,7 @@
 
 #define ADC_THREAD_STACK_SIZE 	1024
 #define ADC_THREAD_PRIORITY		3
-#define ADC_THREAD_PERIOD		1000
+#define ADC_THREAD_PERIOD		5000
 #define THREAD_EMPTYARG 		void*
 
 #define NUM_EXT_ADC				2
@@ -187,7 +188,8 @@ void server_main(struct Server *server, struct Client *client)
 		{
 			case STATE_NO_CONNECTION:
                 LOG_DBG("State: NO_CONNECTION.\n");
-				if (accept_connection(server, client)) 
+				//if (accept_connection(server, client)) 
+				if(1)
 				{
                     LOG_DBG("New Connection Established.\n");
 					state = STATE_CONNECTION;
@@ -227,7 +229,8 @@ void in_thread_main(struct Client* client, THREAD_EMPTYARG, THREAD_EMPTYARG)
     while(1)
     {
         LOG_DBG("InThread Waiting for Request.\n");
-		if(!handle_request(client, , payload, &payload_size))
+		//if(!handle_request(client, , payload, &payload_size))
+		if(!uart_handle_request(&rx_circbuf, payload, &payload_size))
 		{
             LOG_DBG("InThread Request Failed.\n");
 			k_sem_give(&sem_connection_fail);
@@ -256,7 +259,8 @@ void out_thread_main(struct Client *client, THREAD_EMPTYARG, THREAD_EMPTYARG)
     while(1)
     {
         LOG_DBG("OutThread Waiting to Send Message.\n");
-		if(!send_message(client, tx_buf))
+		//if(!send_message(client, tx_buf))
+		if(!uart_send_message(tx_buf))
 		{
             LOG_DBG("OutThread Send Message Failed.\n");
 			k_sem_give(&sem_connection_fail);
@@ -398,6 +402,7 @@ int main()
 		FATALERROR("External UART configure failed.");
 
 	circbuf_construct(&rx_circbuf, &rx_buffer, MSG_SIZE);
+	uart_initialize_sem();
 
 	if (uart_irq_callback_user_data_set(uart_dev, uart_isr, &rx_circbuf) < 0)
 		FATALERROR("External UART ISR callback failed.");

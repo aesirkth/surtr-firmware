@@ -23,4 +23,6 @@ target_sources(app PRIVATE
     src/in.c
     src/packet.c
     src/server.c
+    src/circbuf.c
+    src/uart.c
 )

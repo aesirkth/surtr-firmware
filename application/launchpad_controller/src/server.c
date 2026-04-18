@@ -2,6 +2,7 @@
 
 LOG_MODULE_REGISTER(server, LOG_LEVEL_DBG);
 
+
 /**
  * accept_connection():
  *  Client is initialized here by being assign sockaddr_in address
@@ -36,7 +37,7 @@ int accept_connection(struct Server *server, struct Client *client)
  *      is a pointer to the index tracking actual size of data in buffer.
  *      This way we can extract data payload out of handle_request().
  */
-int handle_request(struct Client *client, uint8_t *rx_buf, uint8_t *p_data_buf, int *p_data_size)
+int handle_request_ethernet(struct Client *client, uint8_t *rx_buf, uint8_t *p_data_buf, int *p_data_size)
 {
     int num_bytes = recv(client->socket, rx_buf, 128, 0);
     if (num_bytes < 0)
@@ -56,6 +57,8 @@ int handle_request(struct Client *client, uint8_t *rx_buf, uint8_t *p_data_buf, 
     //close(client->socket);
     return 1;
 }
+
+
 
 /**
  * send_message():
@@ -89,6 +92,7 @@ int send_message(struct Client *client, uint8_t *tx_buf)
     for (int i = 0; i < tx_size; i++)
 		uart_poll_out(uart_dev, tx_buf[i]);
 
+    /*
     while (sent_bytes < tx_size) {
         num_bytes = send(client->socket, tx_buf + sent_bytes, tx_size - sent_bytes, 0);
         if (num_bytes < 0) 
@@ -101,28 +105,11 @@ int send_message(struct Client *client, uint8_t *tx_buf)
         else
             break;
     }
+    */
 
     return 1;
 }
 
-/**
- * uart_isr()
- *   Interrupt Service Routine for UART
- *   Reads RX data byte for byte and places in circular buffer.
- *   Call to uart_irq_update() has to be made before uart_irq_rx_ready().
- */
-void uart_isr(const struct device *dev, void *circ_buf)
-{
-    uint8_t byte;
-    if(!uart_irq_update(dev))
-        return;
-
-    while (uart_irq_rx_ready(dev))
-    {
-        uart_fifo_read(dev, &byte, 1);
-        circ_buf_push(circ_buf, byte);
-    }
-}
 
 
 /**
@@ -167,6 +154,7 @@ int server_constructor(
 		LOG_ERR("Failed to start listening...\n");
 		return 0;
 	}
+	
 
     return 1;
 }
