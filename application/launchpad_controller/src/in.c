@@ -3,90 +3,97 @@
 LOG_MODULE_REGISTER(in, CONFIG_APP_LOG_LEVEL);
 
 /**
- * execute_command():
- *      Executes Surtr command based request protocol.
- *      Only 4 commands are from outside -> surtr.
- *      SW_STATE and ADC_STATE go from surtr -> outside.
  * ===============================================================
- * PARSE SURTR COMMAND
- * Unpacks message and updates data accordingly.
- * MSG TYPE		ENUM	TIME (us)		RAW DATA
- * ===============================================================
- * SYN_ACK			0					| ACK |
- * SW CTRL		    1					| ID | STATE |
- * STEP CTRL		2					| ID | MOTOR DELTA |
- * SW STATE		    3					| SW[8] | MOTOR1 | MOTOR2 |
- * ADC STATE		4					| VALUE[24] |
- * IGNITION		    5					| PASSWORD |
- * 
+ * surtr_syn_ack():
+ *      Add ACK response 0xFF (SUCCESS) to response message.
  */
-void execute_command(const uint8_t *message, const int size)
+void surtr_syn_ack(uint8_t *response, uint8_t *response_size) 
 {
-    const uint8_t cmd = message[SURTR_CMD_INDEX];
-    switch (cmd)
-    {
-        case SURTR_CMD_SYN_ACK:
-                surtr_syn_ack();
-            break;
-
-        case SURTR_CMD_SW_CTRL:
-                surtr_sw_ctrl(message);
-            break;
-
-        case SURTR_CMD_STEP_CTRL:
-                surtr_step_ctrl(message);
-            break;
-
-        case SURTR_CMD_IGNITION:
-                LOG_INF("Ignition does nothing for now.");
-            break;
-        
-        default:
-            break;
-    }
+    response[SURTR_RESPONSE_INDEX_ACK] = SURTR_MSG_ACK_SUCCESS;
 }
 
+/**
+ * ===============================================================
+ * surtr_syn_fail():
+ *      Add ACK response 0x00 (FAIL) to response message.
+ */
+void surtr_syn_fail(uint8_t *response, uint8_t *response_size) 
+{
+    response[SURTR_RESPONSE_INDEX_ACK] = SURTR_MSG_ACK_FAIL;
+}
 
 /**
- * surtr_syn_ack():
- *      Send ACK response back to client by placing onto write message queue.
- *      k_msgq_put(): 
- *      0        Success
- *      -ENOMSG  returned without waiting or queue purged.
- *      -EAGAIN  waiting period timed out
+ * ===============================================================
+ * surtr_sw_ctrl():
+ *      Dissects message and applies control command on desired switch.
+ *      Paired together with ACK on response for confirmation.
+ *      MSG TYPE		ENUM	TIME (us)		RAW DATA
+ *      ===============================================================
+ *      SW CTRL 1 | ID | STATE |
  */
-int surtr_syn_ack() 
+void surtr_sw_ctrl(const uint8_t *payload)
 {
-    const uint8_t payload[2] = { SURTR_CMD_SYN_ACK, SURTR_MSG_ACK };
-    Msg msg = msg_construct(SURTR_MSG_ACK_SIZE, payload);
+    toggle_switch(payload[SURTR_MSG_SW_CTRL_INDEX_ID], payload[SURTR_MSG_SW_CTRL_INDEX_STATE]);
+}
 
-    // Might want to have timeout here.
-	if(k_msgq_put(&write_msgq, &msg, K_NO_WAIT) != 0) 
+/**
+ * ===============================================================
+ * surtr_step_ctrl():
+ *      Dissects message and applies control command on desired motor.
+ *      Delta is not really delta here but in reality the TARGET VALUE...
+ *      ===============================================================
+ *      STEP CTRL		2					| ID | MOTOR DELTA |
+ */
+void surtr_step_ctrl(const uint8_t *payload)
+{
+    uint32_t delta;
+    int id = payload[SURTR_MSG_STEP_CTRL_INDEX_ID];
+    memcpy(&delta, &payload[SURTR_MSG_STEP_CTRL_INDEX_DELTA], sizeof(delta));
+    update_stepper_motor(id, delta);
+}
+
+/**
+ * ===============================================================
+ * surtr_get_adc_state():
+ *      Reads state of ADCs and combines into surtr response message.
+ *      data begins after 10 bytes and then is 96 bytes long.
+ *      MSG TYPE		ENUM	TIME (us)		RAW DATA
+ *      ===============================================================
+ *      ADC STATE		4					| VALUE[24] |
+ */
+int surtr_get_adc_state(uint8_t *response, uint8_t *response_size)
+{
+    uint32_t adc_val[NUM_ADC_CHANNELS];
+    uint8_t *p_response_data;
+    uint8_t adc_byte_size; 
+    
+    p_response_data = response + (*response_size);
+
+    if(!read_adc(adc_val))
     {
-        LOG_WRN("Message could not be placed on queue.");
+        LOG_ERR("Read_adc() failed.");
         return 0;
     }
+
+    memcpy(p_response_data, &adc_val, ADC_ARRAY_BYTE_SIZE);
+    *response_size += ADC_ARRAY_BYTE_SIZE;
+
     return 1;
 }
 
 /**
- * surtr_sw_ctrl():
- *      Dissects message and applies control command on desired switch.
+ * ===============================================================
+ * surtr_get_sw_state():
+ *      Reads state of SWs and combines into surtr response message.
+ *      data begins after 10 bytes and then is 8 bytes long.
+ *      MSG TYPE		ENUM	TIME (us)		RAW DATA
+ *      ===============================================================
+ *      SW STATE		    3					| SW[8] 
  */
-void surtr_sw_ctrl(const uint8_t *message)
+int surtr_get_sw_state(uint8_t *response, uint8_t *response_size)
 {
-    toggle_switch(message[SURTR_MSG_SW_CTRL_ID], message[SURTR_MSG_SW_CTRL_STATE]);
-}
+    for(int i = 0; i < NUM_SWITCHES; i++)
+        response[i+(*response_size)] = sw[i];
 
-/**
- * surtr_step_ctrl():
- *      Dissects message and applies control command on desired motor.
- *      Delta is not really delta here but in reality the TARGET VALUE...
- */
-void surtr_step_ctrl(const uint8_t *message)
-{
-    uint32_t delta;
-    int id = message[SURTR_MSG_STEP_CTRL_ID];
-    memcpy(&delta, &message[SURTR_MSG_STEP_CTRL_DELTA], sizeof(delta));
-    update_stepper_motor(id, delta);
+    *response_size += NUM_SWITCHES;
 }

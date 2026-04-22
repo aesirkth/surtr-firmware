@@ -4,9 +4,10 @@ LOG_MODULE_REGISTER(server, LOG_LEVEL_DBG);
 
 
 /**
+ * ==========================================================
  * accept_connection():
- *  Client is initialized here by being assign sockaddr_in address
- *  and int socket.
+ *      Client is initialized here by being assign sockaddr_in address
+ *      and int socket.
  */
 int accept_connection(struct Server *server, struct Client *client)
 {
@@ -30,74 +31,65 @@ int accept_connection(struct Server *server, struct Client *client)
 }
 
 /**
- * handle_request():
- *      This is funciton is called each iteration by "IN THREAD" continously.
- *      Writes payload data to external buffer.
- *      Both buffers are predefined buf[128] and the "p_data_size"
- *      is a pointer to the index tracking actual size of data in buffer.
- *      This way we can extract data payload out of handle_request().
+ * ==========================================================
+ * ethernet_handle_request():
+ *      Blocking read on recv() until a request has been received.
+ *      Retrieve payload out of packet received.
+ *      Place payload data on the request Queue.
  */
-int handle_request_ethernet(struct Client *client, uint8_t *rx_buf, uint8_t *p_data_buf, int *p_data_size)
+int ethernet_handle_request(struct Client *client)
 {
-    int num_bytes = recv(client->socket, rx_buf, 128, 0);
-    if (num_bytes < 0)
+    uint8_t rx_buffer[MSG_SIZE];
+    uint8_t payload_buffer[MSG_SIZE];
+    uint8_t payload_size;
+
+    while(1)
     {
-        LOG_ERR("Socket recv() failed.");
-        //close(client->socket);
-        return 0;
+        int num_bytes = recv(client->socket, rx_buffer, MSG_SIZE, 0);
+        if (num_bytes < 0)
+        {
+            LOG_ERR("Ethernet: Socket recv() failed.");
+            return 0;
+        }
+        if(num_bytes == 0)
+        {
+           // Do Nothing. 
+            LOG_ERR("Ethernet: Socket recv() NumBytes == 0.");
+        }
+
+        if(!retrieve_packet(rx_buffer, payload_buffer))
+        {
+            LOG_WRN("Ethernet: failed to retrieve packet.");
+            return 0;
+        }
+
+        if(k_msgq_put(&request_msgq, payload_buffer, K_NO_WAIT) != 0)
+        {
+            LOG_WRN("Ethernet: Message could not be placed on queue.");
+            return 0;
+        }
     }
 
-    *p_data_size = num_bytes;
-
-    if(!retrieve_packet(rx_buf, p_data_buf))
-    {
-        return 0;
-    }
-
-    //close(client->socket);
     return 1;
 }
 
 
 
 /**
- * send_message():
- *      This is the function used by OUT_THREAD.
- *      Gets message from queue, encodes data into packet, and sends data.
- *      send() does not guarantee that all bytes are sent in one go, so has
- *      to be placed in loop until all bytes are sent.
- * 
- *      Send() takes bytes from TX_BUF and sends then over client->socket
- *      The data in TX_BUF comes from UART. TX_size is set when encoding packet.
- * 
- *      MSGQ -> ENCODE -> UART TX -> NET
+ * ==========================================================
+ * ethernet_send_message():
+ *     Tries to send message until entire TX_BUFFER has been passed.
  */
-int send_message(struct Client *client, uint8_t *tx_buf)
+int ethernet_send_message(struct Client *client, uint8_t *tx_buffer, const uint8_t tx_size)
 {
-    Msg msg;
-    int sent_bytes = 0;
-    int num_bytes = 0;
+    uint8_t sent_bytes = 0;
+    uint8_t num_bytes = 0;
 
-    uint8_t encoded_message[128];
-    uint8_t tx_size = 0;
-
-    if(!k_msgq_get(&write_msgq, &msg, K_FOREVER))
-    {
-        LOG_WRN("Message Queue failed to get item.");
-        return 0;
-    }
-
-    encode_packet(msg.data, encoded_message, msg.length, &tx_size);
-
-    for (int i = 0; i < tx_size; i++)
-		uart_poll_out(uart_dev, tx_buf[i]);
-
-    /*
     while (sent_bytes < tx_size) {
-        num_bytes = send(client->socket, tx_buf + sent_bytes, tx_size - sent_bytes, 0);
+        num_bytes = send(client->socket, tx_buffer + sent_bytes, tx_size - sent_bytes, 0); //timeout?
         if (num_bytes < 0) 
         {
-            LOG_WRN("Send() failed.");
+            LOG_WRN("Ethernet: Send() failed.");
             return 0;
         } 
         else if (num_bytes > 0)
@@ -105,7 +97,6 @@ int send_message(struct Client *client, uint8_t *tx_buf)
         else
             break;
     }
-    */
 
     return 1;
 }
@@ -113,6 +104,7 @@ int send_message(struct Client *client, uint8_t *tx_buf)
 
 
 /**
+ * ==========================================================
  * server_constructor():
  *      Initializes a server struct.
  *      DOMAIN IPV4

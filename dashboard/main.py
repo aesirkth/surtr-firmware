@@ -927,7 +927,7 @@ def parse_command_protobuf(message: bytes, root: Dashboard):
 			# Write raw adc values into savefile and switch states.
 			for j, b in enumerate(root.ACTUATION.switch.button):
 				root.sw_raw_buffer[j] = int(b.current_state)
-			
+
 			writeRow(root.SAVEFILE_WHANDLE, time, root.adc_raw, root.sw_raw_buffer)
 			# Update usSinceBoot Surtr time.
 			root.TIME.update_time(math.ceil(time))
@@ -942,6 +942,163 @@ def parse_command_protobuf(message: bytes, root: Dashboard):
 			raise Exception("Invalid SURTR command.")
 		
 
+
+def client_request(ser_con: serial.Serial):
+
+	request_command = None
+	ser_con.timeout = 0.1
+	deadline = 0.1
+
+	while True:
+
+		payload = write_queue.get()
+		request_command = payload[0]; 
+		packet = prepare_packet(payload)
+		ser_con.write(packet)
+
+		# When reading message, expect that TAGS must match.
+		# Same command sent as same command received, otherwise keep reading.
+		# If waiting too long give timeout.
+
+		start = time.time()
+
+		while True:
+			try: 
+				if (timeout(start, deadline)):
+					break
+
+				# ------------ Alignment Byte -------------- #
+				align_byte = ser_con.read(1)
+				if (len(align_byte) == 0):
+					continue
+				
+				if (align_byte[0] != ALIGNMENT_BYTE):
+					continue
+				
+				if (timeout(start, deadline)):
+					break
+				
+				# ------------ Length Byte ------------------ #
+				length_byte = ser_con.read(1)
+				length = length_byte[0]
+				if(len(length_byte) == 0):
+					continue
+				
+				if (timeout(start, deadline)):
+					break
+
+				# ------------ Payload Bytes ----------------- #
+				payload = ser_con.read(length)
+				if (len(payload) != length):
+					continue
+				
+				if (timeout(start, deadline)):
+					break
+				
+				# ------------ CRC check --------------------- #
+				crc_bytes = ser_con.read(2)
+				if (len(crc_bytes) != 2):
+					continue
+				
+				if (timeout(start, deadline)):
+					break
+
+				crc = crc_bytes[0] + (crc_bytes[1] << 8)
+				packet = bytes([ALIGNMENT_BYTE, length]) + payload
+				if(crc != crc16(CRC_POLY, CRC_SEED, packet)):
+					continue
+
+				if (timeout(start, deadline)):
+					break
+
+				# ----- Response CMD TAG comparison ---------- #
+				response_command = payload[0]
+				if(request_command != response_command):
+					continue
+				
+				# Add +1 second to surtr connection watchdog.
+				
+				# ---- Valid Response has been recieved ------ #
+				response_queue.put(payload)
+
+			except serial.SerialException as exc:
+				print("Serial Exception: ", exc)
+				break
+		
+		# end while 
+	#end while 
+#end client_request()
+
+
+def timeout(start: float, timeout: float):
+    return (time.time() - start) >= timeout
+
+
+ # ===============================================================
+ # PARSE SURTR COMMAND
+ # Unpacks message and updates data accordingly.
+ # MSG TYPE		ENUM	TIME (us)		RAW DATA
+ # ===============================================================
+ # SYN_ACK			0					| ACK |
+ # SW CTRL		    1					| ID | STATE |
+ # STEP CTRL		2					| ID | MOTOR DELTA |
+ # SW STATE		    3					| SW[8] 
+ # ADC STATE		4					| VALUE[24] |
+ # IGNITION		    5					| PASSWORD |
+def handle_response():
+
+	while True:
+
+		payload = response_queue.get()
+		surtr_command = payload[0]
+		match surtr_command:
+			# ---- SURTR SYN-ACK RESPONSE -------- #
+			case 0:
+				response_ack = payload[1]
+				if(response_ack != 0xFF):
+					print("Request: SYN ACK failed.\n")
+				break
+
+			# ---- SURTR SW CTRL RESPONSE -------- #
+			case 1: 
+				response_ack = payload[1]
+				if(response_ack != 0xFF):
+					print("Request: SW CTRL failed.\n")
+				break
+
+			# ---- SURTR STEP CTRL RESPONSE ------ #
+			case 2: 
+				response_ack = payload[1]
+				if(response_ack != 0xFF):
+					print("Request: STEP CTRL failed.\n")
+				break
+
+			# ---- SURTR SW STATE RESPONSE ------- #
+			case 3:
+				response_ack = payload[1]
+				if(response_ack != 0xFF):
+					print("Request: Get SW state failed.\n")
+
+				# Write raw adc values into savefile and switch states.
+				# combine adc and sw state into single operation?
+				for j, b in enumerate(root.ACTUATION.switch.button):
+					root.sw_raw_buffer[j] = int(b.current_state)
+				writeRow(root.SAVEFILE_WHANDLE, time, root.adc_raw, root.sw_raw_buffer)
+
+				break
+
+				
+			
+			# ---- SURTR SW STATE RESPONSE ------- #
+			case 4:
+				response_ack = payload[1]
+				if(response_ack != 0xFF):
+					print("Request: Get SW state failed.\n")
+				break
+
+		
+			case _:
+				raise Exception("Invalid SURTR command.")
 
 	
 # ===============================================================

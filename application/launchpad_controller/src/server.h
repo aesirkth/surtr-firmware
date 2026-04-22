@@ -1,4 +1,3 @@
-#pragma once
 #ifndef SERVER_H
 #define SERVER_H
 
@@ -41,10 +40,34 @@ struct Server {
 };
 
 /* Write Message Queue declared in main. */
-extern struct k_msgq write_msgq;
-extern const struct device *const uart_dev;
+extern struct k_msgq request_msgq;
 
 /**
+ * ==========================================================
+ * accept_connection():
+ *  	Client is initialized here by being assign sockaddr_in address
+ *  	and int socket.
+ */
+int accept_connection(struct Server *server, struct Client *client);
+
+/**
+ * ==========================================================
+ * ethernet_handle_request():
+ *      Blocking read on recv() until a request has been received.
+ *      Retrieve payload out of packet received.
+ *      Place payload data on the request Queue.
+ */
+int ethernet_handle_request(struct Client *client);
+
+/**
+ * ==========================================================
+ * ethernet_send_message():
+ *     Tries to send message until entire TX_BUFFER has been passed.
+ */
+int ethernet_send_message(struct Client *client, uint8_t *tx_buffer, const uint8_t tx_size);
+
+/**
+ * ==========================================================
  * server_constructor():
  *      Initializes a server struct.
  *      DOMAIN IPV4
@@ -57,31 +80,5 @@ extern const struct device *const uart_dev;
  */
 int server_constructor(struct Server *server, int domain, int service, int protocol,
 	unsigned long interface, int port, int backlog);
-
-/**
- * accept_connection():
- *  Client is initialized here by being assign sockaddr_in address
- *  and int socket.
- */
-int accept_connection(struct Server *server, struct Client *client);
-
-/**
- * handle_request():
- *      This is funciton is called each iteration by "IN THREAD" continously.
- *      Writes payload data to external buffer.
- *      Both buffers are predefined buf[128] and the "p_data_size"
- *      is a pointer to the index tracking actual size of data in buffer.
- *      This way we can extract data payload out of handle_request().
- */
-int handle_request(struct Client *client, uint8_t *rx_buf, uint8_t *p_data_buf, int *p_data_size);
-
-/**
- * send_message():
- *      This is the function used by OUT_THREAD.
- *      Gets message from queue, encodes data into packet, and sends data.
- *      send() does not guarantee that all bytes are sent in one go, so has
- *      to be placed in loop until all bytes are sent.
- */
-int send_message(struct Client *client, uint8_t *tx_buf);
 
 #endif

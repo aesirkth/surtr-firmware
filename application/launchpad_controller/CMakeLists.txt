@@ -18,7 +18,6 @@ project(launchpad_controller)
 target_sources(app PRIVATE
     src/main.c
     src/actuation.c
-    src/collect.c
     src/dhcp.c
     src/in.c
     src/packet.c

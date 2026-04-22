@@ -6,7 +6,6 @@
 #include <drv8711.h>
 #include <ad4111.h>
 #include "circbuf.h"
-#include "collect.h"
 #include "server.h"
 #include "packet.h"
 #include "dhcp.h"
@@ -16,35 +15,54 @@
 /* ========================================================== */
 /* =			GLOBAL CONSTANT DEFINITIONS					= */
 /* ========================================================== */
-#define IN_THREAD_STACK_SIZE 	2048
-#define IN_THREAD_PRIORITY		1	// Highest priority.
+#define ETHERNET_THREAD_STACK_SIZE 		2048
+#define ETHERNET_THREAD_PRIORITY		1
 
-#define OUT_THREAD_STACK_SIZE 	2048
-#define OUT_THREAD_PRIORITY		2
+#define UART_THREAD_STACK_SIZE 			2048
+#define UART_THREAD_PRIORITY			1	// Highest priority.
 
-#define ADC_THREAD_STACK_SIZE 	1024
-#define ADC_THREAD_PRIORITY		3
-#define ADC_THREAD_PERIOD		5000
-#define THREAD_EMPTYARG 		void*
+#define BLINKER_THREAD_STACK_SIZE 	128
+#define BLINKER_THREAD_PRIORITY		5
+#define BLINKER_THREAD_PERIOD		1000
+#define THREAD_EMPTYARG 			void*
 
-#define NUM_EXT_ADC				2
-#define NUM_ADC_CHANNELS		24
-#define NUM_CHANNELS_PER_ADC	12
-#define NUM_STEPPERS			1	// board can hold 3.
-#define NUM_LEDS 				2
-#define NUM_SWITCHES 			8
-#define MOTOR_CURRENT_I_LIMIT	2000
-#define MOTOR1_INDEX			0
+#define NUM_EXT_ADC					2
+#define NUM_ADC_CHANNELS			24
+#define ADC_ARRAY_BYTE_SIZE			96
+#define NUM_CHANNELS_PER_ADC		12
+#define NUM_STEPPERS				1	// board can hold 3.
+#define NUM_LEDS 					2
+#define NUM_SWITCHES 				8
+#define MOTOR_CURRENT_I_LIMIT		2000
+#define MOTOR1_INDEX				0
 
-#define ADC_ARRAY_BYTE_SIZE		96
+#define MSG_SIZE					128
+#define MSGQ_BACKLOG				4
+#define MSGQ_ALIGN					1	// default by zephyr.
+#define STANDARD_BAUDRATE			115200
 
-#define MSG_SIZE				128
-#define MSGQ_BACKLOG			4
-#define MSGQ_ALIGN				1	// default by zephyr.
-#define STANDARD_BAUDRATE		115200
+#define SURTR_REQUEST_SYN_ACK       0
+#define SURTR_REQUEST_SW_CTRL       1
+#define SURTR_REQUEST_STEP_CTRL     2
+#define SURTR_REQUEST_SW_STATE      3
+#define SURTR_REQUEST_ADC_STATE     4
+#define SURTR_REQUEST_IGNITION      5
 
-#define STATE_NO_CONNECTION 	0
-#define STATE_CONNECTION		1
+#define SURTR_MSG_SW_CTRL_INDEX_CMD			0
+#define SURTR_MSG_SW_CTRL_INDEX_ID			1
+#define SURTR_MSG_SW_CTRL_INDEX_STATE		2
+
+#define SURTR_MSG_STEP_CTRL_INDEX_CMD		0
+#define SURTR_MSG_STEP_CTRL_INDEX_ID		1
+#define SURTR_MSG_STEP_CTRL_INDEX_STATE		2
+
+#define SURTR_MSG_ACK_SUCCESS   	0xFF
+#define SURTR_MSG_ACK_FAIL			0x00
+
+#define SURTR_RESPONSE_INDEX_CMD	0
+#define SURTR_RESPONSE_INDEX_ACK	1
+#define SURTR_RESPONSE_INDEX_TIME	2
+#define SURTR_RESPONSE_INDEX_DATA	10
 
 
 /* https://www.cs.yale.edu/homes/aspnes/pinewiki/C(2f)Macros.html */
@@ -126,34 +144,29 @@ uint8_t payload[MSG_SIZE];
 /* ========================================================== */
 // CONFIG_SCHED_SIMPLE ready queue will be simple unordered list.
 // CONFIG_WAITQ_SIMPLE
-struct k_thread in_thread;
-struct k_thread out_thread;
-struct k_thread adc_thread;
-k_tid_t in_id;
-k_tid_t out_id;
-k_tid_t adc_id;
+struct k_thread uart_thread;
+struct k_thread ethernet_thread;
+struct k_thread blinker_thread;
+k_tid_t uart_id;
+k_tid_t ethernet_id;
+k_tid_t blinker_id;
 
-K_THREAD_STACK_DEFINE(in_stack, IN_THREAD_STACK_SIZE);
-K_THREAD_STACK_DEFINE(out_stack, OUT_THREAD_STACK_SIZE);
-K_THREAD_STACK_DEFINE(adc_stack, ADC_THREAD_STACK_SIZE);
+K_THREAD_STACK_DEFINE(uart_stack, UART_THREAD_STACK_SIZE);
+K_THREAD_STACK_DEFINE(ethernet_stack, ETHERNET_THREAD_STACK_SIZE);
+K_THREAD_STACK_DEFINE(blinker_stack, BLINKER_THREAD_STACK_SIZE);
 
 
 /* ========================================================== */
 /* =				SEMAPHORE DEFINITIONS					= */
 /* ========================================================== */
-struct k_sem sem_connection;
-struct k_sem sem_connection_fail;
+struct k_sem sem_uart_irq;
 
 /* ========================================================== */
 /* =				SERVER DEFINITIONS						= */
 /* ========================================================== */
 static struct Server server;
 static struct Client client;
-
-/* ========================================================== */
-/* =				SERVER STATE DEFINITIONS				= */
-/* ========================================================== */
-static uint8_t state = STATE_NO_CONNECTION;
+static uint8_t ethernet_connection;
 
 /* ========================================================== */
 /* =				MESSAGE QUEUE DEFINITIONS				= */
@@ -167,154 +180,198 @@ static uint8_t state = STATE_NO_CONNECTION;
 /* Defines Message Queue wmsq[4] where each message can be    */
 /*  max 128 bytes long. 									  */
 K_MSGQ_DEFINE(write_msgq, MSG_SIZE, MSGQ_BACKLOG, MSGQ_ALIGN);
+K_MSGQ_DEFINE(request_msgq, MSG_SIZE, MSGQ_BACKLOG, MSGQ_ALIGN);
+
 
 /**
  * ==========================================================
- * server_main():
- * 		FSM with 2 states NO_CONNECTION, CONNECTION
- * 		Starts of in NO_CONNECTION and continously attempts to established connection.
- * 		When established, Give 2 signals into semaphore &sem_connect and move to state CONNECTION.
- * 		This lets the threads enter their work loop.
- * 		On Failure READ/WRITE the THREADS will give signal to semaphore &sem_connect_fail
- * 		While in CONNECTION state, main thread wait for this signal and when received,
- * 		main thread will wake up main thread and close socket, then go back to re-establish connection.
+ * send_message():
+ * 		Encodes response in packet and sends out to both UART and ETH
+ * 		If there is no ETH connection then skip Ethernet.
  */
-void server_main(struct Server *server, struct Client *client)
+int send_message(struct Client *client, uint8_t *response, uint8_t response_size)
+{
+    uint8_t tx_buffer[MSG_SIZE];
+    uint8_t tx_size = 0;
+
+    encode_packet(response, tx_buffer, response_size, &tx_size);
+
+    if(!uart_send_message(tx_buffer, tx_size))
+    {
+        LOG_ERR("Send Message failed on UART.\n");
+        return 0;
+    }
+
+    if(!ethernet_connection)
+        return 1;
+
+    if(!ethernet_send_message(client, tx_buffer, tx_size))
+    {
+        LOG_ERR("Send Message failed on ETHERNET.\n");
+        return 0;
+    }
+
+    return 1;
+}
+
+/**
+ * ===============================================================
+ * PARSE SURTR COMMAND
+ * Unpacks message and updates data accordingly.
+ * MSG TYPE		ENUM	TIME (us)		RAW DATA
+ * ===============================================================
+ * SYN_ACK			0					| ACK |
+ * SW CTRL		    1					| ID | STATE |
+ * STEP CTRL		2					| ID | MOTOR DELTA |
+ * SW STATE		    3					| SW[8] | MOTOR1 | MOTOR2 |
+ * ADC STATE		4					| VALUE[24] |
+ * IGNITION		    5					| PASSWORD |
+ * 
+ */
+/**
+ * ==========================================================
+ * ask_server():
+ *      Waits for job to be placed in queue by UART or ETH (CoAP protocol)
+ *      Serve / Execute specific command.
+ *      k_msgq_put(): 
+ *      0        Success
+ *      -ENOMSG  returned without waiting or queue purged.
+ *      -EAGAIN  waiting period timed out
+ */
+void ask_server(struct Server *server, struct Client *client)
 {
     LOG_DBG("Entering Server_main().\n");
+    uint8_t payload_buffer[MSG_SIZE];
+    uint8_t response[MSG_SIZE];
+    uint8_t response_size = 0;
+
     while(1)
     {
-		switch (state)
-		{
-			case STATE_NO_CONNECTION:
-                LOG_DBG("State: NO_CONNECTION.\n");
-				//if (accept_connection(server, client)) 
-				if(1)
-				{
-                    LOG_DBG("New Connection Established.\n");
-					state = STATE_CONNECTION;
-					k_sem_give(&sem_connection);
-					k_sem_give(&sem_connection);
-				}
-				break;
+        if(!k_msgq_get(&write_msgq, payload_buffer, K_FOREVER))
+        {
+            LOG_WRN("Message Queue failed to get item.\n");
+            return 0;
+        }
 
-			case STATE_CONNECTION:
-                    LOG_DBG("State: CONNECTION.\n");
-					k_sem_take(&sem_connection_fail, K_FOREVER);
-                    LOG_DBG("Connection Lost.\n");
-					close(client->socket);
-					state = STATE_NO_CONNECTION;
+        /* -------- Save Command Requested ---------------- */
+        const uint8_t cmd = payload_buffer[0];
+        response[SURTR_RESPONSE_INDEX_CMD] = cmd;
+        response_size++;
+                    
+        /* -------- Add ACK after Command ----------------- */
+		surtr_syn_ack(response, &response_size);
+        
+        /* -------- Save Current Time --------------------- */
+        int64_t ms_since_boot = k_uptime_get();
+        memcpy(SURTR_RESPONSE_INDEX_TIME, &ms_since_boot, sizeof(ms_since_boot));
+        response_size += 8;
 
-				break;
-		}
+        /* -------- Execute Request Command --------------- */
+        switch (cmd)
+        {
+            case SURTR_REQUEST_SYN_ACK:
+                break;
+
+            case SURTR_REQUEST_SW_CTRL:
+                    surtr_sw_ctrl(payload);
+                break;
+
+            case SURTR_REQUEST_STEP_CTRL:
+                    surtr_step_ctrl(payload);
+                break;
+            
+            case SURTR_REQUEST_ADC_STATE:
+                    surtr_get_adc_state(response, &response_size);
+						// surtr_syn_failed(response);
+                break;
+
+            case SURTR_REQUEST_SW_STATE:
+                    surtr_get_sw_state(response, &response_size);
+                break;
+
+            case SURTR_REQUEST_IGNITION:
+                    LOG_ERR("Ignition does nothing for now.\n");
+                break;
+
+            default:
+                LOG_ERR("Invalid Surtr Command.\n");
+                break;
+        }
+
+        /* -------- Send Response Back -------------------- */
+        if(!send_message(client, response, response_size))
+        {
+            LOG_ERR("Send Message failed.\n");
+        }
     }
 }
 
+
+
 /**
  * ==========================================================
- * in_thread_main():
- *      The main function for thread IN which has the purpose of continously
- *      waiting for new input received and executing the commands received.
- * 		Thread is only working while state shows CONNECTION.
- * 		On Failure READ then we send signal to let main close connection.
- * 		This thread then begins waiting for a new CONNECTION signal via &sem_connection.
+ * uart_thread_main():
+ *      Waits for IRQ to fire which releases counting semaphore (+1)
+ *      Begins handling request sent over UART.
+ *      Pass request via MSGQ to ask_server.
  */
-void in_thread_main(struct Client* client, THREAD_EMPTYARG, THREAD_EMPTYARG)
+void uart_thread_main(struct Client* client, THREAD_EMPTYARG, THREAD_EMPTYARG)
 {
-    LOG_DBG("InThread Enter.\n");
-	int payload_size;
-
-	k_sem_take(&sem_connection, K_FOREVER);
+    LOG_DBG("UART Thread Enter.\n");
+	uint8_t payload_size;
 
     while(1)
     {
-        LOG_DBG("InThread Waiting for Request.\n");
-		//if(!handle_request(client, , payload, &payload_size))
-		if(!uart_handle_request(&rx_circbuf, payload, &payload_size))
+        uart_wait_IRQ();
+
+		if(!uart_handle_request(&rx_circbuf))
 		{
             LOG_DBG("InThread Request Failed.\n");
-			k_sem_give(&sem_connection_fail);
-			k_sem_take(&sem_connection, K_FOREVER);
 			continue;
 		}
-		execute_command(payload, payload_size);
-        LOG_DBG("InThread Request Handled.\n");
+        LOG_DBG("UART Thread Request Handled.\n");
     }
 }
 
 /**
  * ==========================================================
- * out_thread_main():
- * 		Only task is to send messages that are in write queue.
- * 		Initially waits for main thread CONNECTION which releases this thread.
- * 		Should message fail, signal to main to restart connection.
+ * ethernet_thread_main():
+ *      When connection is established, thread will enter ethnernet_handle_request()
+ *      and stay there until connection fails.
+ *      Blocking read on recv().
  */
-void out_thread_main(struct Client *client, THREAD_EMPTYARG, THREAD_EMPTYARG)
+void ethernet_thread_main(struct Server *server, struct Client *client, THREAD_EMPTYARG)
 {
-    LOG_DBG("OutThread Enter.\n");
-    uint8_t tx_buf[MSG_SIZE];
-
-	k_sem_take(&sem_connection, K_FOREVER);
-
     while(1)
     {
-        LOG_DBG("OutThread Waiting to Send Message.\n");
-		//if(!send_message(client, tx_buf))
-		if(!uart_send_message(tx_buf))
-		{
-            LOG_DBG("OutThread Send Message Failed.\n");
-			k_sem_give(&sem_connection_fail);
-			k_sem_take(&sem_connection, K_FOREVER);
-			continue;
-		}
+        ethernet_connection = 0;
+        if(accept_connection(server, client))
+        {
+            ethernet_connection = 1;
+            ethernet_handle_request(client);
+            close(client->socket);
+        }
+            
+        LOG_DBG("TCP accept connection failed.\n");
     }
+
 }
+
 
 /**
  * ==========================================================
- * adc_main_thread():
+ * blinker_main_thread():
  * 		PERIOD of 1000 msec
- * 		Blink LEDS, Collect ADC values and place on queue.
- * 		Collect switch states and places on queue.
- * 		Sleep until next period begins.
- * 		Coud possible make use of timers instead.
+ * 		Turns LED on/off to indicate SURTR is alive.
  */
-void adc_thread_main(THREAD_EMPTYARG, THREAD_EMPTYARG, THREAD_EMPTYARG)
+void blinker_thread_main(THREAD_EMPTYARG, THREAD_EMPTYARG, THREAD_EMPTYARG)
 {
-    LOG_DBG("ADCThread Enter.\n");
-	int64_t ms_start_time, 
-			ms_end_time,
-			cycle_time,
-			remainder;
-
 	uint8_t led_state = 0;
-	Msg msg;
-
 	while(1)
 	{
-        //LOG_DBG("ADCThread Blink.\n");
-		ms_start_time = k_uptime_get();
-		
 		blink_leds(led_state);
 		led_state = !led_state;
-
-		if(!collect_adc(adc, &msg))
-        {
-			//LOG_ERR("Collect ADC failed.");
-        }
-
-		if(!collect_sw(sw, &msg))
-        {
-			//LOG_ERR("Collect SW failed.");
-        }
-
-
-		ms_end_time = k_uptime_get();
-		cycle_time = ms_end_time - ms_start_time;
-		remainder = ADC_THREAD_PERIOD - cycle_time;
-
-		k_msleep(remainder);
-
+		k_msleep(BLINKER_THREAD_PERIOD);
 	}
 }
 
@@ -402,7 +459,6 @@ int main()
 		FATALERROR("External UART configure failed.");
 
 	circbuf_construct(&rx_circbuf, &rx_buffer, MSG_SIZE);
-	uart_initialize_sem();
 
 	if (uart_irq_callback_user_data_set(uart_dev, uart_isr, &rx_circbuf) < 0)
 		FATALERROR("External UART ISR callback failed.");
@@ -426,8 +482,7 @@ int main()
 	
 	/* ---------- SEMAPHORE INITIALIZE ------------- */
 	// initial = 0, count = 2 (2 threads);
-    k_sem_init(&sem_connection, 0, 2);
-	k_sem_init(&sem_connection_fail, 0, 1);
+    k_sem_init(&sem_uart_irq, 0, 5);
 	
 	/* ---------- RESET STATIC ARRAYS -------------- */
 	/* Initialize adc[], sw[], led[] with zeroes */
@@ -436,53 +491,53 @@ int main()
 	memset(sw, 0, sizeof(sw));
 	memset(led, 0, sizeof(led));
 
-	/* ---------- IN THREAD INITIALIZE ------------- */
+	/* ---------- UART THREAD INITIALIZE ----------- */
 	// All devices pass start threads.
-	in_id = k_thread_create(
-		&in_thread,
-		in_stack,
-		K_THREAD_STACK_SIZEOF(in_stack),
-		in_thread_main,
+	uart_id = k_thread_create(
+		&uart_thread,
+		uart_stack,
+		K_THREAD_STACK_SIZEOF(uart_stack),
+		uart_thread_main,
 		&client,
 		NULL,
 		NULL,
-		IN_THREAD_PRIORITY,
+		UART_THREAD_PRIORITY,
 		0,
 		K_NO_WAIT
 	);
-    LOG_DBG("InThread Initialized.\n");
+    LOG_DBG("UART Thread Initialized.\n");
 
-	/* --------- OUT THREAD INITIALIZE ------------- */
-	out_id = k_thread_create(
-		&out_thread,
-		out_stack,
-		K_THREAD_STACK_SIZEOF(out_stack),
-		out_thread_main,
+	/* --------- ETHERNET THREAD INITIALIZE -------- */
+	ethernet_id = k_thread_create(
+		&ethernet_thread,
+		ethernet_stack,
+		K_THREAD_STACK_SIZEOF(ethernet_stack),
+		ethernet_thread_main,
 		&client,
 		NULL,
 		NULL,
-		OUT_THREAD_PRIORITY,
+		ETHERNET_THREAD_PRIORITY,
 		0,
 		K_NO_WAIT
 	);
-    LOG_DBG("OutThread Initialized.\n");
+    LOG_DBG("ETHERNET Thread Initialized.\n");
 	
-	/* --------- ADC THREAD INITIALIZE ------------- */
-	adc_id = k_thread_create(
-		&adc_thread,
-		adc_stack,
-		K_THREAD_STACK_SIZEOF(adc_stack),
-		adc_thread_main,
+	/* --------- BLINKER THREAD INITIALIZE -------- */
+	blinker_id = k_thread_create(
+		&blinker_thread,
+		blinker_stack,
+		K_THREAD_STACK_SIZEOF(blinker_stack),
+		blinker_thread_main,
 		NULL,
 		NULL,
 		NULL,
-		ADC_THREAD_PRIORITY,
+		BLINKER_THREAD_PRIORITY,
 		0,
 		K_NO_WAIT
 	);
-    LOG_DBG("ADCThread Initialized.\n");
+    LOG_DBG("BLINKER Thread Initialized.\n");
 	
-	server_main(&server, &client);
+	ask_server(&server, &client);
 
 	kernel_exit();
 	return 0;

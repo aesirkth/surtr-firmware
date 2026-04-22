@@ -2,6 +2,7 @@
 
 LOG_MODULE_REGISTER(packet, CONFIG_APP_LOG_LEVEL);
 /**
+ * ==========================================================
  * encode_packet():
  *      Adds protocol Alignment, length, and CRC checksum to packet.
  *      Writes finished packet into tx_buf and size of tx_buf into p_tx_size.
@@ -30,6 +31,7 @@ void encode_packet(const uint8_t *data, uint8_t *tx_buf, const uint8_t data_size
 }
 
 /**
+ * ==========================================================
  * retrieve_packet():
  *      Sequentially goes through packet and checks that:
  *      1. First byte is alignment.
@@ -66,41 +68,4 @@ int retrieve_packet(const uint8_t *rx_buf, uint8_t *out_buf)
     }
 
     return 1;
-}
-
-/**
- * msg_construct():
- *      Creates a new Msg and stores length and data.
- */
-Msg msg_construct(const uint8_t length, const uint8_t *data)
-{
-	Msg msg;
-	msg.length = length;
-	memset(msg.data, 0, sizeof(msg.data));
-	for(int i = 0; i < length; i++)
-		msg.data[i] = data[i];
-
-	return msg;
-}
-
-/**
- * msg_construct():
- *      Creates a new Msg and stores length and data.
- *      Time (ms) is added to msg.data before actual data.
- *      sizeof(int64_t) is 8 bytes.
- */
-Msg msg_construct_with_time(const uint8_t length, const uint8_t *data)
-{
-	Msg msg;
-	memset(msg.data, 0, sizeof(msg.data));
-
-	int64_t ms_since_boot = k_uptime_get();
-	memcpy(msg.data, &ms_since_boot, sizeof(ms_since_boot));
-	
-	msg.length = length + 8;
-
-	for(int i = 0; i < msg.length; i++)
-		msg.data[i+8] = data[i];
-
-	return msg;
 }

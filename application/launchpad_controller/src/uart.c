@@ -2,37 +2,44 @@
 
 LOG_MODULE_REGISTER(uart, LOG_LEVEL_DBG);
 
-static struct k_sem sem_uart_irq;
-
 /**
- * initialize_uart_sem():
- *      Wrapper function to initialize UART IRQ SEM.
- */
-int uart_initialize_sem()
-{
-    k_sem_init(&sem_uart_irq, 0, 5);
-}
-
-/**
+ * ==========================================================
  * handle_request_uart():
- *      Blocking wait for counting semaphore. 
- *      When UART IRQ fires, new message is placed in cir buffer and SEM (+1) released.
- *      Packet can then be retrieved.
+ *      Retrieves UART packet and places it on REQUEST queue.
  */
-int uart_handle_request(Circbuf *rx_circbuf, uint8_t *p_data_buf, int *p_data_size)
+int uart_handle_request(Circbuf *rx_circbuf)
 {
-    LOG_DBG("Handle request waiting\n.");
-	k_sem_take(&sem_uart_irq, K_FOREVER);
-    LOG_DBG("Handle request SEM recieved\n.");
+    uint8_t payload_buffer[MSG_SIZE];
+    uint8_t payload_size;
 
-    if(!uart_retrieve_packet(rx_circbuf, p_data_buf, p_data_size))
+    if(!uart_retrieve_packet(rx_circbuf, &payload_buffer, &payload_size))
     {
+        LOG_WRN("UART: failed to retrieve packet.");
         return 0;
     }
+
+    if(k_msgq_put(&request_msgq, payload_buffer, K_NO_WAIT) != 0)
+    {
+        LOG_WRN("UART: Message could not be placed on queue.");
+        return 0;
+    }
+
     return 1;
 }
 
 /**
+ * ==========================================================
+ * uart_wait_IRQ():
+ *      Blocking wait for counting semaphore. 
+ *      When UART IRQ fires, new message is placed in cir buffer and SEM (+1) released.
+ */
+void uart_wait_IRQ()
+{
+    k_sem_take(&sem_uart_irq, K_FOREVER);
+}
+
+/**
+ * ==========================================================
  * retrieve_packet_uart():
  *      Sequentially goes through packet and checks that:
  *      1. First byte is alignment.
@@ -94,11 +101,12 @@ int uart_retrieve_packet(Circbuf *rx_circbuf, uint8_t *out_buf, int *p_data_size
 }
 
 /**
- * uart_isr()
+ * ==========================================================
+ * uart_isr():
  *   Interrupt Service Routine for UART
  *   Reads RX data byte for byte and places in circular buffer.
  *   Call to uart_irq_update() has to be made before uart_irq_rx_ready().
- *   Releases SEM for IN_THREAD to begin processing message.
+ *   Releases SEM for UART to begin processing message.
  */
 void uart_isr(const struct device *dev, void *circ_buf)
 {
@@ -120,28 +128,13 @@ void uart_isr(const struct device *dev, void *circ_buf)
 
 
 /**
- * send_message():
- * 
- *      MSGQ -> ENCODE -> UART TX
+ * ==========================================================
+ * uart_send_message():
+ *      POLL UART message out TX_BUFFER.
+ *      No IRQ needed here because client (PC) expects response.
  */
-int uart_send_message(uint8_t *tx_buf)
+int uart_send_message(uint8_t *tx_buffer, const uint8_t tx_size)
 {
-    LOG_DBG("UART_SEND_MESSAGE\n");
-    Msg msg;
-    uint8_t tx_size = 0;
-
-    if(k_msgq_get(&write_msgq, &msg, K_FOREVER) != 0)
-    {
-        LOG_WRN("Message Queue failed to get item.");
-        return 0;
-    }
-
-    encode_packet(msg.data, tx_buf, msg.length, &tx_size);
-    LOG_DBG("UART PACKET ENCODED\n");
-
     for (int i = 0; i < tx_size; i++)
-		uart_poll_out(uart_dev, tx_buf[i]);
-
-    LOG_DBG("UART PACKET SENT\n");
-    return 1;
+		uart_poll_out(uart_dev, tx_buffer[i]);
 }
