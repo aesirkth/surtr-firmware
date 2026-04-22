@@ -604,17 +604,48 @@ CONNECTION_LOST_TIMEOUT_S = 2.0
 # ===============================================================
 def main():
 
+
+	# --- On Startup (assume UART) ------ #
 	port = sys.argv[1] if len(sys.argv) == 2 else None
 	root = Dashboard(port)
 
-	setup_dashboard(root)
-	root.reconnect_serial(port)
+	#root.reconnect_serial(port)
+	request_queue = queue.Queue()
+	response_queue = queue.Queue()
 
+	pending_request = {}
+	
+	dashboard_thread = threading.Thread(target=dashboard_thread_main, args=(root,), daemon=True) 
+	graph_thread = threading.Thread(target=graph_thread_main, args=(root,), daemon=True) 
+		
+	try:
+		ser_con = serial.Serial(port, BAUDRATE, timeout=None)
+	except serial.SerialException as exc:
+		print(f"Reconnect failed for port '{port}': {exc}")
+		return
+
+
+	communication_thread = threading.Thread(target=communication_thread_main, args=(ser_con,), daemon=True)
+	writing_thread = threading.Thread(target=uart_write_thread_main, args=(ser_con, request_queue, pending_request), daemon=True)
+	reading_thread = threading.Thread(target=uart_read_thread_main, args=(ser_con, response_queue), daemon=True)
+	response_handler = threading.Thread(target=response_handler_thread_main, args=(response_queue, pending_request, root), daemon=True)
+
+
+
+
+def dashboard_thread_main(root: Dashboard):
+	
+	# ------- On Startup ---------------- #
+	setup_dashboard(root)
+	
 	root.mainloop()
+
+	# ------- On Shutdown --------------- #
 	root.ui_alive = False
 	root.can_rx_stop_event.set()
-	root.disconnect_serial(update_ui=False)
+	#root.disconnect_serial(update_ui=False)
 	root.close_can_bus()
+
 
 
 # ===============================================================
