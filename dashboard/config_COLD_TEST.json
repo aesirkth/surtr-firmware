@@ -24,7 +24,7 @@
     "channel7": {"scale": 0.0, "label": "", "disabled": true, "zeroable": false},
     "channel8": {"scale": 0.0, "label": "", "disabled": true, "zeroable": false},
     "channel9": {"scale": 2791.304, "label": "LC-ENG-2000 [kg]", "disabled": false, "zeroable": true},
-    "channel10": {"scale": 141.1489, "label": "LC-TNK-100 [kg]", "disabled": false, "zeroable": true},
+    "channel10": {"scale": 245.0, "label": "LC-TNK-100 [kg]", "disabled": false, "zeroable": true},
     "channel11": {"scale": 0.0, "label": "", "disabled": true, "zeroable": false},
     "channel12": {"scale": 100.0, "label": "Tank top PT [bar]", "disabled": false, "zeroable": false},
     "range_label": "BLUE\n (LC-ENG-2000),(LC-TNK-100)\n(N/C),(Tank top)"
