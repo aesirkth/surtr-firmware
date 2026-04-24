@@ -9,6 +9,142 @@ WINDOW_WIDTH 		= 20
 WINDOW_HEIGHT 		= 10
 STATIC_ROWS			= 1
 STATIC_COLUMNS		= 2
+ 
+class Graph:
+	def __init__(self):
+		self.graph_list = [0]*3
+		self.graph_stop = threading.Event()
+
+	def update_graphs(self, parent):
+		render = False
+		for i in range(0, 3):
+			if plt.fignum_exists(i):
+				self.graph_stop.clear()
+				render = True
+			else:
+				self.graph_list[i] = 0
+		if render:
+			plt.pause(1)
+		else:
+			self.graph_stop.set()
+		parent.after(1000, self.update_graphs, parent)
+	
+	def initialize_live_graph(self, adc_id, adc_num, filepath: str, configfile: str):
+
+		freeSpot = False
+		for i in range(0, 3):
+			if self.graph_list[i] == 0:
+				self.graph_list[i] = i
+				freeSpot = True
+
+		if not freeSpot:
+			return
+
+		graph_thread = threading.Thread(
+			target=plot_single_graph_live, 
+			args=(
+				self.graph_stop, 
+				adc_id, 
+				adc_num, 
+				filepath, 
+				configfile), 
+			daemon=True)
+		graph_thread.start()
+
+# ===============================================================
+# plot_single_graph_live():
+#	Creates a figure for singular ADC value and label. 
+#	Contiously reads from .csv file for new data.
+# 	plt.pause() will initially make plot interactive (live)
+# 	and will continously update and redraw graph.
+#	Have to restate label each time plt.plot is called.
+#	If .csv data file has no data then EXIT.
+#	
+def plot_single_graph_live(stop: threading.Event, adc_id, adc_num, filepath: str, configfile: str):
+	config = json.load(open(configfile, 'r'))
+	file = open(filepath, "r")
+	adc_val = []
+	time = []
+
+	plt.figure(adc_num, (WINDOW_WIDTH, WINDOW_HEIGHT))
+	if(adc_id == ADC0_TAG):
+		label = config["ADC0"][f"channel{adc_num+1}"]["label"]
+	else:
+		label = config["ADC1"][f"channel{adc_num+1}"]["label"]
+
+	if(isVoltageADC(adc_num)):
+		plt.title("Voltage (V) in ADCs over time (t)")
+		plt.ylabel("Voltage (V)")
+		plt.xlabel("time (t) (seconds)")
+	else:
+		plt.title("Current (I) in ADCs over time (t)")
+		plt.ylabel("Current (I)")
+		plt.xlabel("time (t) (seconds)")
+
+    # Read first row with labels
+	# Place file pointer to start of row 2.
+	# if row 2 is empty then invalid graph CANCEL.
+	# Go back to row2 if graph was valid.
+	if file.readline() == EOF:
+		plt.close(adc_num)
+		file.close()
+		return
+
+	filepos = file.tell()
+	if file.readline() == EOF:
+		plt.close(adc_num)
+		file.close()
+		return
+
+	file.seek(filepos)
+	
+	# IF window is exited we break from loop.
+	# and destroy figure.
+	while not stop.is_set():
+
+		print("DEBUG: plot live graph loop entered.")
+
+
+
+		if(not plt.fignum_exists(adc_num)):
+			plt.close(adc_num)
+			file.close()
+			return
+
+		# Read in all new data and update file position.
+		while(True):
+			file.seek(filepos)
+			line = file.readline()
+			if line == EOF:
+				t.sleep(1)
+				break
+
+			column = line.strip().split(",")
+			time.append(float(column[0]))
+
+			if(adc_id == ADC0_TAG):
+				raw = float(column[adc_num+1])
+				if(adc_num < ADC0_CHANNEL_VOLTAGE_END):
+					scaled = adc_to_scaled_normalized_voltage(config, ADC0_TAG, (adc_num+1), raw)
+				else:
+					scaled = adc_to_scaled_normalized_current(config, ADC0_TAG, (adc_num+1), raw)
+				adc_val.append(scaled)
+
+			else:
+				raw = float(column[adc_num+1+NUM_CHANNELS_PER_ADC])
+				if((adc_num+NUM_CHANNELS_PER_ADC) < ADC1_CHANNEL_VOLTAGE_END):
+					scaled = adc_to_scaled_normalized_voltage(config, ADC1_TAG, (adc_num+1), raw)
+				else:
+					scaled = adc_to_scaled_normalized_current(config, ADC1_TAG, (adc_num+1), raw)
+				adc_val.append(scaled)
+
+			filepos = file.tell()
+
+		plt.cla()
+		plt.plot(time, adc_val, label=label)
+		plt.legend()
+		plt.tight_layout()
+		#plt.pause(1)
 
 # ===============================================================
 #  ADC GRAPH PLOT
@@ -124,98 +260,6 @@ def plot_adc_graph_static_separate(filepath, configfile):
 	plt.tight_layout()
 	#plt.show()
 
-# ===============================================================
-# plot_single_graph_live():
-#	Creates a figure for singular ADC value and label. 
-#	Contiously reads from .csv file for new data.
-# 	plt.pause() will initially make plot interactive (live)
-# 	and will continously update and redraw graph.
-#	Have to restate label each time plt.plot is called.
-#	If .csv data file has no data then EXIT.
-#	
-def plot_single_graph_live(adc_id, adc_num, filepath: str, configfile: str):
-	config = json.load(open(configfile, 'r'))
-	file = open(filepath, "r")
-	adc_val = []
-	time = []
-
-	plt.figure(adc_num, (WINDOW_WIDTH, WINDOW_HEIGHT))
-	if(adc_id == ADC0_TAG):
-		label = config["ADC0"][f"channel{adc_num+1}"]["label"]
-	else:
-		label = config["ADC1"][f"channel{adc_num+1}"]["label"]
-
-	if(isVoltageADC(adc_num)):
-		plt.title("Voltage (V) in ADCs over time (t)")
-		plt.ylabel("Voltage (V)")
-		plt.xlabel("time (t) (seconds)")
-	else:
-		plt.title("Current (I) in ADCs over time (t)")
-		plt.ylabel("Current (I)")
-		plt.xlabel("time (t) (seconds)")
-
-    # Read first row with labels
-	# Place file pointer to start of row 2.
-	# if row 2 is empty then invalid graph CANCEL.
-	# Go back to row2 if graph was valid.
-	if file.readline() == EOF:
-		plt.close(adc_num)
-		file.close()
-		return
-
-	filepos = file.tell()
-	if file.readline() == EOF:
-		plt.close(adc_num)
-		file.close()
-		return
-
-	file.seek(filepos)
-	
-	# IF window is exited we break from loop.
-	# and destroy figure.
-	while(True):
-
-		if(not plt.fignum_exists(adc_num)):
-			plt.close(adc_num)
-			file.close()
-			return
-
-		# Read in all new data and update file position.
-		while(True):
-			file.seek(filepos)
-			line = file.readline()
-			if line == EOF:
-				t.sleep(1)
-				break
-
-			column = line.strip().split(",")
-			time.append(float(column[0]))
-
-			if(adc_id == ADC0_TAG):
-				raw = float(column[adc_num+1])
-				if(adc_num < ADC0_CHANNEL_VOLTAGE_END):
-					scaled = adc_to_scaled_normalized_voltage(config, ADC0_TAG, (adc_num+1), raw)
-				else:
-					scaled = adc_to_scaled_normalized_current(config, ADC0_TAG, (adc_num+1), raw)
-				adc_val.append(scaled)
-
-			else:
-				raw = float(column[adc_num+1+NUM_CHANNELS_PER_ADC])
-				if((adc_num+NUM_CHANNELS_PER_ADC) < ADC1_CHANNEL_VOLTAGE_END):
-					scaled = adc_to_scaled_normalized_voltage(config, ADC1_TAG, (adc_num+1), raw)
-				else:
-					scaled = adc_to_scaled_normalized_current(config, ADC1_TAG, (adc_num+1), raw)
-				adc_val.append(scaled)
-
-
-
-			filepos = file.tell()
-
-		plt.cla()
-		plt.plot(time, adc_val, label=label)
-		plt.legend()
-		plt.tight_layout()
-		plt.pause(1)
 
 # ===============================================================
 # getRow():

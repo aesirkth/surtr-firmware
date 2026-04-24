@@ -17,12 +17,14 @@ int uart_handle_request(Circbuf *rx_circbuf)
         LOG_WRN("UART: failed to retrieve packet.");
         return 0;
     }
+    LOG_DBG("UART retrieved packet.");
 
     if(k_msgq_put(&request_msgq, payload_buffer, K_NO_WAIT) != 0)
     {
         LOG_WRN("UART: Message could not be placed on queue.");
         return 0;
     }
+    LOG_DBG("UART placed packet on request queue.");
 
     return 1;
 }
@@ -58,11 +60,12 @@ int uart_retrieve_packet(Circbuf *rx_circbuf, uint8_t *out_buf, int *p_data_size
             data_end,
             crc_low, 
             crc_high;
-    uint16_t crc;
+    uint16_t crc, crc_dev;
     uint8_t tmp_rx[MSG_SIZE];
 
     /* ---- 1. Alignment byte 0x34 ----------- */
     circbuf_pop(rx_circbuf, &alignment);
+    LOG_DBG("Alignment byte: %d\n", alignment);
     if (alignment != PROTOCOL_ALIGNMENT_BYTE)
     {
         LOG_WRN("Aligment byte invalid.");
@@ -74,6 +77,7 @@ int uart_retrieve_packet(Circbuf *rx_circbuf, uint8_t *out_buf, int *p_data_size
     circbuf_pop(rx_circbuf, &length);
     *p_data_size = length;
     tmp_rx[1] = length;
+    LOG_DBG("Length byte: %d\n", length);
 
     /* ---- 3. data bytes into tmp_rx -------- */
     for(int i = 0; i < length; i++)
@@ -87,7 +91,10 @@ int uart_retrieve_packet(Circbuf *rx_circbuf, uint8_t *out_buf, int *p_data_size
     circbuf_pop(rx_circbuf, &crc_low);
     circbuf_pop(rx_circbuf, &crc_high);
     crc = (uint16_t)(crc_low) | ((uint16_t)(crc_high) << 8);
-    if (crc != crc16(PROTOCOL_CRC_POLY, PROTOCOL_CRC_SEED, tmp_rx, data_end))
+    crc_dev = crc16(PROTOCOL_CRC_POLY, PROTOCOL_CRC_SEED, tmp_rx, data_end);
+    //if (crc != crc16(PROTOCOL_CRC_POLY, PROTOCOL_CRC_SEED, tmp_rx, data_end))
+    LOG_DBG("CRC INCOMING: %d, CRC DEV: %d\n", crc, crc_dev);
+    if(crc != crc_dev)
     {
         LOG_WRN("Invalid Checksum.");
         return 0;

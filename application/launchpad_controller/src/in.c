@@ -9,7 +9,9 @@ LOG_MODULE_REGISTER(in, CONFIG_APP_LOG_LEVEL);
  */
 void surtr_syn_ack(uint8_t *response, uint8_t *response_size) 
 {
-    response[SURTR_RESPONSE_INDEX_ACK] = SURTR_MSG_ACK_SUCCESS;
+    LOG_DBG("surtr syn ack: size before: %d\n", (*response_size));
+    response[(*response_size)] = SURTR_MSG_ACK_SUCCESS;
+    (*response_size)++;
 }
 
 /**
@@ -19,7 +21,8 @@ void surtr_syn_ack(uint8_t *response, uint8_t *response_size)
  */
 void surtr_syn_fail(uint8_t *response, uint8_t *response_size) 
 {
-    response[SURTR_RESPONSE_INDEX_ACK] = SURTR_MSG_ACK_FAIL;
+    response[(*response_size)] = SURTR_MSG_ACK_FAIL;
+    (*response_size)++;
 }
 
 /**
@@ -31,9 +34,9 @@ void surtr_syn_fail(uint8_t *response, uint8_t *response_size)
  *      ===============================================================
  *      SW CTRL 1 | ID | STATE |
  */
-void surtr_sw_ctrl(const uint8_t *payload)
+void surtr_sw_ctrl(const uint8_t id, const uint8_t state)
 {
-    toggle_switch(payload[SURTR_MSG_SW_CTRL_INDEX_ID], payload[SURTR_MSG_SW_CTRL_INDEX_STATE]);
+    toggle_switch(id, state);
 }
 
 /**
@@ -96,4 +99,9 @@ int surtr_get_sw_state(uint8_t *response, uint8_t *response_size)
         response[i+(*response_size)] = sw[i];
 
     *response_size += NUM_SWITCHES;
+}
+
+void sampling_isr(struct k_timer *timer_id)
+{
+	k_sem_give(&sem_sampling_irq);
 }

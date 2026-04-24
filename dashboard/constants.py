@@ -1,5 +1,5 @@
 import customtkinter as ctk, os, sys, serial, threading
-import queue, socket, struct, json, time, math
+import queue, socket, struct, json, time, math, array
 import surtr_pb2 as schema
 from google.protobuf import json_format
 from datetime import datetime
@@ -35,6 +35,20 @@ NUM_STEPPERS			= 3
 
 ADC0_TAG				= 0
 ADC1_TAG				= 1
+
+MS1000                  = 1
+MS100                   = 0.1
+
+METHOD_UART             = 0
+MEASUREMENT_ID          = 0xFF
+
+
+SURTR_REQUEST_SYN_ACK       = 0
+SURTR_REQUEST_SW_CTRL       = 1
+SURTR_REQUEST_STEP_CTRL     = 2
+SURTR_REQUEST_SW_STATE      = 3
+SURTR_REQUEST_ADC_STATE     = 4
+SURTR_REQUEST_IGNITION      = 5
 
 EOF 			= ""
 ADC_NOTUSED 	= ""

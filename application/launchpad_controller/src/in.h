@@ -28,6 +28,8 @@
 #define SURTR_RESPONSE_INDEX_TIME	2
 #define SURTR_RESPONSE_INDEX_DATA	10
 
+extern struct k_sem sem_sampling_irq;
+
 /**
  * ==========================================================
  * surtr_syn_ack():
@@ -51,7 +53,7 @@ void surtr_syn_fail(uint8_t *response, uint8_t *response_size);
  *      ===============================================================
  *      SW CTRL 1 | ID | STATE |
  */
-void surtr_sw_ctrl(const uint8_t *payload);
+void surtr_sw_ctrl(const uint8_t id, const uint8_t state);
 
 /**
  * ==========================================================
@@ -84,5 +86,7 @@ int surtr_get_adc_state(uint8_t *response, uint8_t *response_size);
  *      SW STATE		    3					| SW[8] 
  */
 int surtr_get_sw_state(uint8_t *response, uint8_t *response_size);
+
+void sampling_isr(struct k_timer *timer_id);
 
 #endif

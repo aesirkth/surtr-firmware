@@ -2,18 +2,7 @@ from adc import ADC
 from config import Config
 from constants import *
 from actuation import Actuation
-import re
-try:
-	from gs_usb.gs_usb import GsUsb
-	from gs_usb.gs_usb_frame import GsUsbFrame
-	from gs_usb.constants import CAN_EFF_FLAG
-	import usb.util
-	_GS_USB_AVAILABLE = True
-except Exception:
-	_GS_USB_AVAILABLE = False
-
-GS_CAN_MODE_NORMAL = 0
-
+from graph import Graph
 
 # ===============================================================
 # CLASS DASHBOARD extends CTk
@@ -41,20 +30,30 @@ class Dashboard(ctk.CTk):
 	def __init__(self, initial_port_arg=None):
 		super().__init__()
 
+		print("Dashboard initialize.\n")
+
 		self.SAVEFILE 		= get_logfile_name()
 		self.SAVEFILE_WHANDLE = init_logfile(self.SAVEFILE)
+		
+		self.adc_applied_buffer = array.array('i', [0]*NUM_CHANNELS_TOTAL)
+		self.adc_raw_buffer 	= array.array('i', [0]*NUM_CHANNELS_TOTAL)
+		self.sw_raw_buffer 		= array.array('i', [0]*NUM_SWITCHES)
+		
+		self.GRAPH = Graph()
 
 		self.ADC0 = ADC(
 			self,
 			ADC0_TAG,
 			"ADC0",
 			"",
+			self.GRAPH.initialize_live_graph
 		)
 		self.ADC1 = ADC(
 			self,
 			ADC1_TAG,
 			"ADC1",
-			""
+			"",
+			self.GRAPH.initialize_live_graph
 		)
 
 		self.ACTUATION 	= Actuation(
@@ -62,7 +61,6 @@ class Dashboard(ctk.CTk):
 			lambda: ignition_command(0),
 			switch_command,
 			None,
-			self.send_can_switch_command
 		)
 
 		self.CONFIG = Config(
@@ -70,47 +68,23 @@ class Dashboard(ctk.CTk):
 			self.config_apply_labels,
 			get_default_config_path()
 		)
-		self.adc_temp_buffer = [0]*NUM_CHANNELS_TOTAL
-		self.adc_raw = [0]*NUM_CHANNELS_TOTAL
-		self.adc_zero_bias = [0]*NUM_CHANNELS_TOTAL
 		self.config_apply_labels()
 
 		self.SIDEBAR = ctk.CTkFrame(self, fg_color="transparent")
 		self.CONNECTION = self.Connection(
 			self.SIDEBAR,
-			lambda: self.reconnect_serial(self.CONNECTION.port_var.get()),
+			#lambda: self.reconnect_serial(self.CONNECTION.port_var.get()),
+			lambda: syn_ack_command(),
 			initial_port_arg
-		)
-		self.CAN_COMMAND = self.CanCommand(
-			self.SIDEBAR,
-			lambda: self.send_can_command(self.CAN_COMMAND.can_id_entry.get(), self.CAN_COMMAND.message_entry.get())
-		)
-		self.CAN_RECOVERY = self.CanRecovery(
-			self.SIDEBAR,
-			self.recover_can_connection
-		)
-		self.ADC_ZERO = self.AdcZero(
-			self.SIDEBAR,
-			self.capture_adc_zero_bias
 		)
 
 		self.TIME = self.Time(self.SIDEBAR, "-", time.time())
-		self.adc_temp_buffer = [0]*NUM_CHANNELS_TOTAL
-		self.adc_raw_buffer = [0]*NUM_CHANNELS_TOTAL
-		self.sw_raw_buffer = [0]*NUM_SWITCHES
-		self.serial_connection = None
-		self.serial_stop_event = None
-		self.reading_thread = None
-		self.writing_thread = None
-		self.connection_lock = threading.Lock()
-		self.can_lock = threading.Lock()
+
+
 		self.ui_alive = True
-		self.can_device = None
-		self.can_bitrate = 500000
-		self.can_rx_stop_event = threading.Event()
-		self.can_rx_thread = threading.Thread(target=self._can_rx_loop, daemon=True)
-		self.can_rx_thread.start()
 		self.update_connection_status(False)
+		
+		print("Dashboard initialize finish.\n")
 	
 		
 	# config_apply_labels():
@@ -134,7 +108,6 @@ class Dashboard(ctk.CTk):
 		self.ADC1.update_range_label(self.CONFIG.config["ADC1"]["range_label"])
 		self.ADC1.datafile = self.SAVEFILE
 		self.ADC1.configfile = self.CONFIG.filepath
-		self.reset_adc_zero_bias()
 
 		for i in range(NUM_SWITCHES):
 			switch_id = i + 1
@@ -155,48 +128,11 @@ class Dashboard(ctk.CTk):
 		self.ACTUATION.ignition.update_label(self.CONFIG.get_ignition_label())
 		self.ACTUATION.ignition.set_disabled(self.CONFIG.get_ignition_disabled())
 
-		for i in range(4):
-			can_switch_id = i + 1
-			can_switch_button = self.ACTUATION.can_switch.button[i]
-			can_switch_button.update_label(self.CONFIG.get_can_switch_label(can_switch_id))
-			can_switch_button.update_state_labels(
-				self.CONFIG.get_can_switch_on_label(can_switch_id),
-				self.CONFIG.get_can_switch_off_label(can_switch_id)
-			)
-			can_switch_button.set_disabled(self.CONFIG.get_can_switch_disabled(can_switch_id))
-
 	def _normalize_port_arg(self, raw_port):
 		if raw_port is None:
 			return None
 		port = str(raw_port).strip()
 		return port if port else None
-
-	def _adc_buffer_index(self, adc_tag: int, channel_num: int):
-		start_index = 0 if adc_tag == ADC0_TAG else NUM_CHANNELS_PER_ADC
-		return start_index + (channel_num - 1)
-
-	def reset_adc_zero_bias(self):
-		for i in range(NUM_CHANNELS_TOTAL):
-			self.adc_zero_bias[i] = 0.0
-
-	def capture_adc_zero_bias(self):
-		count = 0
-		for adc_tag in (ADC0_TAG, ADC1_TAG):
-			for channel_num in range(1, NUM_CHANNELS_PER_ADC + 1):
-				buffer_index = self._adc_buffer_index(adc_tag, channel_num)
-				if self.CONFIG.get_adc_channel_zeroable(adc_tag, channel_num):
-					self.adc_zero_bias[buffer_index] = self.adc_raw_buffer[buffer_index]
-					count += 1
-				else:
-					self.adc_zero_bias[buffer_index] = 0.0
-		print(f"ADC zero captured for {count} channels.")
-
-	def _apply_adc_zero_bias(self, adc_tag: int, channel_num: int, scaled_value: float):
-		buffer_index = self._adc_buffer_index(adc_tag, channel_num)
-		self.adc_raw_buffer[buffer_index] = scaled_value
-		if self.CONFIG.get_adc_channel_zeroable(adc_tag, channel_num):
-			return scaled_value - self.adc_zero_bias[buffer_index]
-		return scaled_value
 
 	def reconnect_serial(self, raw_port):
 		port = self._normalize_port_arg(raw_port)
@@ -210,12 +146,6 @@ class Dashboard(ctk.CTk):
 			self.update_connection_status(False)
 			return
 
-		self.serial_connection = ser_con
-		self.serial_stop_event = threading.Event()
-		self.reading_thread = threading.Thread(target=serial_connection_read, args=(ser_con, self, self.serial_stop_event), daemon=True)
-		self.writing_thread = threading.Thread(target=serial_connection_write, args=(ser_con, self, self.serial_stop_event), daemon=True)
-		self.reading_thread.start()
-		self.writing_thread.start()
 		print(f"Connected to Surtr on {ser_con.port}.")
 		self.update_connection_status(True, ser_con.port)
 
@@ -242,11 +172,6 @@ class Dashboard(ctk.CTk):
 				except serial.SerialException:
 					pass
 
-			self.serial_connection = None
-			self.serial_stop_event = None
-			self.reading_thread = None
-			self.writing_thread = None
-
 	def update_connection_status(self, connected, port=None):
 		if not self.ui_alive:
 			return
@@ -266,215 +191,6 @@ class Dashboard(ctk.CTk):
 			# Window or label may already be destroyed during shutdown.
 			self.ui_alive = False
 
-	def _parse_can_id(self, can_id_text: str):
-		raw = can_id_text.strip()
-		if raw == "":
-			raise ValueError("CAN ID is empty.")
-		return int(raw, 16)
-
-	def _parse_two_hex_bytes(self, text: str):
-		msg = text.strip()
-		if msg == "":
-			raise ValueError("CAN message is empty.")
-
-		if " " in msg or "," in msg:
-			tokens = [tok for tok in msg.replace(",", " ").split() if tok]
-			if len(tokens) != 2:
-				raise ValueError("CAN message must be exactly two bytes.")
-			return bytes(int(tok, 16) for tok in tokens)
-
-		msg = msg.replace("0x", "").replace("0X", "")
-		if len(msg) != 4:
-			raise ValueError("CAN message must be exactly 4 hex chars (2 bytes).")
-		return bytes(int(msg[i:i+2], 16) for i in range(0, len(msg), 2))
-
-	def _get_can_device(self):
-		if self.can_device is not None:
-			return self.can_device
-		if not _GS_USB_AVAILABLE:
-			raise RuntimeError("gs-usb is not installed. Install with: pip install gs-usb==0.3.0")
-
-		try:
-			devs = GsUsb.scan()
-			if len(devs) == 0:
-				raise RuntimeError("No INNO-MAKER usb2can device found.")
-
-			dev = devs[0]
-			try:
-				dev.stop()
-			except Exception:
-				pass
-
-			if not dev.set_bitrate(self.can_bitrate):
-				raise RuntimeError(f"Failed to set CAN bitrate to {self.can_bitrate}.")
-
-			dev.start(GS_CAN_MODE_NORMAL)
-			self.can_device = dev
-			print(f"usb2can ready (bitrate={self.can_bitrate}, device_index=0)")
-		except Exception as exc:
-			if "libusb" in str(exc).lower():
-				raise RuntimeError("usb2can requires libusb driver setup (Zadig) and libusb-1.0.dll per INNO-MAKER instructions.") from exc
-			raise
-		return self.can_device
-
-	def close_can_bus(self):
-		if self.can_device is not None:
-			try:
-				self.can_device.stop()
-			except Exception:
-				pass
-			try:
-				usb.util.dispose_resources(self.can_device.gs_usb)
-			except Exception:
-				pass
-			self.can_device = None
-			time.sleep(0.1)
-
-	def _simulate_usb_replug_locked(self, raw_usb_dev=None):
-		# Best-effort software equivalent of unplug/replug: USB device reset + re-enumeration delay.
-		usb_dev = raw_usb_dev
-		if usb_dev is None:
-			try:
-				devs = GsUsb.scan()
-				if len(devs) > 0:
-					usb_dev = devs[0].gs_usb
-			except Exception:
-				usb_dev = None
-
-		if usb_dev is None:
-			return
-
-		try:
-			usb_dev.reset()
-			print("Issued USB reset cycle for usb2can device.")
-		except Exception as exc:
-			print(f"USB reset cycle failed: {exc}")
-		time.sleep(1.0)
-
-	def _recover_can_connection_locked(self, max_attempts=3):
-		raw_usb_dev = self.can_device.gs_usb if self.can_device is not None else None
-		self.close_can_bus()
-		self._simulate_usb_replug_locked(raw_usb_dev)
-		last_exc = None
-		for attempt in range(max_attempts):
-			try:
-				self._get_can_device()
-				return True
-			except Exception as exc:
-				last_exc = exc
-				time.sleep(0.2 * (attempt + 1))
-		print(f"CAN recovery failed: {last_exc}")
-		return False
-
-	def recover_can_connection(self):
-		with self.can_lock:
-			print("Recovering CAN backend...")
-			if self._recover_can_connection_locked():
-				print("CAN recovery successful.")
-			return
-
-	def _is_recoverable_can_error(self, exc: Exception):
-		msg = str(exc).lower()
-		return (
-			"timeout error" in msg
-			or "_usb_reap_async" in msg
-			or "no backend available" in msg
-			or "device not found" in msg
-			or "resource is in use" in msg
-			or "could not claim interface" in msg
-		)
-
-	def update_can_rx_temperature(self, value: int):
-		if not self.ui_alive:
-			return
-		try:
-			if not self.winfo_exists():
-				self.ui_alive = False
-				return
-			self.ACTUATION.can_rx_temp.set_value(value)
-		except Exception:
-			self.ui_alive = False
-
-	def _can_rx_loop(self):
-		target_can_id = 0x122
-		while not self.can_rx_stop_event.is_set():
-			try:
-				with self.can_lock:
-					dev = self._get_can_device()
-					frame = GsUsbFrame()
-					ok = dev.read(frame, 100)
-				if not ok:
-					continue
-
-				if frame.arbitration_id != target_can_id:
-					continue
-				if frame.can_dlc < 4:
-					continue
-
-				# Decode temperature from first two bytes as uint16 (big-endian).
-				value = int.from_bytes(bytes(frame.data[:2]), byteorder="big", signed=False)
-				bias = 200
-				self.update_can_rx_temperature(value-bias)
-			except Exception as exc:
-				if self.can_rx_stop_event.is_set():
-					return
-				if self._is_recoverable_can_error(exc):
-					with self.can_lock:
-						self._recover_can_connection_locked()
-					time.sleep(0.1)
-					continue
-				time.sleep(0.2)
-
-	def _send_can_payload(self, can_id: int, payload: bytes, context: str):
-		if len(payload) > 8:
-			print(f"CAN send failed: payload too long ({len(payload)} bytes).")
-			return False
-		frame_can_id = can_id | CAN_EFF_FLAG if can_id > 0x7FF else can_id
-		frame = GsUsbFrame(can_id=frame_can_id, data=payload)
-
-		with self.can_lock:
-			for attempt in range(2):
-				try:
-					dev = self._get_can_device()
-					if dev.send(frame):
-						print(f"{context} -> CAN ID 0x{can_id:X}: {payload.hex(' ').upper()}")
-						return True
-					print(f"{context} failed: device did not accept frame.")
-					return False
-				except Exception as exc:
-					if attempt == 0 and self._is_recoverable_can_error(exc):
-						print(f"{context}: CAN backend timeout/error, trying recovery and retry...")
-						if self._recover_can_connection_locked():
-							continue
-					print(f"{context} failed: {exc}")
-					return False
-
-			return False
-
-	def send_can_command(self, can_id_text: str, message_text: str):
-		try:
-			can_id = self._parse_can_id(can_id_text)
-		except ValueError as exc:
-			print(f"Invalid CAN ID hex: {exc}")
-			return
-		try:
-			payload = self._parse_two_hex_bytes(message_text)
-		except ValueError as exc:
-			print(f"Invalid CAN message hex: {exc}")
-			return
-		self._send_can_payload(can_id, payload, "Sent custom CAN")
-
-	def send_can_switch_command(self, switch_id: int, state: bool):
-		try:
-			can_id_text = self.CAN_COMMAND.can_id_entry.get().strip()
-			can_id = self._parse_can_id(can_id_text if can_id_text else "124")
-		except ValueError as exc:
-			print(f"CAN switch {switch_id} send failed: {exc}")
-			return
-		payload = bytes([switch_id, 0x01 if state else 0x00])
-		state_text = "ON" if state else "OFF"
-		self._send_can_payload(can_id, payload, f"Sent CAN switch {switch_id} {state_text}")
-
 	# ==========================================================================
 	class Connection:
 		def __init__(self, parent, func_reconnect, initial_port_arg):
@@ -485,90 +201,6 @@ class Dashboard(ctk.CTk):
 			self.reconnect_button = ctk.CTkButton(self.panel, text="Reconnect", command=func_reconnect, width=150, font=DEFAULT_FONT, corner_radius=0)
 			self.status_label = ctk.CTkLabel(self.panel, text="Not connected", font=("IBM Plex Mono", 12))
 	# ==========================================================================
-	class CanCommand:
-		def __init__(self, parent, func_send):
-			self.panel = ctk.CTkFrame(parent)
-			self.title = ctk.CTkLabel(self.panel, text="CAN Command", font=DEFAULT_FONT)
-			can_id_vcmd = (self.panel.register(self._validate_can_id), "%P")
-			msg_vcmd = (self.panel.register(self._validate_can_message), "%P")
-			self.can_id_var = ctk.StringVar(value="124")
-			self.can_id_entry = ctk.CTkEntry(
-				self.panel,
-				width=150,
-				font=DEFAULT_FONT,
-				corner_radius=0,
-				placeholder_text="CAN ID hex",
-				textvariable=self.can_id_var,
-				validate="key",
-				validatecommand=can_id_vcmd,
-			)
-			self.message_entry = ctk.CTkEntry(
-				self.panel,
-				width=150,
-				font=DEFAULT_FONT,
-				corner_radius=0,
-				placeholder_text="2 bytes hex",
-				validate="key",
-				validatecommand=msg_vcmd,
-			)
-			self.send_button = ctk.CTkButton(
-				self.panel,
-				text="Send",
-				command=func_send,
-				width=150,
-				font=DEFAULT_FONT,
-				corner_radius=0
-			)
-
-		def _validate_can_id(self, proposed: str):
-			if proposed == "":
-				return True
-			return re.fullmatch(r"(0[xX])?[0-9a-fA-F]*", proposed) is not None
-
-		def _validate_can_message(self, proposed: str):
-			if proposed == "":
-				return True
-			if re.fullmatch(r"[0-9a-fA-FxX,\s]*", proposed) is None:
-				return False
-
-			if " " in proposed or "," in proposed:
-				tokens = [tok for tok in re.split(r"[\s,]+", proposed.strip()) if tok]
-				if len(tokens) > 2:
-					return False
-				for tok in tokens:
-					if re.fullmatch(r"(0[xX])?[0-9a-fA-F]{0,2}", tok) is None:
-						return False
-				return True
-
-			return re.fullmatch(r"(0[xX])?[0-9a-fA-F]{0,4}", proposed) is not None
-
-	# ==========================================================================
-	class CanRecovery:
-		def __init__(self, parent, func_recover):
-			self.panel = ctk.CTkFrame(parent)
-			self.title = ctk.CTkLabel(self.panel, text="CAN Recovery", font=DEFAULT_FONT)
-			self.button = ctk.CTkButton(
-				self.panel,
-				text="Recover CAN",
-				command=func_recover,
-				width=150,
-				font=DEFAULT_FONT,
-				corner_radius=0
-			)
-
-	# ==========================================================================
-	class AdcZero:
-		def __init__(self, parent, func_zero):
-			self.panel = ctk.CTkFrame(parent)
-			self.title = ctk.CTkLabel(self.panel, text="ADC Zero", font=DEFAULT_FONT)
-			self.button = ctk.CTkButton(
-				self.panel,
-				text="Zero",
-				command=func_zero,
-				width=150,
-				font=DEFAULT_FONT,
-				corner_radius=0
-			)
 
 	# ==========================================================================
 	class Time:
@@ -585,18 +217,113 @@ class Dashboard(ctk.CTk):
 			secs = int(seconds) % 60
 			return f"{minutes:02d}:{secs:02d}"
 			
-		def update_time(self, val):
+		def update_time(self, parent):
+				val = time.time()
 				self.time_pgt = math.ceil(time.time() - self.start_time)
 				self.time_srt = math.ceil(val)
 				self.label_pgt.configure(True, text=f"Time (program): " + self.convert_to_min_sec(self.time_pgt))
 				self.label_srt.configure(True, text=f"Time (Surtr): " + self.convert_to_min_sec(self.time_srt))
+
+				parent.after(1000, self.update_time, parent)
 # =============================================================================
+
+
+
+
+class WatchdogTimer:
+	def __init__(self, period):
+		self.period = period
+		self.reset()
+
+	def reset(self):
+		self.deadline = time.time() + self.period
+
+	def fail(self):
+		return time.time() > self.deadline
+
+class SerialConnection:
+	def __init__(self):
+		self.serial: serial.Serial = None
+		#self.lock = threading.Lock()
+
+	def set(self, new_serial):
+		#print("DEBUG: conn.set() requested")
+		#with self.lock:
+		#print("DEBUG: conn.set() accepted")
+		self.serial = new_serial
+
+	def get(self):
+		#print("DEBUG: conn.get() requested")
+		#with self.lock:
+		#print("DEBUG: conn.get() accepted")
+		return self.serial
+
+class Connection:
+	def __init__(self):
+		self.connection = False
+		self.state = 0
+
+
+class PendingRequest:
+	def __init__(self):
+		self.map = {}
+		self.size = 256
+		self.lock = threading.Lock()
+
+	def add(self, t):
+		with self.lock:
+			for id in range(self.size):
+				if id not in self.map:
+					self.map[id] = t
+					return id
+			raise LookupError("No free IDs in Pending Request Map.\n")
+
+	def find(self, id):
+		with self.lock:
+			return id in self.map
+
+	def remove(self, id):
+		with self.lock:
+			self.map.pop(id)
+
+	def lookup(self, id):
+		with self.lock:
+			return self.map.get(id)
+
+	def get_unique_id(self):
+		with self.lock:
+			for i in range(self.size):
+				if i not in self.map:
+					return i
+			raise LookupError("No free IDs in Pending Request Map.\n")
+
+	def print(self):
+		with self.lock:
+			print("================.")
+			for id, t in self.map.items():
+				print("id: ", id, " t: ", t)
+			print("================.")
+
+	def cleanup(self, timeout):
+		with self.lock:
+			now = int(time.time() * 1000)
+			discard = []
+			for id, t in list(self.map.items()):
+				if (now - t) >= timeout:
+					discard.append(id)
+			for id in discard:
+				self.map.pop(id)
 
 
 # ===============================================================
 # GLOBALS
 # ===============================================================
-write_queue = queue.Queue()
+request_queue = queue.Queue()
+response_queue = queue.Queue()
+pending_request = PendingRequest()
+uart_watchdog = WatchdogTimer(5)
+connection = Connection()
+
 CONNECTION_LOST_TIMEOUT_S = 2.0
 
 # ===============================================================
@@ -604,139 +331,441 @@ CONNECTION_LOST_TIMEOUT_S = 2.0
 # ===============================================================
 def main():
 
+	print("DEBUG: main starting.\n")
 
 	# --- On Startup (assume UART) ------ #
 	port = sys.argv[1] if len(sys.argv) == 2 else None
 	root = Dashboard(port)
+	serial = SerialConnection()
 
-	#root.reconnect_serial(port)
-	request_queue = queue.Queue()
-	response_queue = queue.Queue()
-
-	pending_request = {}
+	stop = threading.Event()
+	stop.set()
 	
-	dashboard_thread = threading.Thread(target=dashboard_thread_main, args=(root,), daemon=True) 
-	graph_thread = threading.Thread(target=graph_thread_main, args=(root,), daemon=True) 
-		
-	try:
-		ser_con = serial.Serial(port, BAUDRATE, timeout=None)
-	except serial.SerialException as exc:
-		print(f"Reconnect failed for port '{port}': {exc}")
-		return
+	#graph_thread = threading.Thread(target=graph_thread_main, args=(root,), daemon=True) 
 
+	communication_thread = threading.Thread(target=communication_thread_main, args=(stop, serial, port), daemon=True)
+	writing_thread = threading.Thread(target=uart_write_thread_main, args=(stop, serial, root), daemon=True)
+	reading_thread = threading.Thread(target=uart_read_thread_main, args=(stop, serial), daemon=True)
 
-	communication_thread = threading.Thread(target=communication_thread_main, args=(ser_con,), daemon=True)
-	writing_thread = threading.Thread(target=uart_write_thread_main, args=(ser_con, request_queue, pending_request), daemon=True)
-	reading_thread = threading.Thread(target=uart_read_thread_main, args=(ser_con, response_queue), daemon=True)
-	response_handler = threading.Thread(target=response_handler_thread_main, args=(response_queue, pending_request, root), daemon=True)
+	response_handler = threading.Thread(target=response_handler_thread_main, args=(stop, root), daemon=True)
 
+	communication_thread.start()
+	response_handler.start()
+	writing_thread.start()
+	reading_thread.start()
 
-
-
-def dashboard_thread_main(root: Dashboard):
-	
 	# ------- On Startup ---------------- #
 	setup_dashboard(root)
 	
+	root.after(1000, root.TIME.update_time, root)
 	root.mainloop()
 
 	# ------- On Shutdown --------------- #
 	root.ui_alive = False
-	root.can_rx_stop_event.set()
 	#root.disconnect_serial(update_ui=False)
-	root.close_can_bus()
 
 
 
-# ===============================================================
-# SERIAL COM CONNECTION
-# ===============================================================
-# serial_connection_read():
-# 	Blocking on read() until data is received. 
-# 	Dissect message by checking Alignment and checksum CRC.
-# 	Checksum bytes received: |low|high| so have to swap |high|low|.
-# 	se_con.read(1)[0] where [0] converts byte to integer.
-def serial_connection_read(ser_con: serial.Serial, root: Dashboard, stop_event: threading.Event):
-	try:
-		last_rx_time = time.monotonic()
-		while not stop_event.is_set():
-			print("serial connection begin read.\n")
-			align_byte = ser_con.read(1)
-			if len(align_byte) != 1:
-				#if time.monotonic() - last_rx_time > CONNECTION_LOST_TIMEOUT_S:
-				#	root.handle_connection_loss("no incoming data")
-				#	return
-				continue
-			last_rx_time = time.monotonic()
-			if align_byte[0] != ALIGNMENT_BYTE:
-				continue
-
-			print("serial connection read length.\n")
-			length_byte = ser_con.read(1)
-			if len(length_byte) != 1:
-				#if time.monotonic() - last_rx_time > CONNECTION_LOST_TIMEOUT_S:
-				#	root.handle_connection_loss("incomplete packet header")
-				#	return
-				continue
-
-			length = length_byte[0]
-			data = ser_con.read(length)
-			if len(data) != length:
-				#if time.monotonic() - last_rx_time > CONNECTION_LOST_TIMEOUT_S:
-				#	root.handle_connection_loss("incomplete packet payload")
-				#	return
-				continue
-
-			crc_bytes = ser_con.read(2)
-			if len(crc_bytes) != 2:
-				#if time.monotonic() - last_rx_time > CONNECTION_LOST_TIMEOUT_S:
-				#	root.handle_connection_loss("incomplete packet checksum")
-				#	return
-				continue
-			crc = crc_bytes[0] + (crc_bytes[1] << 8)
-			packet = bytes([ALIGNMENT_BYTE, length]) + data
-
-			if(crc != crc16(CRC_POLY, CRC_SEED, packet)):
-				continue
-				
-			parse_command_protobuf(data, root)
-
-	except serial.SerialException as exc:
-		if not stop_event.is_set():
-			root.handle_connection_loss(str(exc))
-		return
 	
-# serial_connection_write():
-# 	blocking here on a any form of outgoing update occurs.
-#	 write queue() blocks while empty.
-def serial_connection_write(ser_con: serial.Serial, root: Dashboard, stop_event: threading.Event):
-	try:
-		while not stop_event.is_set():
-			try:
-				data = write_queue.get(timeout=0.25)
-			except queue.Empty:
-				continue
 
-			packet = prepare_packet(data)
-			ser_con.write(packet)
 
-			msg = schema.SurtrMessage()
-			msg.ParseFromString(data)
-			match msg.WhichOneof("command"):
-				case "sw_ctrl":
-					switch_id = msg.sw_ctrl.id
+# ===============================================================
+# communication_thread_main():
+# 	State Machine for establishing UART connection
+#	OPEN_SERIAL:
+#		Attempts to open a serial port continously
+#		Failure here means there is no physical wire connection
+#		If any serial.SerialException occurs then phyiscal fault,
+#		go back to OPEN_SERIAL
+#	TRY_CONNECT:
+#		Send a new SYN-ACK request and wait 1000 ms for an ACK back 
+#		which is set by global "connection" boolean.
+# 		If no response then repeat. 
+#	CONNECTED:
+#		Send a new SYN-ACK request and wait 1000 ms for an ACK back 
+#		which is set by global "connection" boolean.
+# 		If no response then go back to TRY_CONNECT. 
+#
+#		
+def communication_thread_main(stop: threading.Event, conn: SerialConnection, port: str):
+	
+	print("DEBUG: COM THREAD START.\n")
+
+	open_serial = 0
+	try_connect = 1
+	connected 	= 2
+
+	connection.state = open_serial
+
+	while True:
+		try:
+			match connection.state:
+
+				case 0:
+
+					print("DEBUG: COM State: Open Serial.\n")
+
+					#stop.set()
+					ser_old = conn.get()
+					if ser_old:
+						ser_old.close()
+
+					ser_new = serial.Serial(port, BAUDRATE, timeout=None)
+					conn.set(ser_new)
+					stop.clear()
+					connection.state = try_connect
+
+				case 1:
+
+					print("DEBUG: COM State: Try Connect.\n")
+					# wipe pending requests
+					syn_ack_command()
+					 
+					if connection.connection:
+						connection.state = connected
+					time.sleep(5)
+					pending_request.cleanup(5000)
+					pending_request.print()
+
+				case 2:	
+					print("DEBUG: COM State: Connected.\n")
+					syn_ack_command()
+
+					#if uart_watchdog.fail():
+					#	connection.connection = False
+					#	connection.state = try_connect
+					#	continue
+
+					time.sleep(5)
+					pending_request.cleanup(5000)
+					pending_request.print()
+				
+				case _:
+					raise Exception("Communcation FSM invalid state\n.")
+	
+		except serial.SerialException as exc:
+			print("Failed to open Serial port: ", port)
+			connection.state = open_serial
+			stop.set()
+			time.sleep(MS1000)
+			print("Exit exception\n")
+
+
+
+# ===============================================================
+# uart_write_thread_main():
+#	Blocking wait until a request (payload) is placed on queue.
+#	Places request on pending_request map for history of requests.
+#	Appends Metadata in following format:
+#		1			1		 1			1		8		x		2
+#	| ALIGN | LEN(payload) | ID | UART/ETH | TIME | PAYLOAD | CRC |
+#	
+#	Waits for access to serial object and then sends packet. 
+#	Includes match case for debug purposes.
+def uart_write_thread_main(stop: threading.Event, conn: SerialConnection, root: Dashboard):
+
+	print("DEBUG: UART WRITE THREAD START.\n")
+	while True:
+
+		if stop.is_set():
+			time.sleep(5)
+			continue
+
+		try:
+
+			req_payload = request_queue.get()
+			#print("DEBUG: UART WRITE request received: cmd: ", req_payload[0])
+
+			t_send = int(time.time() * 1000)
+			t_send_bytes = t_send.to_bytes(8, byteorder="little")
+			unique_id = pending_request.add(t_send)
+
+			packet = prepare_packet(req_payload, METHOD_UART, unique_id, t_send_bytes) 
+
+			ser = conn.get()
+			if ser:
+				ser.write(packet)
+			else:
+				# serial was deemed unconnected from somewhere else?
+				print("serial write failed.\n")
+
+
+			# ------- DEBUG SENDER --------------- #
+			match req_payload[0]:
+				case 1:
+					switch_id = req_payload[1]
 					switch_label = root.CONFIG.get_switch_label(switch_id)
-					state_text = "ON" if msg.sw_ctrl.state else "OFF"
+					state_text = "ON" if req_payload[2] else "OFF"
 					print(f"Sent switch {switch_id} ({switch_label}): {state_text} to Surtr")
 				case _:
 					pass
 
-	except serial.SerialException as exc:
-		if not stop_event.is_set():
-			root.handle_connection_loss(str(exc))
-		return
+		except serial.SerialException as exc:
+			# Serial connection disconnected physically?
+			return
+
+	print("DEBUG: UART WRITE THREAD DIE.\n")
 	
 
+
+# ===============================================================
+# uart_read_thread_main():
+#	When reading message, expect that TAGS must match.
+#	Same command sent as same command received, otherwise keep reading.
+#	If waiting too long give timeout.
+def uart_read_thread_main(stop: threading.Event, conn: SerialConnection):
+	
+	print("DEBUG: UART READ THREAD START.\n")
+	deadline = 0.1 # 100 ms timeout for handling each packet
+	method = METHOD_UART
+
+	while True:
+
+		if stop.is_set():
+			continue
+
+		start = time.time()
+
+		try: 
+			print("DEBUG: UART begin interation.\n")
+			ser = conn.get()
+			# if ser 
+
+			#if (timeout(start, deadline)):
+			#	continue
+
+			# ------------ Alignment Byte -------------- #
+			align_byte = ser.read(1)
+			print("DEBUG: RX Alignment byte.\n")
+			if (len(align_byte) == 0):
+				print("DEBUG: RX Alignment 0.\n")
+				continue
+			
+			if (align_byte[0] != ALIGNMENT_BYTE):
+				continue
+			
+			#if (timeout(start, deadline)):
+			#	continue
+			
+			# ------------ Length Byte ------------------ #
+			length_byte = ser.read(1)
+			print("DEBUG: RX Length byte.\n")
+			length = length_byte[0]
+			if (len(length_byte) == 0):
+				continue
+			
+			#if (timeout(start, deadline)):
+			#	continue
+
+			# ------------ Payload Bytes ----------------- #
+			payload = ser.read(length)
+			print("DEBUG: RX Payload byte.\n")
+			if (len(payload) != length):
+				continue
+			
+			#if (timeout(start, deadline)):
+			#	continue
+			
+			# ------------ CRC check --------------------- #
+			crc_bytes = ser.read(2)
+			print("DEBUG: RX CRC.\n")
+			if (len(crc_bytes) != 2):
+				continue
+
+			crc = crc_bytes[0] + (crc_bytes[1] << 8)
+			packet = bytes([ALIGNMENT_BYTE, length]) + payload
+			crc2 = crc16(CRC_POLY, CRC_SEED, packet)
+			#if(crc != crc16(CRC_POLY, CRC_SEED, packet)):
+			if(crc != crc2):
+				print("DEBUG: RX CRC mismatch: ", crc, " : ", crc2)
+				continue
+
+			#if (timeout(start, deadline)):
+			#	continue
+			
+			# ----- Response Unique ID Comparison -------- #
+			print("DEBUG: Unique ID comparison.\n")
+			response_id = payload[0]
+			print("DEBUG: ID: ", response_id)
+			pending_request.print()
+			if (response_id != MEASUREMENT_ID):
+				if (not pending_request.find(response_id)):
+					print("DEBUG: Unique ID fail.\n")
+					continue
+			
+			# ------------ Method Byte (UART/ETH) -------- #
+			response_method = payload[1]
+			print("DEBUG: Response Method: ", response_method)
+			if (response_method != method):
+				print("DEBUG: Response fail.\n")
+				continue
+
+			# ---- Valid Response has been recieved ------ #
+			response_queue.put(payload)
+			print("DEBUG: RX placed on response queue.\n")
+			print(list(payload))
+
+			# ---- Remove stale requests (>= 5000 ms) ---- #
+			#pending_request.cleanup(5000)
+
+		except serial.SerialException as exc:
+			# Serial connection disconnected physically?
+			print("DEBUG: RX Serial exception.\n")
+			return
+		
+		# end while 
+	#end while 
+	print("DEBUG: UART READ THREAD DIE.\n")
+ 
+
+ # ===============================================================
+ # PARSE SURTR COMMAND
+ # Unpacks message and updates data accordingly.
+ # MSG TYPE		ENUM	TIME (us)		RAW DATA
+ # ===============================================================
+ # SYN_ACK			0					| ACK |
+ # SW CTRL		    1					| ID | STATE |
+ # STEP CTRL		2					| ID | MOTOR DELTA |
+ # SW STATE		    3					| SW[8] 
+ # ADC STATE		4					| VALUE[24] |
+ # IGNITION		    5					| PASSWORD |
+# ===============================================================
+# response_handler_thread_main():
+#	The time received from SURTR is time since boot not unix epoch (Real Time).
+#	There is RTC on SURTR foud in device tree but not enabled.
+def response_handler_thread_main(stop: threading.Event, root: Dashboard):
+	
+	print("DEBUG: RESPONSE HANDLER START.\n")
+
+	while True:
+
+		payload = response_queue.get()
+		print("DEBUG: response handle receieved response from queue.\n")
+		print(list(payload))
+		print("id: ", payload[0], " method: ", payload[1], " time: ", payload[2:10], " cmd: ", payload[10], " ack: ", payload[11])
+		
+		unique_id = payload[0]
+		print("DEBUG: pending request print.\n")
+		pending_request.print()
+		print("DEBUG: pending request lookup.\n")
+		t_send = pending_request.lookup(unique_id)			
+		pending_request.remove(unique_id)
+
+		t_received = int(time.time()*1000)
+		t_served = t_received - t_send
+		
+		print("DEBUG: t_received: ", t_received)
+		print("DEBUG: t_send: ", t_send)
+		print("DEBUG: t_served: ", t_served)
+
+
+		surtr_command = payload[10]
+
+		match surtr_command:
+
+			# ---- SURTR SYN-ACK RESPONSE -------- #
+			# ----- Add +1 second to watchdog. --- #
+			case 0:
+				response_ack = payload[11]
+				if(response_ack != 0xFF):
+					print("Reponse: SYN ACK: ACK is negative.\n")
+
+				uart_watchdog.reset()
+				connection.connection = True
+
+				print("Request: SYN-ACK id: ", unique_id, " served in: ", t_served, " ms.")
+
+			# ---- SURTR SW CTRL RESPONSE -------- #
+			case 1: 
+				response_ack = payload[11]
+				if(response_ack != 0xFF):
+					print("Request: SW CTRL failed.\n")
+				
+				print("Request: SW-CTRL id: ", unique_id, " served in: ", t_served, " ms.")
+
+			# ---- SURTR STEP CTRL RESPONSE ------ #
+			case 2: 
+				response_ack = payload[11]
+				if(response_ack != 0xFF):
+					print("Request: STEP CTRL failed.\n")
+				
+				print("Request: STEP-CTRL id: ", unique_id, " served in: ", t_served, " ms.")
+
+			# ---- SURTR ADC/SW STATE RESPONSE ------- #
+			case 3:
+				response_ack = payload[11]
+				if(response_ack != 0xFF):
+					print("Request: Get SW state failed.\n")
+					continue
+
+				root.adc_raw_buffer.frombytes(payload[12:108])
+				root.sw_raw_buffer.frombytes(payload[108:116])
+
+				for i in range(0, ADC0_CHANNEL_VOLTAGE_END):
+					scaled_value = adc_to_scaled_normalized_voltage(root, ADC0_TAG, (i+1), root.adc_raw_buffer[i])
+					root.adc_applied_buffer[i] = scaled_value
+				for i in range(ADC0_CHANNEL_VOLTAGE_END, ADC0_CHANNEL_CURRENT_END):
+					scaled_value = adc_to_scaled_normalized_current(root, ADC0_TAG, (i+1), root.adc_raw_buffer[i])
+					root.adc_applied_buffer[i] = scaled_value
+				for i in range(ADC0_CHANNEL_CURRENT_END, ADC1_CHANNEL_VOLTAGE_END):
+					scaled_value = adc_to_scaled_normalized_voltage(root, ADC1_TAG, (i+1), root.adc_raw_buffer[i])
+					root.adc_applied_buffer[i] = scaled_value
+				for i in range(ADC1_CHANNEL_VOLTAGE_END, ADC1_CHANNEL_CURRENT_END):
+					scaled_value = adc_to_scaled_normalized_current(root, ADC1_TAG, (i+1), root.adc_raw_buffer[i])
+					root.adc_applied_buffer[i] = scaled_value
+				
+				root.ADC0.update_channels(root.adc_applied_buffer[0:(NUM_CHANNELS_PER_ADC)])
+				root.ADC1.update_channels(root.adc_applied_buffer[NUM_CHANNELS_PER_ADC:NUM_CHANNELS_TOTAL])
+				root.ACTUATION.switch.update(root.sw_raw_buffer)
+				
+				writeRow(root.SAVEFILE_WHANDLE, time, root.adc_raw_buffer, root.sw_raw_buffer)
+				root.TIME.update_time(math.ceil(time))
+		
+			case _:
+				raise Exception("Invalid SURTR command.")
+
+
+
+# ===============================================================
+# switch_command():
+#	places SYN-ACK message on Request Queue for send out.
+#	| TIME | CMD | (9 bytes)
+def syn_ack_command():
+	print("SYN_ACK issued.\n")
+	data = bytearray(1)
+	data[0] = SURTR_REQUEST_SYN_ACK
+	
+	request_queue.put(data)
+
+
+# ===============================================================
+# switch_command():
+#	Transforms id and state of switch into payload and 
+#	places on Request Queue for send out.
+#	| TIME | CMD | SW | STATE |	(11 bytes)
+def switch_command(id, state):
+	print("SW_CTRL issued.\n")
+	data = bytearray(3)
+	data[0] = SURTR_REQUEST_SW_CTRL
+	data[1] = id
+	data[2] = state
+
+	request_queue.put(data)
+
+# ===============================================================
+# ignition_command():
+#	Converts ignition execution into sutr message and places in write queue.
+#	| TIME | CMD | PASSWD |	(10 bytes)
+def ignition_command(password):
+	data = bytearray(2)
+	data[0] = SURTR_REQUEST_IGNITION
+	data[1] = password
+	
+	request_queue.put(data)
+
+
+
+# ===============================================================
 # crc16():
 #	Checksum CRC 16 Bytes. 
 def crc16(poly, seed, buf):
@@ -750,26 +779,41 @@ def crc16(poly, seed, buf):
                     crc = crc << 1
         return crc & 0xFFFF	
 
+# ===============================================================
 # prepare_packet():
-# 	Adds protocol Aligment, length, and CRC checksum to packet.
-#	| Align | len | DATA | checksum |
-# 	Returns valid packet ready to be sent.
-def prepare_packet(data: bytes):
-	align = ALIGNMENT_BYTE
-	length = len(data)
-	print(align)
-	print(length)
+#		1			1		 1			1		8		x		2
+#	| ALIGN | LEN(payload) | ID | UART/ETH | TIME | PAYLOAD | CRC |
+def prepare_packet(req_payload: bytes, method: int, unique_id: int, t_send: bytes):
 
-	temp = bytes([align, length]) + data
+	payload = bytes([unique_id]) 
+	payload += bytes([method]) 
+	payload += t_send 
+	payload += req_payload
+
+	align = ALIGNMENT_BYTE
+	length = len(payload)
+
+	temp = bytes([align, length])
+	temp += payload
+
 	crc = crc16(CRC_POLY, CRC_SEED, temp)
-	print(crc)
 	crc_low = crc & 0x00FF
 	crc_high = (crc >> 8) & 0x00FF
 
+	print("prepare packet: id: ", unique_id)
+	print("prepare packet: len: ", length)
+	print("prepare packet: CRC: ", crc)
+
 	packet = temp + bytes([crc_low, crc_high])
-	print("packet:\n", packet.hex())
+	print(list(packet))
 	return packet
 
+# ===============================================================
+# timeout():
+def timeout(start: float, timeout: float):
+    return (time.time() - start) >= timeout
+
+# ===============================================================
 # writeRow():
 # 	Writes a row into storage data file .csv in the following format:
 # 	time | adc_val0 | adc_val1 | adc_val2 | adc_val3 | .... | adc_val23 | sw0 | sw1 | .. | sw7
@@ -782,26 +826,6 @@ def writeRow(file, time, adc_raw, switches):
 	file.write(line)
 	file.flush()
 
-# switch_command():
-#	Converts switch execution into surtr message and places in write queue.
-#	SerializeToString actually makes msg into 'bytes' object.
-def switch_command(id, state):
-	msg = schema.SurtrMessage()
-	control_msg = schema.SwitchControl()
-	control_msg.id = id
-	control_msg.state = state
-	msg.sw_ctrl.CopyFrom(control_msg)
-	write_queue.put(msg.SerializeToString())
-
-# ignition_command():
-#	Converts ignition execution into sutr message and places in write queue.
-#	Password is "42"
-def ignition_command(password):
-	msg = schema.SurtrMessage()
-	ignition_msg = schema.Ignition()
-	ignition_msg.password = password
-	msg.ignition.CopyFrom(ignition_msg)
-	write_queue.put(msg.SerializeToString())
 
 # ===============================================================
 # AD4111 Data Sheet p.29:
@@ -854,283 +878,6 @@ def adc_to_scaled_normalized_voltage(root: Dashboard, adc_id, ch_in, adc_val):
 def adc_to_scaled_normalized_current(root: Dashboard, adc_id, ch_in, adc_val):
 	scale = root.CONFIG.get_adc_channel_scale(adc_id, ch_in)
 	return adc_to_normalized_current(adc_val) * scale
-
-# parse_command_protobuf():
-#	Uses protobuf protocol and derives operation from real message in packet.
-#	CASE ADC_MEASUREMENTS=4
-#	{
-#		'usSinceBoot': '',
-#		'adcMeasurements': 
-#		{
-#			'id': int,
-#			'value0': int
-#			...
-#			'value11: int
-#			
-#		}
-#	}
-#	CASE SWITCHSTATE=6
-#	{
-#		'usSinceBoot': '',
-#		'switchStates': 
-#		{
-#			'sw1': Bool
-#			.....
-#			'sw7': Bool
-#			'step1': int
-#			'step2': int
-#		}
-#	}
-#
-# We also write data to a data .csv file that has the following layout:
-# time | adc00 | adc01 | adc02 | adc03 | adc04 | adc05 | adc06 | adc07 | adc08 | adc09 |
-#  		adc010 | adc011 | adc10 | adc11 | adc12 | adc13 | adc14 | adc15 | adc16| adc17 | 
-# 		 adc18 | adc19 | adc110 | adc111
-# 
-# 	Only ADC is written because recordings of switch states are never used
-# 	requires that ADC0 and ADC1 data be sent in sync.
-#
-#	always_print_fields_with_no_presence makes fields that have no value be 
-# 	set to 0 or "" (instead of nothing).
-#
-# TEMPORARY SOLUTION:
-# 	Before making changes to protobuf this temporary solution
-# 	works by having a buffer [24] that where ADC0 (0-11) and ADC1 (12-23).
-# 	ADC0 and ADC1 comes as separate packets which messes up timing of data.
-# 	Time used for graph is ADC1 for both the ADC0 and ADC1 value
-# 	Both ADCs are then written to data storage file together as one.
-def parse_command_protobuf(message: bytes, root: Dashboard):
-	msg = schema.SurtrMessage()
-	msg.ParseFromString(message)
-	time = (msg.us_since_boot / 1e6)
-
-	data = json_format.MessageToDict(msg, always_print_fields_with_no_presence=True)
-
-	print("PARSE_COMMAND_SURTR_PROTOBUF")
-	print(data)
-
-	# Due to inconsistencies with the protobuf messages delivered
-	# we check if "id" is mentioned in message.
-	# It is only mentioned for ADC1.
-	match msg.WhichOneof("command"):
-		case "adc_measurements": 
-
-			# ADC0 because "id" not mentioned in protobuf message.
-			# 0-7 Voltage 8-11 Current
-			if not data["adcMeasurements"]["id"]:
-				for key, val in data["adcMeasurements"].items():
-
-					if key == "id": 
-						continue
-
-					index = int(key.removeprefix("value"))
-					root.adc_raw[index] = val
-
-					if index < NUM_CHANNELS_ADC_VOLTAGE: 
-						scaled_value = adc_to_scaled_normalized_voltage(root, ADC0_TAG, (index+1), val)
-						root.adc_temp_buffer[index] = root._apply_adc_zero_bias(ADC0_TAG, (index+1), scaled_value)
-					else: 
-						scaled_value = adc_to_scaled_normalized_current(root, ADC0_TAG, (index+1), val)
-						root.adc_temp_buffer[index] = root._apply_adc_zero_bias(ADC0_TAG, (index+1), scaled_value)
-
-				root.ADC0.update_channels(root.adc_temp_buffer[0:(NUM_CHANNELS_PER_ADC)])
-
-			# ADC1 because "id=1". Structurally: ADC1 [id] [0-11] 
-			# 0-7 Voltage 8-11 Current
-			else:
-				for key, val in data["adcMeasurements"].items():
-
-					if key == "id": 
-						continue
-
-					index = int(key.removeprefix("value"))
-					root.adc_raw[index+NUM_CHANNELS_PER_ADC] = val
-
-					if index < NUM_CHANNELS_ADC_VOLTAGE: 
-						scaled_value = adc_to_scaled_normalized_voltage(root, ADC1_TAG, (index+1), val)
-						root.adc_temp_buffer[index+NUM_CHANNELS_PER_ADC] = root._apply_adc_zero_bias(ADC1_TAG, (index+1), scaled_value)
-					else: 
-						scaled_value = adc_to_scaled_normalized_current(root, ADC1_TAG, (index+1), val)
-						root.adc_temp_buffer[index+NUM_CHANNELS_PER_ADC] = root._apply_adc_zero_bias(ADC1_TAG, (index+1), scaled_value)
-
-				root.ADC1.update_channels(root.adc_temp_buffer[NUM_CHANNELS_PER_ADC:NUM_CHANNELS_TOTAL])
-			
-			# Write raw adc values into savefile and switch states.
-			for j, b in enumerate(root.ACTUATION.switch.button):
-				root.sw_raw_buffer[j] = int(b.current_state)
-
-			writeRow(root.SAVEFILE_WHANDLE, time, root.adc_raw, root.sw_raw_buffer)
-			# Update usSinceBoot Surtr time.
-			root.TIME.update_time(math.ceil(time))
-
-			return
-		case "switch_states":
-			for i in range(NUM_SWITCHES):
-				state = getattr(msg.switch_states, f"sw{i+1}")
-				root.ACTUATION.switch.button[i].set_state(state)
-			return
-		case _:
-			raise Exception("Invalid SURTR command.")
-		
-
-
-def client_request(ser_con: serial.Serial):
-
-	request_command = None
-	ser_con.timeout = 0.1
-	deadline = 0.1
-
-	while True:
-
-		payload = write_queue.get()
-		request_command = payload[0]; 
-		packet = prepare_packet(payload)
-		ser_con.write(packet)
-
-		# When reading message, expect that TAGS must match.
-		# Same command sent as same command received, otherwise keep reading.
-		# If waiting too long give timeout.
-
-		start = time.time()
-
-		while True:
-			try: 
-				if (timeout(start, deadline)):
-					break
-
-				# ------------ Alignment Byte -------------- #
-				align_byte = ser_con.read(1)
-				if (len(align_byte) == 0):
-					continue
-				
-				if (align_byte[0] != ALIGNMENT_BYTE):
-					continue
-				
-				if (timeout(start, deadline)):
-					break
-				
-				# ------------ Length Byte ------------------ #
-				length_byte = ser_con.read(1)
-				length = length_byte[0]
-				if(len(length_byte) == 0):
-					continue
-				
-				if (timeout(start, deadline)):
-					break
-
-				# ------------ Payload Bytes ----------------- #
-				payload = ser_con.read(length)
-				if (len(payload) != length):
-					continue
-				
-				if (timeout(start, deadline)):
-					break
-				
-				# ------------ CRC check --------------------- #
-				crc_bytes = ser_con.read(2)
-				if (len(crc_bytes) != 2):
-					continue
-				
-				if (timeout(start, deadline)):
-					break
-
-				crc = crc_bytes[0] + (crc_bytes[1] << 8)
-				packet = bytes([ALIGNMENT_BYTE, length]) + payload
-				if(crc != crc16(CRC_POLY, CRC_SEED, packet)):
-					continue
-
-				if (timeout(start, deadline)):
-					break
-
-				# ----- Response CMD TAG comparison ---------- #
-				response_command = payload[0]
-				if(request_command != response_command):
-					continue
-				
-				# Add +1 second to surtr connection watchdog.
-				
-				# ---- Valid Response has been recieved ------ #
-				response_queue.put(payload)
-
-			except serial.SerialException as exc:
-				print("Serial Exception: ", exc)
-				break
-		
-		# end while 
-	#end while 
-#end client_request()
-
-
-def timeout(start: float, timeout: float):
-    return (time.time() - start) >= timeout
-
-
- # ===============================================================
- # PARSE SURTR COMMAND
- # Unpacks message and updates data accordingly.
- # MSG TYPE		ENUM	TIME (us)		RAW DATA
- # ===============================================================
- # SYN_ACK			0					| ACK |
- # SW CTRL		    1					| ID | STATE |
- # STEP CTRL		2					| ID | MOTOR DELTA |
- # SW STATE		    3					| SW[8] 
- # ADC STATE		4					| VALUE[24] |
- # IGNITION		    5					| PASSWORD |
-def handle_response():
-
-	while True:
-
-		payload = response_queue.get()
-		surtr_command = payload[0]
-		match surtr_command:
-			# ---- SURTR SYN-ACK RESPONSE -------- #
-			case 0:
-				response_ack = payload[1]
-				if(response_ack != 0xFF):
-					print("Request: SYN ACK failed.\n")
-				break
-
-			# ---- SURTR SW CTRL RESPONSE -------- #
-			case 1: 
-				response_ack = payload[1]
-				if(response_ack != 0xFF):
-					print("Request: SW CTRL failed.\n")
-				break
-
-			# ---- SURTR STEP CTRL RESPONSE ------ #
-			case 2: 
-				response_ack = payload[1]
-				if(response_ack != 0xFF):
-					print("Request: STEP CTRL failed.\n")
-				break
-
-			# ---- SURTR SW STATE RESPONSE ------- #
-			case 3:
-				response_ack = payload[1]
-				if(response_ack != 0xFF):
-					print("Request: Get SW state failed.\n")
-
-				# Write raw adc values into savefile and switch states.
-				# combine adc and sw state into single operation?
-				for j, b in enumerate(root.ACTUATION.switch.button):
-					root.sw_raw_buffer[j] = int(b.current_state)
-				writeRow(root.SAVEFILE_WHANDLE, time, root.adc_raw, root.sw_raw_buffer)
-
-				break
-
-				
-			
-			# ---- SURTR SW STATE RESPONSE ------- #
-			case 4:
-				response_ack = payload[1]
-				if(response_ack != 0xFF):
-					print("Request: Get SW state failed.\n")
-				break
-
-		
-			case _:
-				raise Exception("Invalid SURTR command.")
-
 	
 # ===============================================================
 # DASHBOARD GUI SETUP
@@ -1207,17 +954,6 @@ def setup_dashboard(root: Dashboard):
 	root.ACTUATION.ignition.title.grid(row=0, column=0, pady=4, sticky="n")
 	root.ACTUATION.ignition.button.grid(row=1, column=0, padx=6, pady=3, sticky="w")
 
-	root.ACTUATION.can_switch.panel.grid(row=0, column=3, sticky="nw", padx=6, pady=6)
-	root.ACTUATION.can_switch.title.grid(row=0, column=0, columnspan=3, pady=4, sticky="w")
-	for i in range(4):
-		root.ACTUATION.can_switch.button[i].label.grid(row=i+1, column=0, padx=2, pady=1, sticky="w")
-		root.ACTUATION.can_switch.button[i].on.grid(row=i+1, column=1, padx=2, pady=1, sticky="w")
-		root.ACTUATION.can_switch.button[i].off.grid(row=i+1, column=2, padx=2, pady=1, sticky="w")
-
-	root.ACTUATION.can_rx_temp.panel.grid(row=0, column=4, sticky="nw", padx=6, pady=6)
-	root.ACTUATION.can_rx_temp.title.grid(row=0, column=0, padx=6, pady=4, sticky="w")
-	root.ACTUATION.can_rx_temp.value.grid(row=1, column=0, padx=6, pady=3, sticky="w")
-
 	root.CONFIG.path_entry.grid(row=0, column=1, padx=4, pady=4, sticky="ew")
 	root.CONFIG.panel.grid_columnconfigure(1, weight=1)
 	root.CONFIG.panel.grid(row=0, column=0, columnspan=2, sticky="ew", padx=8, pady=4)
@@ -1231,24 +967,9 @@ def setup_dashboard(root: Dashboard):
 	root.CONNECTION.reconnect_button.grid(row=2, column=0, padx=6, pady=3, sticky="w")
 	root.CONNECTION.status_label.grid(row=3, column=0, padx=6, pady=(0, 3), sticky="w")
 
-	root.CAN_COMMAND.panel.grid(row=1, column=0, sticky="nw", padx=0, pady=(4, 0))
-	root.CAN_COMMAND.title.grid(row=0, column=0, pady=4)
-	root.CAN_COMMAND.can_id_entry.grid(row=1, column=0, padx=6, pady=3, sticky="w")
-	root.CAN_COMMAND.message_entry.grid(row=2, column=0, padx=6, pady=3, sticky="w")
-	root.CAN_COMMAND.send_button.grid(row=3, column=0, padx=6, pady=3, sticky="w")
-
-	root.CAN_RECOVERY.panel.grid(row=2, column=0, sticky="nw", padx=0, pady=(4, 0))
-	root.CAN_RECOVERY.title.grid(row=0, column=0, pady=4)
-	root.CAN_RECOVERY.button.grid(row=1, column=0, padx=6, pady=3, sticky="w")
-
-	root.ADC_ZERO.panel.grid(row=3, column=0, sticky="nw", padx=0, pady=(4, 0))
-	root.ADC_ZERO.title.grid(row=0, column=0, pady=4)
-	root.ADC_ZERO.button.grid(row=1, column=0, padx=6, pady=3, sticky="w")
-
 	root.TIME.panel.grid(row=4, column=0, padx=0, pady=(4, 0), sticky="nw")
 	root.TIME.label_pgt.grid(row=0, column=0, padx=6, pady=(3, 1), sticky="w")
 	root.TIME.label_srt.grid(row=1, column=0, padx=6, pady=(0, 3), sticky="w")
-
 
 def get_logfile_name():
 	os.makedirs("data", exist_ok=True)
@@ -1264,6 +985,10 @@ def init_logfile(filename):
 
 def get_default_config_path():
 		return os.path.join(os.path.dirname(__file__), "config.json")
+
+def gettimeus64():
+	return (int(time.time() * 1e6)).to_bytes(8, 'big')
+			
 
 
 if __name__ == "__main__":

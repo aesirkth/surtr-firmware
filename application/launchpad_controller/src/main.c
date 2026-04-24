@@ -15,13 +15,17 @@
 /* ========================================================== */
 /* =			GLOBAL CONSTANT DEFINITIONS					= */
 /* ========================================================== */
-#define ETHERNET_THREAD_STACK_SIZE 		2048
+#define ETHERNET_THREAD_STACK_SIZE 		4096
 #define ETHERNET_THREAD_PRIORITY		1
 
-#define UART_THREAD_STACK_SIZE 			2048
+#define UART_THREAD_STACK_SIZE 			4096
 #define UART_THREAD_PRIORITY			1	// Highest priority.
 
-#define BLINKER_THREAD_STACK_SIZE 	128
+#define SENSOR_THREAD_STACK_SIZE 		4096
+#define SENSOR_THREAD_PRIORITY			2	
+#define SENSOR_THREAD_PERIOD			1000
+
+#define BLINKER_THREAD_STACK_SIZE 	1024
 #define BLINKER_THREAD_PRIORITY		5
 #define BLINKER_THREAD_PERIOD		1000
 #define THREAD_EMPTYARG 			void*
@@ -44,8 +48,7 @@
 #define SURTR_REQUEST_SYN_ACK       0
 #define SURTR_REQUEST_SW_CTRL       1
 #define SURTR_REQUEST_STEP_CTRL     2
-#define SURTR_REQUEST_SW_STATE      3
-#define SURTR_REQUEST_ADC_STATE     4
+#define SURTR_REQUEST_STATE     	3
 #define SURTR_REQUEST_IGNITION      5
 
 #define SURTR_MSG_SW_CTRL_INDEX_CMD			0
@@ -59,10 +62,12 @@
 #define SURTR_MSG_ACK_SUCCESS   	0xFF
 #define SURTR_MSG_ACK_FAIL			0x00
 
-#define SURTR_RESPONSE_INDEX_CMD	0
-#define SURTR_RESPONSE_INDEX_ACK	1
+#define SURTR_RESPONSE_INDEX_ID		0
+#define SURTR_RESPONSE_INDEX_METHOD	1
 #define SURTR_RESPONSE_INDEX_TIME	2
-#define SURTR_RESPONSE_INDEX_DATA	10
+#define SURTR_RESPONSE_INDEX_CMD	10
+#define SURTR_RESPONSE_INDEX_ACK	11
+#define SURTR_RESPONSE_INDEX_DATA	12
 
 
 /* https://www.cs.yale.edu/homes/aspnes/pinewiki/C(2f)Macros.html */
@@ -137,7 +142,6 @@ struct uart_config uart_config = {
 
 Circbuf rx_circbuf;
 uint8_t rx_buffer[MSG_SIZE];
-uint8_t payload[MSG_SIZE];
 
 /* ========================================================== */
 /* =				THREAD DEFINITIONS						= */
@@ -147,19 +151,27 @@ uint8_t payload[MSG_SIZE];
 struct k_thread uart_thread;
 struct k_thread ethernet_thread;
 struct k_thread blinker_thread;
+struct k_thread sensor_thread;
 k_tid_t uart_id;
 k_tid_t ethernet_id;
 k_tid_t blinker_id;
+k_tid_t sensor_id;
 
 K_THREAD_STACK_DEFINE(uart_stack, UART_THREAD_STACK_SIZE);
 K_THREAD_STACK_DEFINE(ethernet_stack, ETHERNET_THREAD_STACK_SIZE);
 K_THREAD_STACK_DEFINE(blinker_stack, BLINKER_THREAD_STACK_SIZE);
+K_THREAD_STACK_DEFINE(sensor_stack, SENSOR_THREAD_STACK_SIZE);
 
+/* ========================================================== */
+/* =				TIMER DEFINITIONS						= */
+/* ========================================================== */
+struct k_timer sampling_timer;
 
 /* ========================================================== */
 /* =				SEMAPHORE DEFINITIONS					= */
 /* ========================================================== */
 struct k_sem sem_uart_irq;
+struct k_sem sem_sampling_irq;
 
 /* ========================================================== */
 /* =				SERVER DEFINITIONS						= */
@@ -179,7 +191,6 @@ static uint8_t ethernet_connection;
 /* ========================================================== */
 /* Defines Message Queue wmsq[4] where each message can be    */
 /*  max 128 bytes long. 									  */
-K_MSGQ_DEFINE(write_msgq, MSG_SIZE, MSGQ_BACKLOG, MSGQ_ALIGN);
 K_MSGQ_DEFINE(request_msgq, MSG_SIZE, MSGQ_BACKLOG, MSGQ_ALIGN);
 
 
@@ -194,13 +205,18 @@ int send_message(struct Client *client, uint8_t *response, uint8_t response_size
     uint8_t tx_buffer[MSG_SIZE];
     uint8_t tx_size = 0;
 
+	LOG_DBG("Send Message.\n");
+
     encode_packet(response, tx_buffer, response_size, &tx_size);
+	LOG_DBG("response_size: %d\n", response_size);
+	LOG_DBG("packet_size: %d\n", tx_size);
 
     if(!uart_send_message(tx_buffer, tx_size))
     {
         LOG_ERR("Send Message failed on UART.\n");
         return 0;
     }
+	LOG_DBG("UART message sent.\n");
 
     if(!ethernet_connection)
         return 1;
@@ -223,8 +239,7 @@ int send_message(struct Client *client, uint8_t *response, uint8_t response_size
  * SYN_ACK			0					| ACK |
  * SW CTRL		    1					| ID | STATE |
  * STEP CTRL		2					| ID | MOTOR DELTA |
- * SW STATE		    3					| SW[8] | MOTOR1 | MOTOR2 |
- * ADC STATE		4					| VALUE[24] |
+ * ADC/SW STATE		3					| ADC[24] | SW[8] |
  * IGNITION		    5					| PASSWORD |
  * 
  */
@@ -247,46 +262,51 @@ void ask_server(struct Server *server, struct Client *client)
 
     while(1)
     {
-        if(!k_msgq_get(&write_msgq, payload_buffer, K_FOREVER))
+		LOG_DBG("Ask server waiting for request.\n");
+        if(k_msgq_get(&request_msgq, payload_buffer, K_FOREVER) != 0)
         {
             LOG_WRN("Message Queue failed to get item.\n");
             return 0;
         }
+		LOG_DBG("Message Recieved from Request Queue.\n");
+
+		/* -------- Mirror Request Unique ID -------------- */
+		response[0] = payload_buffer[0];
+        response_size++;
+
+		/* -------- Mirror Request UART/ETH --------------- */
+		response[1] = payload_buffer[1];
+        response_size++;
+        
+		/* -------- Save Current Time --------------------- */
+        int64_t ms_since_boot = k_uptime_get();
+        memcpy(response+2, &ms_since_boot, sizeof(ms_since_boot));
+        response_size += 8;
 
         /* -------- Save Command Requested ---------------- */
-        const uint8_t cmd = payload_buffer[0];
-        response[SURTR_RESPONSE_INDEX_CMD] = cmd;
+        const uint8_t cmd = payload_buffer[10];
+        response[10] = cmd;
         response_size++;
+		
+		LOG_DBG("Unique ID: %d, Method: %d, CMD: %d\n", payload_buffer[0], payload_buffer[1], payload_buffer[10]);
                     
         /* -------- Add ACK after Command ----------------- */
 		surtr_syn_ack(response, &response_size);
-        
-        /* -------- Save Current Time --------------------- */
-        int64_t ms_since_boot = k_uptime_get();
-        memcpy(SURTR_RESPONSE_INDEX_TIME, &ms_since_boot, sizeof(ms_since_boot));
-        response_size += 8;
 
         /* -------- Execute Request Command --------------- */
         switch (cmd)
         {
             case SURTR_REQUEST_SYN_ACK:
+					LOG_DBG("SURTR_REQUEST_SYN_ACK\n");
                 break;
 
             case SURTR_REQUEST_SW_CTRL:
-                    surtr_sw_ctrl(payload);
+					LOG_DBG("SURTR_REQUEST_SW_CTRL\n");
+                    surtr_sw_ctrl(payload_buffer[11], payload_buffer[12]);
                 break;
 
             case SURTR_REQUEST_STEP_CTRL:
-                    surtr_step_ctrl(payload);
-                break;
-            
-            case SURTR_REQUEST_ADC_STATE:
-                    surtr_get_adc_state(response, &response_size);
-						// surtr_syn_failed(response);
-                break;
-
-            case SURTR_REQUEST_SW_STATE:
-                    surtr_get_sw_state(response, &response_size);
+                    surtr_step_ctrl(payload_buffer);
                 break;
 
             case SURTR_REQUEST_IGNITION:
@@ -303,10 +323,11 @@ void ask_server(struct Server *server, struct Client *client)
         {
             LOG_ERR("Send Message failed.\n");
         }
+
+        /* -------- Reset Response ------------------------ */
+		response_size = 0;
     }
 }
-
-
 
 /**
  * ==========================================================
@@ -323,6 +344,8 @@ void uart_thread_main(struct Client* client, THREAD_EMPTYARG, THREAD_EMPTYARG)
     while(1)
     {
         uart_wait_IRQ();
+
+		LOG_DBG("UART IRQ received.\n");
 
 		if(!uart_handle_request(&rx_circbuf))
 		{
@@ -372,6 +395,64 @@ void blinker_thread_main(THREAD_EMPTYARG, THREAD_EMPTYARG, THREAD_EMPTYARG)
 		blink_leds(led_state);
 		led_state = !led_state;
 		k_msleep(BLINKER_THREAD_PERIOD);
+	}
+}
+
+/**
+ * ==========================================================
+ * sensor_thread_main():
+ * 		PERIOD of 100 ms
+ * 		Construct response which includes timestamp, adc, sw
+ * 		0		 1	    2	   
+ * 		| UNIQID | CMD | TIME | ADC[0-23] | SW[0-7]
+ * 		
+ */
+void sensor_thread_main(struct Client *client, THREAD_EMPTYARG, THREAD_EMPTYARG)
+{
+	uint8_t response[MSG_SIZE];
+	uint8_t response_size = 0;
+    const uint8_t cmd = 3;
+
+	while(1)
+	{
+		/* -------- Wait for Timer IRQ -------------------- */
+		k_sem_take(&sem_sampling_irq, K_FOREVER);
+
+		LOG_DBG("Sensor Thread begin iteraiton.\n");
+
+		/* -------- Sensor Sampling Unique ID ------------- */
+		response[SURTR_RESPONSE_INDEX_ID] = 0xFF;
+        response_size++;
+
+		// Assumes UART for now?
+		response[SURTR_RESPONSE_INDEX_METHOD] = 0x00;
+        response_size++;
+    
+        /* -------- Save Current Time --------------------- */
+        int64_t ms_since_boot = k_uptime_get();
+        memcpy(SURTR_RESPONSE_INDEX_TIME, &ms_since_boot, sizeof(ms_since_boot));
+        response_size += 8;
+        
+		/* -------- Save Command Requested ---------------- */
+        response[SURTR_RESPONSE_INDEX_CMD] = cmd;
+        response_size++;
+                    
+        /* -------- Add ACK after Command ----------------- */
+		surtr_syn_ack(response, &response_size);
+
+        /* -------- Read ADC / SW States ------------------ */
+		surtr_get_adc_state(response, &response_size);
+		surtr_get_sw_state(response, &response_size);
+        
+		/* -------- Send Response Back -------------------- */
+        if(!send_message(client, response, response_size))
+        {
+            LOG_ERR("Send Message failed.\n");
+        }
+		LOG_DBG("Sensor Thread Message sent.\n");
+
+        /* -------- Reset Response ------------------------ */
+		response_size = 0;
 	}
 }
 
@@ -458,11 +539,13 @@ int main()
 	if (uart_configure(uart_dev, &uart_config) < 0)
 		FATALERROR("External UART configure failed.");
 
+	memset(rx_buffer, 0, MSG_SIZE);
 	circbuf_construct(&rx_circbuf, &rx_buffer, MSG_SIZE);
 
 	if (uart_irq_callback_user_data_set(uart_dev, uart_isr, &rx_circbuf) < 0)
 		FATALERROR("External UART ISR callback failed.");
 
+	// Enable Interrupts before threads can be dangerous.
 	uart_irq_rx_enable(uart_dev);
 	// uart_irq_tx_enable(uart_dev);
 
@@ -481,8 +564,16 @@ int main()
     LOG_DBG("Server Initialized.\n");
 	
 	/* ---------- SEMAPHORE INITIALIZE ------------- */
+	k_timer_init(&sampling_timer, sampling_isr, NULL);
+	k_timer_start(
+		&sampling_timer, 
+		K_MSEC(SENSOR_THREAD_PERIOD), 
+		K_MSEC(SENSOR_THREAD_PERIOD));
+	
+	/* ---------- SEMAPHORE INITIALIZE ------------- */
 	// initial = 0, count = 2 (2 threads);
     k_sem_init(&sem_uart_irq, 0, 5);
+    k_sem_init(&sem_sampling_irq, 0, 1);
 	
 	/* ---------- RESET STATIC ARRAYS -------------- */
 	/* Initialize adc[], sw[], led[] with zeroes */
@@ -508,6 +599,7 @@ int main()
     LOG_DBG("UART Thread Initialized.\n");
 
 	/* --------- ETHERNET THREAD INITIALIZE -------- */
+	/*
 	ethernet_id = k_thread_create(
 		&ethernet_thread,
 		ethernet_stack,
@@ -521,6 +613,7 @@ int main()
 		K_NO_WAIT
 	);
     LOG_DBG("ETHERNET Thread Initialized.\n");
+	*/
 	
 	/* --------- BLINKER THREAD INITIALIZE -------- */
 	blinker_id = k_thread_create(
@@ -536,6 +629,23 @@ int main()
 		K_NO_WAIT
 	);
     LOG_DBG("BLINKER Thread Initialized.\n");
+	
+	/* --------- SENSOR THREAD INITIALIZE -------- */
+	/*
+	sensor_id = k_thread_create(
+		&sensor_thread,
+		sensor_stack,
+		K_THREAD_STACK_SIZEOF(sensor_stack),
+		sensor_thread_main,
+		&client,
+		NULL,
+		NULL,
+		SENSOR_THREAD_PRIORITY,
+		0,
+		K_NO_WAIT
+	);
+    LOG_DBG("SENSOR Thread Initialized.\n");
+	*/
 	
 	ask_server(&server, &client);
 
