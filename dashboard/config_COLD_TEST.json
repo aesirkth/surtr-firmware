@@ -53,5 +53,22 @@
     "switch6": {"label": "N/C", "on_label": "On", "off_label": "Off", "disabled": true},
     "switch7": {"label": "N/C", "on_label": "On", "off_label": "Off", "disabled": true},
     "switch8": {"label": "N/C", "on_label": "On", "off_label": "Off", "disabled": true}
-  }
+  },
+  "SEQUENCE": [
+    {
+      "sw": 1,
+      "state": 1,
+      "time": 2
+    },
+    {
+      "sw": 2,
+      "state": 1,
+      "time": 3
+    },
+    {
+      "sw": 3,
+      "state": 1,
+      "time": 4
+    }
+  ]
 }

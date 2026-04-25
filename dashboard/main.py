@@ -95,6 +95,11 @@ class Dashboard(ctk.CTk):
 			self.capture_adc_zero_bias
 		)
 
+		self.SEQUENCE = self.Sequence(
+			self.SIDEBAR,
+			self
+		)
+
 		self.TIME = self.Time(self.SIDEBAR, "-", time.time())
 		self.adc_temp_buffer = [0]*NUM_CHANNELS_TOTAL
 		self.adc_raw_buffer = [0]*NUM_CHANNELS_TOTAL
@@ -592,6 +597,29 @@ class Dashboard(ctk.CTk):
 				self.label_pgt.configure(True, text=f"Time (program): " + self.convert_to_min_sec(self.time_pgt))
 				self.label_srt.configure(True, text=f"Time (Surtr): " + self.convert_to_min_sec(self.time_srt))
 # =============================================================================
+	
+	class Sequence:
+		def __init__(self, parent, root):
+			self.panel = ctk.CTkFrame(parent)
+			self.title = ctk.CTkLabel(self.panel, text="Switches", font=DEFAULT_FONT_BOLD)
+			self.button = ctk.CTkButton(
+				self.panel,
+				text="Execute\nSequence",
+				command=lambda: self.sequence(root),
+				width=150,
+				font=DEFAULT_FONT,
+				corner_radius=0
+			)
+
+		def sequence(self, root):
+			seq = root.CONFIG.get_sequence()
+			for entry in seq:
+				sw = entry["sw"]
+				state = entry["state"]
+				t = int(entry["time"]*1000)
+				root.after(t, switch_command, sw, state)
+
+
 
 
 # ===============================================================
@@ -1039,6 +1067,7 @@ def setup_dashboard(root: Dashboard):
 	root.ACTUATION.can_rx_temp.title.grid(row=0, column=0, padx=6, pady=4, sticky="w")
 	root.ACTUATION.can_rx_temp.value.grid(row=1, column=0, padx=6, pady=3, sticky="w")
 
+
 	root.CONFIG.path_entry.grid(row=0, column=1, padx=4, pady=4, sticky="ew")
 	root.CONFIG.panel.grid_columnconfigure(1, weight=1)
 	root.CONFIG.panel.grid(row=0, column=0, columnspan=2, sticky="ew", padx=8, pady=4)
@@ -1069,6 +1098,10 @@ def setup_dashboard(root: Dashboard):
 	root.TIME.panel.grid(row=4, column=0, padx=0, pady=(4, 0), sticky="nw")
 	root.TIME.label_pgt.grid(row=0, column=0, padx=6, pady=(3, 1), sticky="w")
 	root.TIME.label_srt.grid(row=1, column=0, padx=6, pady=(0, 3), sticky="w")
+	
+	root.SEQUENCE.panel.grid(row=7, column=0, sticky="nw", padx=6, pady=6)
+	root.SEQUENCE.title.grid(row=0, column=0, padx=6, pady=4, sticky="w")
+	root.SEQUENCE.button.grid(row=1, column=0, padx=6, pady=6)
 
 
 def get_logfile_name():
