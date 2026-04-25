@@ -340,18 +340,24 @@ void uart_thread_main(struct Client* client, THREAD_EMPTYARG, THREAD_EMPTYARG)
 {
     LOG_DBG("UART Thread Enter.\n");
 	uint8_t payload_size;
+	uint8_t payload[MSG_SIZE];
+
+	static struct uart_protocol ps;
 
     while(1)
     {
-        uart_wait_IRQ();
-
-		LOG_DBG("UART IRQ received.\n");
-
-		if(!uart_handle_request(&rx_circbuf))
+		if(!uart_handle_request(&rx_circbuf, &ps, &payload))
 		{
             LOG_DBG("InThread Request Failed.\n");
 			continue;
 		}
+
+		if(k_msgq_put(&request_msgq, payload, K_NO_WAIT) != 0)
+		{
+			LOG_WRN("UART: Message could not be placed on queue.");
+			return 0;
+		}
+
         LOG_DBG("UART Thread Request Handled.\n");
     }
 }
@@ -421,20 +427,20 @@ void sensor_thread_main(struct Client *client, THREAD_EMPTYARG, THREAD_EMPTYARG)
 		LOG_DBG("Sensor Thread begin iteraiton.\n");
 
 		/* -------- Sensor Sampling Unique ID ------------- */
-		response[SURTR_RESPONSE_INDEX_ID] = 0xFF;
+		response[response_size] = 0xFF;
         response_size++;
 
 		// Assumes UART for now?
-		response[SURTR_RESPONSE_INDEX_METHOD] = 0x00;
+		response[response_size] = 0x00;
         response_size++;
     
-        /* -------- Save Current Time --------------------- */
+		/* -------- Save Current Time --------------------- */
         int64_t ms_since_boot = k_uptime_get();
-        memcpy(SURTR_RESPONSE_INDEX_TIME, &ms_since_boot, sizeof(ms_since_boot));
+        memcpy(response+2, &ms_since_boot, sizeof(ms_since_boot));
         response_size += 8;
         
 		/* -------- Save Command Requested ---------------- */
-        response[SURTR_RESPONSE_INDEX_CMD] = cmd;
+        response[response_size] = cmd;
         response_size++;
                     
         /* -------- Add ACK after Command ----------------- */
@@ -567,8 +573,8 @@ int main()
 	k_timer_init(&sampling_timer, sampling_isr, NULL);
 	k_timer_start(
 		&sampling_timer, 
-		K_MSEC(SENSOR_THREAD_PERIOD), 
-		K_MSEC(SENSOR_THREAD_PERIOD));
+		K_MSEC(100), 
+		K_MSEC(100));
 	
 	/* ---------- SEMAPHORE INITIALIZE ------------- */
 	// initial = 0, count = 2 (2 threads);
@@ -631,7 +637,6 @@ int main()
     LOG_DBG("BLINKER Thread Initialized.\n");
 	
 	/* --------- SENSOR THREAD INITIALIZE -------- */
-	/*
 	sensor_id = k_thread_create(
 		&sensor_thread,
 		sensor_stack,
@@ -645,7 +650,6 @@ int main()
 		K_NO_WAIT
 	);
     LOG_DBG("SENSOR Thread Initialized.\n");
-	*/
 	
 	ask_server(&server, &client);
 

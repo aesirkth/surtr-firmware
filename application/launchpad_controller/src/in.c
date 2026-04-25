@@ -70,16 +70,21 @@ int surtr_get_adc_state(uint8_t *response, uint8_t *response_size)
     uint8_t *p_response_data;
     uint8_t adc_byte_size; 
     
-    p_response_data = response + (*response_size);
-
     if(!read_adc(adc_val))
     {
         LOG_ERR("Read_adc() failed.");
         return 0;
     }
 
-    memcpy(p_response_data, &adc_val, ADC_ARRAY_BYTE_SIZE);
-    *response_size += ADC_ARRAY_BYTE_SIZE;
+    // Little endian LSB first
+    for (int i = 0; i < NUM_ADC_CHANNELS; i++) {
+        uint32_t v = adc_val[i];
+        response[*response_size + 0] = v & 0xFF;
+        response[*response_size + 1] = (v >> 8) & 0xFF;
+        response[*response_size + 2] = (v >> 16) & 0xFF;
+        response[*response_size + 3] = (v >> 24) & 0xFF;
+        (*response_size) += 4;
+    }
 
     return 1;
 }
@@ -96,9 +101,11 @@ int surtr_get_adc_state(uint8_t *response, uint8_t *response_size)
 int surtr_get_sw_state(uint8_t *response, uint8_t *response_size)
 {
     for(int i = 0; i < NUM_SWITCHES; i++)
-        response[i+(*response_size)] = sw[i];
-
-    *response_size += NUM_SWITCHES;
+    {
+        response[(*response_size)] = sw[i];
+        (*response_size)++;
+    }
+    return 1;
 }
 
 void sampling_isr(struct k_timer *timer_id)

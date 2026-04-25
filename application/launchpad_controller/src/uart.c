@@ -7,25 +7,21 @@ LOG_MODULE_REGISTER(uart, LOG_LEVEL_DBG);
  * handle_request_uart():
  *      Retrieves UART packet and places it on REQUEST queue.
  */
-int uart_handle_request(Circbuf *rx_circbuf)
+int uart_handle_request(Circbuf *rx_circbuf, struct uart_protocol *ps, uint8_t *payload)
 {
-    uint8_t payload_buffer[MSG_SIZE];
-    uint8_t payload_size;
-
-    if(!uart_retrieve_packet(rx_circbuf, &payload_buffer, &payload_size))
+    while(1)
     {
-        LOG_WRN("UART: failed to retrieve packet.");
-        return 0;
-    }
-    LOG_DBG("UART retrieved packet.");
+        uart_wait_IRQ();
+        LOG_DBG("UART wait IRQ finished:\n");
 
-    if(k_msgq_put(&request_msgq, payload_buffer, K_NO_WAIT) != 0)
-    {
-        LOG_WRN("UART: Message could not be placed on queue.");
-        return 0;
+        if(uart_retrieve_packet(rx_circbuf, ps))
+            break;
     }
-    LOG_DBG("UART placed packet on request queue.");
 
+    for(int i = 0; i < ps->length; i++)
+        payload[i] = ps->buffer[i+2];
+
+    LOG_DBG("UART Retrieve packet success\n");
     return 1;
 }
 
@@ -40,10 +36,10 @@ void uart_wait_IRQ()
     k_sem_take(&sem_uart_irq, K_FOREVER);
 }
 
+
 /**
  * ==========================================================
  * retrieve_packet_uart():
- *      Sequentially goes through packet and checks that:
  *      1. First byte is alignment.
  *      2. Collects length from 2nd byte.
  *      3. Retrieves data of size length.
@@ -52,59 +48,95 @@ void uart_wait_IRQ()
  *      stored into a tmp_rx buffer in order to compare against CRC 
  *      CRC must use {Align, Length, Data} as comparison buffer.
  */
-int uart_retrieve_packet(Circbuf *rx_circbuf, uint8_t *out_buf, int *p_data_size) 
+int uart_retrieve_packet(Circbuf *rx_circbuf, struct uart_protocol *ps)
 {
-    uint8_t alignment,
-            length, 
-            data_byte,
-            data_end,
-            crc_low, 
-            crc_high;
-    uint16_t crc, crc_dev;
-    uint8_t tmp_rx[MSG_SIZE];
-
-    /* ---- 1. Alignment byte 0x34 ----------- */
-    circbuf_pop(rx_circbuf, &alignment);
-    LOG_DBG("Alignment byte: %d\n", alignment);
-    if (alignment != PROTOCOL_ALIGNMENT_BYTE)
+    while(1)
     {
-        LOG_WRN("Aligment byte invalid.");
-        return 0;
-    }
-    tmp_rx[0] = alignment;
+        switch (ps->state)
+        {
+            case ALIGNMENT:
+                    /* ---- 1. Alignment byte 0x34 ----------- */
+                    if (!circbuf_pop(rx_circbuf, &ps->alignment))
+                    {
+                        LOG_DBG("Alignment: Circular Buffer empty.");
+                        return 0;
+                    }
 
-    /* ---- 2. Length byte ------------------- */
-    circbuf_pop(rx_circbuf, &length);
-    *p_data_size = length;
-    tmp_rx[1] = length;
-    LOG_DBG("Length byte: %d\n", length);
+                    if (ps->alignment == PROTOCOL_ALIGNMENT_BYTE)
+                    {
+                        ps->buffer[0] = ps->alignment;
+                        ps->state = LENGTH;
+                        LOG_DBG("Alignment: Success.");
+                    }
+                break;
+            
+            case LENGTH:
+                    /* ---- 2. Length byte ------------------- */
+                    if (!circbuf_pop(rx_circbuf, &ps->length))
+                    {
+                        LOG_DBG("Length: Circular Buffer empty.");
+                        return 0;
+                    }
 
-    /* ---- 3. data bytes into tmp_rx -------- */
-    for(int i = 0; i < length; i++)
-    {
-        circbuf_pop(rx_circbuf, &data_byte);
-        tmp_rx[i+2] = data_byte;
-    }
-    data_end = length+2;
+                    if (ps->length <= 0 || ps->length >= MSG_SIZE-4)
+                        ps->state = ALIGNMENT;
 
-    /* ---- 4. CRC cmp {Align, len, data} ---- */
-    circbuf_pop(rx_circbuf, &crc_low);
-    circbuf_pop(rx_circbuf, &crc_high);
-    crc = (uint16_t)(crc_low) | ((uint16_t)(crc_high) << 8);
-    crc_dev = crc16(PROTOCOL_CRC_POLY, PROTOCOL_CRC_SEED, tmp_rx, data_end);
-    //if (crc != crc16(PROTOCOL_CRC_POLY, PROTOCOL_CRC_SEED, tmp_rx, data_end))
-    LOG_DBG("CRC INCOMING: %d, CRC DEV: %d\n", crc, crc_dev);
-    if(crc != crc_dev)
-    {
-        LOG_WRN("Invalid Checksum.");
-        return 0;
+                    ps->buffer[1] = ps->length;
+                    ps->data_end = ps->length+2;
+                    ps->data_index = 0;
+                    ps->state = PAYLOAD;
+                    LOG_DBG("Length: Success.");
+                break;
+            
+            case PAYLOAD:
+                    /* ---- 3. data bytes into buffer -------- */
+                    if (!circbuf_pop(rx_circbuf, &ps->buffer[ps->data_index+2]))
+                    {
+                        LOG_DBG("Payload: Circular Buffer empty.");
+                        return 0;
+                    }
+                    ps->data_index++;
+                    if (ps->data_index >= ps->length)
+                    {
+                        LOG_DBG("Payload: Success.");
+                        ps->state = CHECKSUM0;
+                    }
+                break;
+
+            case CHECKSUM0:
+                    /* ---- 4. CRC low byte ------------------- */
+                    if (!circbuf_pop(rx_circbuf, &ps->crc_low))
+                    {
+                        LOG_DBG("CHECKSUM0: Circular Buffer empty.");
+                        return 0;
+                    }
+                    ps->state = CHECKSUM1;
+                break;
+            
+            case CHECKSUM1:
+                    /* ---- 5. CRC cmp {Align, len, data} ---- */
+                    if (!circbuf_pop(rx_circbuf, &ps->crc_high))
+                    {
+                        LOG_DBG("CHECKSUM1: Circular Buffer empty.");
+                        return 0;
+                    }
+
+                    ps->crc = (uint16_t)(ps->crc_low) | ((uint16_t)(ps->crc_high) << 8);
+                    uint16_t crc_dev = crc16(PROTOCOL_CRC_POLY, PROTOCOL_CRC_SEED, ps->buffer, ps->data_end);
+                    LOG_DBG("CRC INCOMING: %d, CRC DEV: %d\n", ps->crc, crc_dev);
+                        
+                    ps->state = ALIGNMENT;
+
+                    if(ps->crc == crc_dev)
+                    {
+                        LOG_DBG("CHECKSUM1: Success.");
+                        return 1;
+                    }
+                    LOG_WRN("Invalid Checksum.");
+                break;
+        }
     }
     
-    /* ---- 5. Transfer only data payload ---- */
-    for(int i = 0; i < length; i++)
-        out_buf[i] = tmp_rx[i+2];
-
-    return 1;
 }
 
 /**

@@ -6,10 +6,29 @@
 #include "packet.h"
 #include "circbuf.h"
 
+#define ALIGNMENT   0
+#define LENGTH      1
+#define PAYLOAD     2
+#define CHECKSUM0   3
+#define CHECKSUM1   4
+
 /* Request Message Queue declared in main. */
 extern struct k_msgq request_msgq;
 extern const struct device *const uart_dev;
 extern struct k_sem sem_uart_irq;
+
+typedef struct uart_protocol
+{
+    uint8_t buffer[MSG_SIZE];
+    uint8_t state;
+    uint8_t alignment;
+    uint8_t length;
+    uint8_t data_index;
+    uint8_t data_end;
+    uint8_t crc_low;
+    uint8_t crc_high;
+    uint16_t crc;
+};
 
 /**
  * ==========================================================
@@ -36,7 +55,7 @@ void uart_isr(const struct device *dev, void *circ_buf);
  *      When UART IRQ fires, new message is placed in cir buffer and SEM (+1) released.
  *      Packet can then be retrieved.
  */
-int uart_handle_request(Circbuf *rx_circbuf);
+int uart_handle_request(Circbuf *rx_circbuf, struct uart_protocol *ps, uint8_t *payload);
 
 /**
  * ==========================================================
@@ -50,6 +69,6 @@ int uart_handle_request(Circbuf *rx_circbuf);
  *      stored into a tmp_rx buffer in order to compare against CRC 
  *      CRC must use {Align, Length, Data} as comparison buffer.
  */
-int uart_retrieve_packet(Circbuf *rx_circbuf, uint8_t *out_buf, int *p_data_size);
+int uart_retrieve_packet(Circbuf *rx_circbuf, struct uart_protocol *ps);
 
 #endif

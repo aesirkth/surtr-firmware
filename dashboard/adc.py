@@ -1,13 +1,12 @@
-
 from constants import *
-from graph import Graph
+from graph import plot_single_graph_live
 
 # ===============================================================
 # ADC CHANNELS
 # Each ADC holds 12 channels.
 # ===============================================================
 class ADC:
-    def __init__(self, parent, id, title, label, func_graph):
+    def __init__(self, parent, id, title, label):
         self.id = id
         self.panel = ctk.CTkFrame(parent, border_width=1)
         self.title = ctk.CTkLabel(self.panel, text=title, font=DEFAULT_FONT_BOLD)
@@ -18,7 +17,7 @@ class ADC:
 
         self.channel: list[ADC.Channel] = []
         for i in range(0, NUM_CHANNELS_PER_ADC):
-            ch = ADC.Channel(self.panel, f"CH {i+1}", "-", lambda n=i: func_graph(self.id, n, self.datafile, self.configfile))
+            ch = ADC.Channel(self.panel, f"CH {i+1}", "-", lambda n=i: plot_single_graph_live(self.id, n, self.datafile, self.configfile))
             self.channel.append(ch)
 
     def update_channels(self, adc_values):
@@ -57,4 +56,4 @@ class ADC:
             text_color = ("gray60", "gray45") if disabled else ("gray10", "gray90")
             self.label.configure(text_color=text_color)
             self.value.configure(text_color=text_color)
-    
+     

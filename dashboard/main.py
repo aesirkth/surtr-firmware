@@ -35,7 +35,7 @@ class Dashboard(ctk.CTk):
 		self.SAVEFILE 		= get_logfile_name()
 		self.SAVEFILE_WHANDLE = init_logfile(self.SAVEFILE)
 		
-		self.adc_applied_buffer = array.array('i', [0]*NUM_CHANNELS_TOTAL)
+		self.adc_applied_buffer = [0]*NUM_CHANNELS_TOTAL
 		self.adc_raw_buffer 	= array.array('i', [0]*NUM_CHANNELS_TOTAL)
 		self.sw_raw_buffer 		= array.array('i', [0]*NUM_SWITCHES)
 		
@@ -46,14 +46,12 @@ class Dashboard(ctk.CTk):
 			ADC0_TAG,
 			"ADC0",
 			"",
-			self.GRAPH.initialize_live_graph
 		)
 		self.ADC1 = ADC(
 			self,
 			ADC1_TAG,
 			"ADC1",
 			"",
-			self.GRAPH.initialize_live_graph
 		)
 
 		self.ACTUATION 	= Actuation(
@@ -209,8 +207,8 @@ class Dashboard(ctk.CTk):
 				self.label_pgt = ctk.CTkLabel(self.panel, text=value, font=("IBM Plex Mono", 12))
 				self.label_srt = ctk.CTkLabel(self.panel, text=value, font=("IBM Plex Mono", 12))
 				self.start_time = start_time
-				self.time_srt = None
-				self.time_pgt = None
+				self.time_srt = 0
+				self.time_pgt = 0
 
 		def convert_to_min_sec(self, seconds):
 			minutes = int(seconds) // 60
@@ -218,9 +216,7 @@ class Dashboard(ctk.CTk):
 			return f"{minutes:02d}:{secs:02d}"
 			
 		def update_time(self, parent):
-				val = time.time()
 				self.time_pgt = math.ceil(time.time() - self.start_time)
-				self.time_srt = math.ceil(val)
 				self.label_pgt.configure(True, text=f"Time (program): " + self.convert_to_min_sec(self.time_pgt))
 				self.label_srt.configure(True, text=f"Time (Surtr): " + self.convert_to_min_sec(self.time_srt))
 
@@ -343,12 +339,17 @@ def main():
 	
 	#graph_thread = threading.Thread(target=graph_thread_main, args=(root,), daemon=True) 
 
-	communication_thread = threading.Thread(target=communication_thread_main, args=(stop, serial, port), daemon=True)
 	writing_thread = threading.Thread(target=uart_write_thread_main, args=(stop, serial, root), daemon=True)
 	reading_thread = threading.Thread(target=uart_read_thread_main, args=(stop, serial), daemon=True)
 
+	communication_thread = threading.Thread(
+		target=communication_thread_main, 
+		args=(stop, writing_thread, reading_thread, serial, port), 
+		daemon=True)
+
 	response_handler = threading.Thread(target=response_handler_thread_main, args=(stop, root), daemon=True)
 
+	stop.set()
 	communication_thread.start()
 	response_handler.start()
 	writing_thread.start()
@@ -357,7 +358,7 @@ def main():
 	# ------- On Startup ---------------- #
 	setup_dashboard(root)
 	
-	root.after(1000, root.TIME.update_time, root)
+	##root.after(1000, root.TIME.update_time, root)
 	root.mainloop()
 
 	# ------- On Shutdown --------------- #
@@ -387,47 +388,62 @@ def main():
 # 		If no response then go back to TRY_CONNECT. 
 #
 #		
-def communication_thread_main(stop: threading.Event, conn: SerialConnection, port: str):
+def communication_thread_main(
+	stop: threading.Event, 
+	writing_thread: threading.Thread,
+	reading_thread: threading.Thread,
+	conn: SerialConnection, 
+	port: str):
 	
 	print("DEBUG: COM THREAD START.\n")
 
-	open_serial = 0
-	try_connect = 1
-	connected 	= 2
+	shutdown	= 0
+	open_serial = 1
+	try_connect = 2
+	connected 	= 3
 
-	connection.state = open_serial
+	connection.state = 1
 
 	while True:
 		try:
 			match connection.state:
 
 				case 0:
+					print("DEBUG: COM State: Shutdown.\n")
+					stop.set()
+					time.sleep(1)
+					connection.state = 1
+
+				case 1:
 
 					print("DEBUG: COM State: Open Serial.\n")
 
-					#stop.set()
 					ser_old = conn.get()
 					if ser_old:
 						ser_old.close()
 
+
+					# goes to exception if failure here.
 					ser_new = serial.Serial(port, BAUDRATE, timeout=None)
+
+					# -------- Success in creating serial --------- #
 					conn.set(ser_new)
 					stop.clear()
-					connection.state = try_connect
+					connection.state = 2
 
-				case 1:
+				case 2:
 
 					print("DEBUG: COM State: Try Connect.\n")
 					# wipe pending requests
 					syn_ack_command()
 					 
 					if connection.connection:
-						connection.state = connected
+						connection.state = 3
 					time.sleep(5)
-					pending_request.cleanup(5000)
+					#pending_request.cleanup(10000)
 					pending_request.print()
 
-				case 2:	
+				case 3:	
 					print("DEBUG: COM State: Connected.\n")
 					syn_ack_command()
 
@@ -437,7 +453,7 @@ def communication_thread_main(stop: threading.Event, conn: SerialConnection, por
 					#	continue
 
 					time.sleep(5)
-					pending_request.cleanup(5000)
+					#pending_request.cleanup(10000)
 					pending_request.print()
 				
 				case _:
@@ -445,10 +461,7 @@ def communication_thread_main(stop: threading.Event, conn: SerialConnection, por
 	
 		except serial.SerialException as exc:
 			print("Failed to open Serial port: ", port)
-			connection.state = open_serial
-			stop.set()
-			time.sleep(MS1000)
-			print("Exit exception\n")
+			connection.state = 1
 
 
 
@@ -466,12 +479,9 @@ def uart_write_thread_main(stop: threading.Event, conn: SerialConnection, root: 
 
 	print("DEBUG: UART WRITE THREAD START.\n")
 	while True:
-
-		if stop.is_set():
-			time.sleep(5)
-			continue
-
 		try:
+			if stop.is_set():
+				continue
 
 			req_payload = request_queue.get()
 			#print("DEBUG: UART WRITE request received: cmd: ", req_payload[0])
@@ -502,8 +512,8 @@ def uart_write_thread_main(stop: threading.Event, conn: SerialConnection, root: 
 
 		except serial.SerialException as exc:
 			# Serial connection disconnected physically?
-			return
-
+			connection.state = 0
+			print("DEBUG: TX Serial exception.\n")
 	print("DEBUG: UART WRITE THREAD DIE.\n")
 	
 
@@ -542,6 +552,7 @@ def uart_read_thread_main(stop: threading.Event, conn: SerialConnection):
 				continue
 			
 			if (align_byte[0] != ALIGNMENT_BYTE):
+				print("DEBUG: RX Alignment Fail.\n")
 				continue
 			
 			#if (timeout(start, deadline)):
@@ -603,15 +614,14 @@ def uart_read_thread_main(stop: threading.Event, conn: SerialConnection):
 			# ---- Valid Response has been recieved ------ #
 			response_queue.put(payload)
 			print("DEBUG: RX placed on response queue.\n")
-			print(list(payload))
 
 			# ---- Remove stale requests (>= 5000 ms) ---- #
 			#pending_request.cleanup(5000)
 
 		except serial.SerialException as exc:
 			# Serial connection disconnected physically?
+			connection.state = 0
 			print("DEBUG: RX Serial exception.\n")
-			return
 		
 		# end while 
 	#end while 
@@ -642,24 +652,20 @@ def response_handler_thread_main(stop: threading.Event, root: Dashboard):
 		payload = response_queue.get()
 		print("DEBUG: response handle receieved response from queue.\n")
 		print(list(payload))
-		print("id: ", payload[0], " method: ", payload[1], " time: ", payload[2:10], " cmd: ", payload[10], " ack: ", payload[11])
 		
 		unique_id = payload[0]
-		print("DEBUG: pending request print.\n")
-		pending_request.print()
-		print("DEBUG: pending request lookup.\n")
-		t_send = pending_request.lookup(unique_id)			
-		pending_request.remove(unique_id)
+		t_send = 0
+
+		if unique_id != MEASUREMENT_ID:
+			t_send = pending_request.lookup(unique_id)			
+			pending_request.remove(unique_id)
 
 		t_received = int(time.time()*1000)
 		t_served = t_received - t_send
-		
-		print("DEBUG: t_received: ", t_received)
-		print("DEBUG: t_send: ", t_send)
-		print("DEBUG: t_served: ", t_served)
-
 
 		surtr_command = payload[10]
+		t_surtr_boot = int.from_bytes(payload[2:10], "little")
+		print("DEBUG: Surtr since boot .\n")
 
 		match surtr_command:
 
@@ -693,13 +699,20 @@ def response_handler_thread_main(stop: threading.Event, root: Dashboard):
 
 			# ---- SURTR ADC/SW STATE RESPONSE ------- #
 			case 3:
+				print("DEBUG: ADC SW BEGIN.\n")
 				response_ack = payload[11]
 				if(response_ack != 0xFF):
 					print("Request: Get SW state failed.\n")
 					continue
 
-				root.adc_raw_buffer.frombytes(payload[12:108])
-				root.sw_raw_buffer.frombytes(payload[108:116])
+				print("DEBUG: ADC .\n")
+				for i in range(0, NUM_CHANNELS_TOTAL):
+					index = i*4 + 12
+					root.adc_raw_buffer[i] = int.from_bytes(payload[index:index+4], "little")
+
+				print("DEBUG: SW .\n")
+				for i in range(0, NUM_SWITCHES):
+					root.sw_raw_buffer[i] = payload[i+108]
 
 				for i in range(0, ADC0_CHANNEL_VOLTAGE_END):
 					scaled_value = adc_to_scaled_normalized_voltage(root, ADC0_TAG, (i+1), root.adc_raw_buffer[i])
@@ -708,18 +721,27 @@ def response_handler_thread_main(stop: threading.Event, root: Dashboard):
 					scaled_value = adc_to_scaled_normalized_current(root, ADC0_TAG, (i+1), root.adc_raw_buffer[i])
 					root.adc_applied_buffer[i] = scaled_value
 				for i in range(ADC0_CHANNEL_CURRENT_END, ADC1_CHANNEL_VOLTAGE_END):
-					scaled_value = adc_to_scaled_normalized_voltage(root, ADC1_TAG, (i+1), root.adc_raw_buffer[i])
+					scaled_value = adc_to_scaled_normalized_voltage(root, ADC1_TAG, (i+1-NUM_CHANNELS_PER_ADC), root.adc_raw_buffer[i])
 					root.adc_applied_buffer[i] = scaled_value
 				for i in range(ADC1_CHANNEL_VOLTAGE_END, ADC1_CHANNEL_CURRENT_END):
-					scaled_value = adc_to_scaled_normalized_current(root, ADC1_TAG, (i+1), root.adc_raw_buffer[i])
+					scaled_value = adc_to_scaled_normalized_current(root, ADC1_TAG, (i+1-NUM_CHANNELS_PER_ADC), root.adc_raw_buffer[i])
 					root.adc_applied_buffer[i] = scaled_value
 				
-				root.ADC0.update_channels(root.adc_applied_buffer[0:(NUM_CHANNELS_PER_ADC)])
-				root.ADC1.update_channels(root.adc_applied_buffer[NUM_CHANNELS_PER_ADC:NUM_CHANNELS_TOTAL])
-				root.ACTUATION.switch.update(root.sw_raw_buffer)
+				print("DEBUG: SCALED .\n")
+				print(root.adc_applied_buffer)
 				
-				writeRow(root.SAVEFILE_WHANDLE, time, root.adc_raw_buffer, root.sw_raw_buffer)
-				root.TIME.update_time(math.ceil(time))
+				root.ADC0.update_channels(root.adc_applied_buffer[0:(NUM_CHANNELS_PER_ADC)])
+				print("DEBUG: UPDATED ADC0 .\n")
+				root.ADC1.update_channels(root.adc_applied_buffer[NUM_CHANNELS_PER_ADC:NUM_CHANNELS_TOTAL])
+				print("DEBUG: UPDATED ADC1 .\n")
+				root.ACTUATION.switch.update(root.sw_raw_buffer)
+				print("DEBUG: UPDATED .\n")
+				
+				writeRow(root.SAVEFILE_WHANDLE, t_surtr_boot, root.adc_raw_buffer, root.sw_raw_buffer)
+				print("DEBUG:  WRITE ROW .\n")
+				root.TIME.time_srt = math.ceil(t_surtr_boot)
+				
+				print("Request: ADC/SW id: ", unique_id, " served in: ", " ms.")
 		
 			case _:
 				raise Exception("Invalid SURTR command.")

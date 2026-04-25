@@ -27,6 +27,14 @@ void encode_packet(const uint8_t *data, uint8_t *tx_buf, const uint8_t data_size
     tx_buf[data_size+3] = crc_high;
 
     *p_tx_size = data_size + 4;
+
+    LOG_DBG("data[%d] = %d\n", 0, data[0]);
+    LOG_DBG("data[%d] = %d\n", 1, data[1]);
+
+    LOG_DBG("tx_buf[%d] = %d\n", 0, tx_buf[0]);
+    LOG_DBG("tx_buf[%d] = %d\n", 1, tx_buf[1]);
+    LOG_DBG("tx_buf[%d] = %d\n", 2, tx_buf[2]);
+    LOG_DBG("tx_buf[%d] = %d\n", 3, tx_buf[3]);
     
 }
 
