@@ -61,6 +61,7 @@ class Dashboard(ctk.CTk):
 			self,
 			lambda: ignition_command(0),
 			switch_command,
+			switch_command_timer,
 			None,
 			self.send_can_switch_command
 		)
@@ -756,6 +757,13 @@ def switch_command(id, state):
 	msg.sw_ctrl.CopyFrom(control_msg)
 	write_queue.put(msg.SerializeToString())
 
+# switch_command_timer():
+#	Calls switch command to set switch on.
+#	Gives root a scheduled call to switch_command again to set switch off after set time.
+def switch_command_timer(id, state, timer, root):
+	switch_command(id, state)
+	root.after(timer, switch_command, id, 0)
+
 # ignition_command():
 #	Converts ignition execution into sutr message and places in write queue.
 #	Password is "42"
@@ -810,13 +818,15 @@ def adc_to_normalized_current(adc_in):
 #
 def adc_to_scaled_normalized_voltage(root: Dashboard, adc_id, ch_in, adc_val):
 	scale = root.CONFIG.get_adc_channel_scale(adc_id, ch_in)
-	return adc_to_normalized_voltage(adc_val) * scale
+	offset = root.CONFIG.get_adc_channel_offset(adc_id, ch_in)
+	return adc_to_normalized_voltage(adc_val) * scale + offset
 
 # adc_to_scaled_normalized_current():
 #
 def adc_to_scaled_normalized_current(root: Dashboard, adc_id, ch_in, adc_val):
 	scale = root.CONFIG.get_adc_channel_scale(adc_id, ch_in)
-	return adc_to_normalized_current(adc_val) * scale
+	offset = root.CONFIG.get_adc_channel_offset(adc_id, ch_in)
+	return adc_to_normalized_current(adc_val) * scale + offset
 
 # parse_command_protobuf():
 #	Uses protobuf protocol and derives operation from real message in packet.
@@ -990,9 +1000,15 @@ def setup_dashboard(root: Dashboard):
 	root.ACTUATION.switch.title.grid(row=0, column=0, columnspan=6, pady=4)
 	root.ACTUATION.switch.panel.grid(row=0, column=0, sticky="nw", padx=6, pady=6)
 
+
+	root.ACTUATION.switch.input_label.grid(row=1, column=0, sticky="w", padx=(6, 2), pady=(0, 6))
+	root.ACTUATION.switch.input.grid(row=1, column=1, sticky="w", padx=(2, 6), pady=(0, 6))
+
+	root.ACTUATION.switch.timer_switch.grid(row=1, column=2, sticky="w", padx=6, pady=(0, 6))
+
 	SW_PER_COL = 4
 	for i in range(NUM_SWITCHES):
-		row = (i) % SW_PER_COL + 1  # +1 to account for title
+		row = (i) % SW_PER_COL + 2  # +1 to account for title
 		col = (i) // SW_PER_COL
 		root.ACTUATION.switch.button[i].label.grid(row=row, column=col*3+0, padx=2, pady=1, sticky="w")
 		root.ACTUATION.switch.button[i].on.grid(row=row, column=col*3+1, padx=2, pady=1, sticky="w")

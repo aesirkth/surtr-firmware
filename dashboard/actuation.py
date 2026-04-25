@@ -14,9 +14,9 @@ from constants import *
 # =========================================================================	
 # func_ignition() and func_stepper() not used right now.
 class Actuation:
-    def __init__(self, parent, func_ignition, func_switch, func_stepper, func_can_switch):
+    def __init__(self, parent, func_ignition, func_switch, func_switch_timer, func_stepper, func_can_switch):
         self.panel = ctk.CTkFrame(parent, border_width=1)
-        self.switch = self.Switch(self.panel, func_switch)
+        self.switch = self.Switch(self.panel, func_switch, func_switch_timer, parent)
         self.stepper = self.Stepper(self.panel, func_stepper)
         self.ignition = self.Ignition(self.panel, func_ignition)
         self.can_switch = self.CanSwitch(self.panel, func_can_switch)
@@ -24,13 +24,48 @@ class Actuation:
     
     # =====================================================================
     class Switch:
-        def __init__(self, parent, func):
+        def __init__(self, parent, func_switch, func_switch_timer, root):
             self.panel = ctk.CTkFrame(parent)
             self.title = ctk.CTkLabel(self.panel, text="Switches", font=DEFAULT_FONT_BOLD)
             self.button: list[Actuation.Switch.Button] = []
+            self.input = ctk.CTkEntry(self.panel, width=60)
+            self.input_label = ctk.CTkLabel(
+                self.panel,
+                text="timer: (s)"
+            )
+            self.use_timer = ctk.BooleanVar(value=False)
+
+            self.timer_switch = ctk.CTkSwitch(
+                self.panel,
+                text="Use timer",
+                variable=self.use_timer,
+                onvalue=True,
+                offvalue=False
+            )
+
+            self.func_switch = func_switch
+            self.func_switch_timer = func_switch_timer
+            self.root = root
+
             for i in range(0, NUM_SWITCHES):
-                bt = Actuation.Switch.Button(self.panel, i+1, f"SW {i+1}", func)
+                bt = Actuation.Switch.Button(self.panel, i+1, f"SW {i+1}", self.switch_command_wrapper)
                 self.button.append(bt)	
+
+
+        def switch_command_wrapper(self, id, state):
+            if self.use_timer.get():
+                try:
+                    timer_s = float(self.input.get().strip())
+                    timer_ms = int(timer_s * 1000)
+
+                    if timer_ms > 0:
+                        self.root.after(timer_ms, self.func_switch, id, 0)
+                except ValueError:
+                    self.use_timer.set(False)
+                    pass
+
+            self.func_switch(id, state)
+            
 
         # Function pointer for "switch_command()" is passed here.
         # It is then called as a lambda in order to supply arguments.
@@ -92,6 +127,7 @@ class Actuation:
                 else:
                     self.on.configure(fg_color=inactive_color)
                     self.off.configure(fg_color=active_color)
+
 
     # =====================================================================
     class Stepper:

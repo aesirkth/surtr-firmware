@@ -56,6 +56,10 @@ class Config:
         channel_cfg = self.config[f"ADC{adc_id}"][f"channel{ch_id}"]
         return channel_cfg.get("disabled", False)
 
+    def get_adc_channel_offset(self, adc_id, ch_id):
+        channel_cfg = self.config[f"ADC{adc_id}"][f"channel{ch_id}"]
+        return float(channel_cfg.get("offset", 0.0))
+
     def get_adc_channel_zeroable(self, adc_id, ch_id):
         channel_cfg = self.config[f"ADC{adc_id}"][f"channel{ch_id}"]
         return channel_cfg.get("zeroable", False)

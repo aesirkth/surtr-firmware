@@ -8,10 +8,10 @@
     "channel6": {"scale": 0.0, "label": "", "disabled": true, "zeroable": false},
     "channel7": {"scale": 0.0, "label": "", "disabled": true, "zeroable": false},
     "channel8": {"scale": 0.0, "label": "", "disabled": true, "zeroable": false},
-    "channel9": {"scale": 100.0, "label": "Kastrull PT [bar]", "disabled": false, "zeroable": false},
-    "channel10": {"scale": 0.0, "label": "", "disabled": true, "zeroable": false},
-    "channel11": {"scale": 100.0, "label": "N2O vent PT [bar]", "disabled": false, "zeroable": false},
-    "channel12": {"scale": 100.0, "label": "N2O fill PT [bar]", "disabled": false, "zeroable": false},
+    "channel9": {"scale": 100.0, "label": "Kastrull PT [bar]", "disabled": false, "offset": 0.0, "zeroable": false},
+    "channel10": {"scale": 0.0, "label": "", "disabled": true, "offset": 0.0, "zeroable": false},
+    "channel11": {"scale": 100.0, "label": "N2O vent PT [bar]", "disabled": false, "offset": 0.0, "zeroable": false},
+    "channel12": {"scale": 100.0, "label": "N2O fill PT [bar]", "disabled": false, "offset": 0.0, "zeroable": false},
     "range_label": "RED\n (Kastrull),(N/C)\n(N2O vent),(N2O fill)"
   },
   "ADC1": {
@@ -23,10 +23,10 @@
     "channel6": {"scale": 0.0, "label": "", "disabled": true, "zeroable": false},
     "channel7": {"scale": 0.0, "label": "", "disabled": true, "zeroable": false},
     "channel8": {"scale": 0.0, "label": "", "disabled": true, "zeroable": false},
-    "channel9": {"scale": 2791.304, "label": "LC-ENG-2000 [kg]", "disabled": false, "zeroable": true},
-    "channel10": {"scale": 245.0, "label": "LC-TNK-100 [kg]", "disabled": false, "zeroable": true},
-    "channel11": {"scale": 0.0, "label": "", "disabled": true, "zeroable": false},
-    "channel12": {"scale": 100.0, "label": "Tank top PT [bar]", "disabled": false, "zeroable": false},
+    "channel9": {"scale": 2791.304, "label": "LC-ENG-2000 [kg]", "disabled": false, "offset": 0.0, "zeroable": true},
+    "channel10": {"scale": 245.0, "label": "LC-TNK-100 [kg]", "disabled": false,    "offset": 0.0, "zeroable": true},
+    "channel11": {"scale": 0.0, "label": "", "disabled": true, "offset": 0.0, "zeroable": false},
+    "channel12": {"scale": 100.0, "label": "Tank top PT [bar]", "disabled": false, "offset": 0.0, "zeroable": false},
     "range_label": "BLUE\n (LC-ENG-2000),(LC-TNK-100)\n(N/C),(Tank top)"
   },
   "STEPPERS": {
