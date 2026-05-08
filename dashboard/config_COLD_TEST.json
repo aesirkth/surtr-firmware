@@ -23,7 +23,7 @@
     "channel6": {"scale": 0.0, "label": "", "disabled": true, "zeroable": false},
     "channel7": {"scale": 0.0, "label": "", "disabled": true, "zeroable": false},
     "channel8": {"scale": 0.0, "label": "", "disabled": true, "zeroable": false},
-    "channel9": {"scale": 2791.304, "label": "LC-ENG-2000 [kg]", "disabled": false, "offset": 0.0, "zeroable": true},
+    "channel9": {"scale": 1690.0, "label": "LC-ENG-2000 [kg]", "disabled": false, "offset": 326.8, "zeroable": true},
     "channel10": {"scale": 245.0, "label": "LC-TNK-100 [kg]", "disabled": false,    "offset": 0.0, "zeroable": true},
     "channel11": {"scale": 0.0, "label": "", "disabled": true, "offset": 0.0, "zeroable": false},
     "channel12": {"scale": 100.0, "label": "Tank top PT [bar]", "disabled": false, "offset": 0.0, "zeroable": false},
