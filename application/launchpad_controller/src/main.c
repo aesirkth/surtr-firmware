@@ -302,7 +302,11 @@ void ask_server(struct Server *server, struct Client *client)
 
             case SURTR_REQUEST_SW_CTRL:
 					LOG_DBG("SURTR_REQUEST_SW_CTRL\n");
-                    surtr_sw_ctrl(payload_buffer[11], payload_buffer[12]);
+                    if (!surtr_sw_ctrl(payload_buffer[11], payload_buffer[12]))
+					{
+						// ack failure.
+						response[11] = 0x00;
+					}
                 break;
 
             case SURTR_REQUEST_STEP_CTRL:
@@ -573,8 +577,8 @@ int main()
 	k_timer_init(&sampling_timer, sampling_isr, NULL);
 	k_timer_start(
 		&sampling_timer, 
-		K_MSEC(100), 
-		K_MSEC(100));
+		K_MSEC(500), 
+		K_MSEC(500));
 	
 	/* ---------- SEMAPHORE INITIALIZE ------------- */
 	// initial = 0, count = 2 (2 threads);

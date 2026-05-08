@@ -34,9 +34,13 @@ void surtr_syn_fail(uint8_t *response, uint8_t *response_size)
  *      ===============================================================
  *      SW CTRL 1 | ID | STATE |
  */
-void surtr_sw_ctrl(const uint8_t id, const uint8_t state)
+int surtr_sw_ctrl(const uint8_t id, const uint8_t state)
 {
+    if (id >= NUM_SWITCHES)
+        return 0;
+
     toggle_switch(id, state);
+    return 1;
 }
 
 /**
