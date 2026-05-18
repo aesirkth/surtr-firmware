@@ -78,8 +78,10 @@ int uart_retrieve_packet(Circbuf *rx_circbuf, struct uart_protocol *ps)
                         return 0;
                     }
 
-                    if (ps->length <= 0 || ps->length >= MSG_SIZE-4)
+                    if (ps->length <= 0 || ps->length >= MSG_SIZE-4) {
                         ps->state = ALIGNMENT;
+                        continue;
+                    }
 
                     ps->buffer[1] = ps->length;
                     ps->data_end = ps->length+2;

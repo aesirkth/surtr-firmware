@@ -284,6 +284,9 @@ class SurtrMath:
     def adc_to_current(adc_in):
         return ((adc_in * VREF * 2) / (ADCBITSIZE * ADCRESISTANCE))
 
+    def adc_to_current_bipolar(adc_in):
+        return (((adc_in / (ADCBITSIZE>>1))- 1) * VREF*2 / 50)
+
 
 # ===============================================================
 # Packet:

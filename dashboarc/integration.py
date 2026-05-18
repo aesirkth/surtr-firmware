@@ -494,6 +494,9 @@ def response_handler_thread_main(
                 for i in range(0, NUM_SWITCHES):
                     sw_val[i] = payload[i+108]
 
+                print("adc integration list:")
+                print(adc_val)
+
                 calculateAdc(adc_val)
                 actuation.set(sw_val)
                 savefile.writeRow(t_surtr_boot, adc_val, sw_val)

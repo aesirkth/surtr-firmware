@@ -175,9 +175,16 @@ class Controller:
             adc_v_scaled = adc_v_norm * adc_scale[i] + adc_offset[i]
             adc_applied[i] = adc_v_scaled
         for i in range(ADC1_CHANNEL_VOLTAGE_END, ADC1_CHANNEL_CURRENT_END):
-            adc_v = SurtrMath.adc_to_current(adc_raw[i])
+            print("i: ", i)
+            adc_v = SurtrMath.adc_to_current_bipolar(adc_raw[i])
+            print("adc_v: ", adc_v)
+            adc_vv = SurtrMath.adc_to_voltage(adc_raw[i])
+            print("adc_volt: ", adc_vv)
             adc_v_norm = SurtrMath.normalize_current(adc_v)
-            adc_v_scaled = adc_v_norm * adc_scale[i] + adc_offset[i]
+            print("adc_v_norm: ", adc_v_norm)
+            #adc_v_scaled = adc_v_norm * adc_scale[i] + adc_offset[i]
+            adc_v_scaled = adc_v * adc_scale[i] + adc_offset[i]
+            print("adc_v_scaled: ", adc_v_scaled, " scale: ", adc_scale[i], " offset: ", adc_offset[i])
             adc_applied[i] = adc_v_scaled
 
         self.view.adc0.update(adc_applied[0:12])
